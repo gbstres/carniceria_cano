@@ -1,0 +1,25 @@
+<?php
+
+// Initialize the session
+session_start();
+// Check if the user is logged in, if not then redirect him to login page
+if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
+    header("location: login.php");
+    exit;
+}
+header('Content-type: application/json');
+require_once "config.php";
+$id_sucursal = $_SESSION["id_sucursal"];
+$response_array = array();
+if ($_SERVER["REQUEST_METHOD"] == "POST") {
+    $id_cliente = trim($_POST["id_cliente"]);
+    
+    $row_saldo = mysqli_fetch_assoc(mysqli_query($link, "SELECT efectivo_hoy FROM cc_saldos_clientes where id_sucursal = $id_sucursal and id_cliente = $id_cliente"));
+
+    $saldo = $row_saldo['efectivo_hoy'];
+    $response_array[] = array(
+        'saldo' => $saldo
+    );
+}
+echo json_encode($response_array);
+?>
