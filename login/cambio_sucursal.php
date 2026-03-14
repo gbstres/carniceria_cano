@@ -6,6 +6,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
     exit;
 }
 require_once "../functions/config.php";
+$redirectAfterSucursalChange = "../main/inicio.php";
 $id_sucursal = $_SESSION["id_sucursal"];
 $err = "";
 // Processing form data when form is submitted
@@ -24,7 +25,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         $_SESSION["id_sucursal"] = $sucursal;
         $rowsucursal = mysqli_fetch_assoc(mysqli_query($link, "SELECT desc_sucursal FROM cc_sucursales WHERE id_sucursal = $sucursal"));
         $_SESSION["desc_sucursal"] = $rowsucursal['desc_sucursal'];
-        header("location: ../index.php");
+        header("location: " . $redirectAfterSucursalChange);
     } else {
         header("location: ../login/login.php");
     }

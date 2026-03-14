@@ -1,16 +1,11 @@
 <?php
 // Initialize the session
 session_start();
+$redirectAfterLogin = "../main/inicio.php";
 
 // Check if the user is already logged in, if yes then redirect him to welcome page
 if (isset($_SESSION["loggedin"]) && $_SESSION["loggedin"] === true) {
-    $link_sesion = "";
-    switch ($_SESSION["rol"]) {
-        case 1:
-            $link_sesion = "location: ../index.php";
-            break;
-    }
-    header($link_sesion);
+    header("location: " . $redirectAfterLogin);
     exit;
 }
 
@@ -64,16 +59,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         
                         switch ($_SESSION["rol"]) {
                             case 1:
-                                // Redirect user to welcome page
-                                header("location: ../index.php");
+                                header("location: " . $redirectAfterLogin);
                                 break;
                             case 2:
-                                // Redirect user to welcome page
-                                header("location: ../index.php");
+                                header("location: " . $redirectAfterLogin);
                                 break;
                             case 3:
-                                // Redirect user to welcome page
-                                header("location: ../index.php");
+                                header("location: " . $redirectAfterLogin);
                                 break;
                         }
                     } else {
