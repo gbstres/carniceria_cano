@@ -8,11 +8,18 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
     exit;
 }
 require_once "../functions/config.php";
-$id_sucursal = $_SESSION["id_sucursal"];
+$id_sucursal = isset($_SESSION["id_sucursal"]) ? (int) $_SESSION["id_sucursal"] : 0;
+
+if ($id_sucursal <= 0) {
+    session_destroy();
+    header("location: ../login/login.php");
+    exit;
+}
+
 $_SESSION['carpeta'] = '';
 
 //Eliminar la venta
-if (isset($_GET['accion']) == 'delete') {
+if (isset($_GET['accion']) && $_GET['accion'] === 'delete') {
     $fecha_ingreso = date('Y-m-d');
     $hora_ingreso = date('H:i:s');
     $id_usuario = $_SESSION["id"];
@@ -41,13 +48,17 @@ if (isset($_GET['accion']) == 'delete') {
 }
 // Extrae si se requiere clave externa
 $descripcion_corta = 0;
-$sql_clave = mysqli_query($link, "SELECT descripcion_corta FROM cc_claves WHERE nombre_clave = 'CLAVE_EXTERNA' and clave = $id_sucursal");
-$sqlproductos = mysqli_fetch_assoc($sql_clave);
-if (!$sqlproductos ||
-        !isset($sqlproductos['descripcion_corta']) || $sqlproductos['descripcion_corta'] == '0' || $sqlproductos['descripcion_corta'] === 0 || empty($sqlproductos['descripcion_corta']) || $sqlproductos['descripcion_corta'] === null) {
-    
-} else {
-    $descripcion_corta = $sqlproductos['descripcion_corta'];
+$sql_clave = mysqli_query($link, "SELECT descripcion_corta FROM cc_claves WHERE nombre_clave = 'CLAVE_EXTERNA' and clave = '$id_sucursal'");
+if ($sql_clave) {
+    $sqlproductos = mysqli_fetch_assoc($sql_clave);
+    if ($sqlproductos &&
+            isset($sqlproductos['descripcion_corta']) &&
+            $sqlproductos['descripcion_corta'] != '0' &&
+            $sqlproductos['descripcion_corta'] !== 0 &&
+            !empty($sqlproductos['descripcion_corta']) &&
+            $sqlproductos['descripcion_corta'] !== null) {
+        $descripcion_corta = $sqlproductos['descripcion_corta'];
+    }
 }
 ?>
 

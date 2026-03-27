@@ -43,7 +43,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             session_destroy();
                             session_start();
                         }
-                        $sqlsucursal = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM cc_sucursales where id_sucursal =" . $sucursal));
+                        $sucursal = (int) $sucursal;
+                        $sqlsucursal = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM cc_sucursales where id_sucursal = '$sucursal'"));
+                        if (!$sqlsucursal || empty($sqlsucursal['id_sucursal'])) {
+                            $err = "La sucursal asociada al usuario no es valida.";
+                            goto login_end;
+                        }
                         // Store data in session variables
                         $_SESSION["loggedin"] = true;
                         $_SESSION["id"] = $id;
@@ -84,6 +89,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     // Close statement
     mysqli_stmt_close($stmt);
+
+    login_end:
 
     // Close connection
     mysqli_close($link);
