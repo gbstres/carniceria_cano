@@ -3,6 +3,8 @@ session_start();
 
 require_once __DIR__ . '/functions/config.php';
 
+define('STOREFRONT_SUCURSAL_ID', 9);
+
 if (!isset($_SESSION['store_cart']) || !is_array($_SESSION['store_cart'])) {
     $_SESSION['store_cart'] = [];
 }
@@ -48,6 +50,124 @@ function storefront_normalize_quantity($value)
         return 0.25;
     }
     return round($quantity, 2);
+}
+
+function storefront_default_product_image()
+{
+    return 'img/logo_1.jpeg';
+}
+
+function storefront_table_exists(mysqli $link, $tableName)
+{
+    static $tableCache = [];
+
+    if (isset($tableCache[$tableName])) {
+        return $tableCache[$tableName];
+    }
+
+    $escapedTable = mysqli_real_escape_string($link, $tableName);
+    $result = mysqli_query($link, "SHOW TABLES LIKE '" . $escapedTable . "'");
+    $tableCache[$tableName] = $result && mysqli_num_rows($result) > 0;
+
+    if ($result instanceof mysqli_result) {
+        mysqli_free_result($result);
+    }
+
+    return $tableCache[$tableName];
+}
+
+function storefront_attach_product_images(mysqli $link, array $products)
+{
+    if (empty($products)) {
+        return $products;
+    }
+
+    foreach ($products as &$product) {
+        $product['image_small'] = storefront_default_product_image();
+        $product['image_large'] = storefront_default_product_image();
+        $product['image_alt'] = $product['descripcion'];
+    }
+    unset($product);
+
+    if (!storefront_table_exists($link, 'cc_productos_fotos')) {
+        return $products;
+    }
+
+    $codes = array_keys($products);
+    $quotedCodes = [];
+    foreach ($codes as $code) {
+        $quotedCodes[] = "'" . mysqli_real_escape_string($link, $code) . "'";
+    }
+
+    if (empty($quotedCodes)) {
+        return $products;
+    }
+
+    $sql = "
+        SELECT codigo, ruta_small, ruta_large, alt_text
+        FROM cc_productos_fotos
+        WHERE id_sucursal = " . STOREFRONT_SUCURSAL_ID . "
+            AND codigo IN (" . implode(', ', $quotedCodes) . ")
+            AND activo = 1
+        ORDER BY codigo ASC, es_principal DESC, orden ASC, id_foto ASC
+    ";
+
+    if ($result = mysqli_query($link, $sql)) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            $code = $row['codigo'];
+            if (!isset($products[$code])) {
+                continue;
+            }
+            if ($products[$code]['image_small'] !== storefront_default_product_image()) {
+                continue;
+            }
+
+            $products[$code]['image_small'] = trim((string) $row['ruta_small']) !== '' ? trim((string) $row['ruta_small']) : storefront_default_product_image();
+            $products[$code]['image_large'] = trim((string) $row['ruta_large']) !== '' ? trim((string) $row['ruta_large']) : $products[$code]['image_small'];
+            $products[$code]['image_alt'] = trim((string) $row['alt_text']) !== '' ? trim((string) $row['alt_text']) : $products[$code]['descripcion'];
+        }
+        mysqli_free_result($result);
+    }
+
+    return $products;
+}
+
+function storefront_fetch_product_gallery(mysqli $link, $productCode)
+{
+    if (!storefront_table_exists($link, 'cc_productos_fotos')) {
+        return [];
+    }
+
+    $gallery = [];
+    $productCode = mysqli_real_escape_string($link, $productCode);
+
+    $sql = "
+        SELECT ruta_small, ruta_large, alt_text, es_principal
+        FROM cc_productos_fotos
+        WHERE id_sucursal = " . STOREFRONT_SUCURSAL_ID . "
+            AND codigo = '" . $productCode . "'
+            AND activo = 1
+        ORDER BY es_principal DESC, orden ASC, id_foto ASC
+    ";
+
+    if ($result = mysqli_query($link, $sql)) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            $gallery[] = [
+                'small' => trim((string) $row['ruta_small']) !== '' ? trim((string) $row['ruta_small']) : storefront_default_product_image(),
+                'large' => trim((string) $row['ruta_large']) !== '' ? trim((string) $row['ruta_large']) : storefront_default_product_image(),
+                'alt' => trim((string) $row['alt_text']) !== '' ? trim((string) $row['alt_text']) : 'Foto de producto',
+                'is_primary' => (int) $row['es_principal'] === 1,
+            ];
+        }
+        mysqli_free_result($result);
+    }
+
+    return $gallery;
+}
+
+function storefront_product_url($productCode)
+{
+    return 'producto.php?codigo=' . urlencode((string) $productCode);
 }
 
 function storefront_ensure_order_tables(mysqli $link)
@@ -106,7 +226,7 @@ function storefront_fetch_products(mysqli $link)
         LEFT JOIN cc_categorias c
             ON c.id_sucursal = p.id_sucursal
             AND c.id_categoria = p.id_categoria
-        WHERE p.activo = 1
+        WHERE p.id_sucursal = " . STOREFRONT_SUCURSAL_ID . " and p.activo = 1
         ORDER BY categoria ASC, p.descripcion ASC
     ";
 
@@ -119,17 +239,17 @@ function storefront_fetch_products(mysqli $link)
     }
 
     if (!empty($products)) {
-        return $products;
+        return storefront_attach_product_images($link, $products);
     }
 
-    return [
+    return storefront_attach_product_images($link, [
         '101' => ['codigo' => '101', 'descripcion' => 'Arrachera marinada', 'precio_venta' => 239.00, 'almacen' => 18.5, 'categoria' => 'Cortes premium'],
         '102' => ['codigo' => '102', 'descripcion' => 'Rib eye selecto', 'precio_venta' => 289.00, 'almacen' => 12.0, 'categoria' => 'Cortes premium'],
         '103' => ['codigo' => '103', 'descripcion' => 'Milanesa de res', 'precio_venta' => 174.00, 'almacen' => 26.0, 'categoria' => 'Res'],
         '104' => ['codigo' => '104', 'descripcion' => 'Costilla cargada', 'precio_venta' => 169.00, 'almacen' => 22.0, 'categoria' => 'Parrilla'],
         '105' => ['codigo' => '105', 'descripcion' => 'Chuleta de cerdo', 'precio_venta' => 142.00, 'almacen' => 14.0, 'categoria' => 'Cerdo'],
         '106' => ['codigo' => '106', 'descripcion' => 'Pechuga de pollo', 'precio_venta' => 119.00, 'almacen' => 31.0, 'categoria' => 'Pollo'],
-    ];
+    ]);
 }
 
 function storefront_cart_totals(array $cart)
@@ -147,6 +267,10 @@ function storefront_cart_totals(array $cart)
 function storefront_build_url(array $params = [])
 {
     $query = [];
+
+    if (isset($_GET['mostrar']) && trim((string) $_GET['mostrar']) !== '') {
+        $query['mostrar'] = trim((string) $_GET['mostrar']);
+    }
 
     if (isset($_GET['categoria']) && trim((string) $_GET['categoria']) !== '') {
         $query['categoria'] = trim((string) $_GET['categoria']);
@@ -169,6 +293,7 @@ function storefront_build_url(array $params = [])
 }
 
 $products = storefront_fetch_products($link);
+$showAll = isset($_GET['mostrar']) && trim((string) $_GET['mostrar']) === 'todos';
 $selectedCategory = isset($_GET['categoria']) ? trim((string) $_GET['categoria']) : '';
 $searchTerm = isset($_GET['buscar']) ? trim((string) $_GET['buscar']) : '';
 $currentPage = isset($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
@@ -311,7 +436,13 @@ foreach ($products as $product) {
 ksort($categoryCounts, SORT_NATURAL | SORT_FLAG_CASE);
 
 $filteredProducts = [];
+$isInitialCatalog = $selectedCategory === '' && $searchTerm === '' && !$showAll;
+
 foreach ($products as $product) {
+    if ($isInitialCatalog) {
+        continue;
+    }
+
     $matchesCategory = $selectedCategory === '' || $product['categoria'] === $selectedCategory;
     $matchesSearch = $searchTerm === ''
         || stripos($product['descripcion'], $searchTerm) !== false
@@ -323,7 +454,7 @@ foreach ($products as $product) {
     }
 }
 
-$productsPerPage = 10;
+$productsPerPage =9;
 $totalFilteredProducts = count($filteredProducts);
 $totalPages = max(1, (int) ceil($totalFilteredProducts / $productsPerPage));
 

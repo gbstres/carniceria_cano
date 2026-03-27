@@ -104,6 +104,7 @@
                         <li>
                             <hr class="dropdown-divider">
                         </li>
+                        <li><a href="../index.php" class="dropdown-item"><i class="bi bi-shop"></i> Shop Online</a></li>
                         <li><a href="../login/logout.php" class="dropdown-item"><i class="bi bi-box-arrow-right"></i> Cerrar sesión</a></li>
                     </ul>
                 </li>
