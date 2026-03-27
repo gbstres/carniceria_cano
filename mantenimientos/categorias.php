@@ -11,6 +11,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 
 <?php
 require_once "../functions/config.php";
+require_once "../functions/sync_queue.php";
 date_default_timezone_set("America/Mexico_City");
 // Define variables and initialize with empty values
 
@@ -48,6 +49,11 @@ if (isset($_POST['agregar'])) {
         $hora_ingreso = date('H:i:s');
         $id_usuario = $_SESSION["id"];
         if (mysqli_stmt_execute($stmt)) {
+            cc_sync_enqueue($link, $id_sucursal, 'categoria', 'upsert', [
+                'id_categoria' => (int) $id_categoria,
+            ], [
+                'tabla' => 'cc_categorias',
+            ]);
             $title = 'Agregado';
             $body = 'Categoría ' . $desc_categoria . ' agregada correctamente.';
         } else {
@@ -71,6 +77,11 @@ if (isset($_POST['editar'])) {
                     . "WHERE id_categoria='$id_categoria' and id_sucursal='$id_sucursal'")
             or die(mysqli_error());
     if ($update1) {
+        cc_sync_enqueue($link, $id_sucursal, 'categoria', 'upsert', [
+            'id_categoria' => (int) $id_categoria,
+        ], [
+            'tabla' => 'cc_categorias',
+        ]);
         $title = 'Actualizado';
         $body = 'Categoría ' . $desc_categoria . ' actualizada correctamente.';
     } else {
@@ -91,6 +102,11 @@ if (isset($_GET['accion']) == 'delete' and $title == '') {
 
         $delete = mysqli_query($link, "DELETE FROM cc_categorias WHERE id_sucursal = '$id_sucursal' and id_categoria='$id_categoria'");
         if ($delete) {
+            cc_sync_enqueue($link, $id_sucursal, 'categoria', 'delete', [
+                'id_categoria' => (int) $id_categoria,
+            ], [
+                'tabla' => 'cc_categorias',
+            ]);
             $title = 'Eliminado';
             $body = 'Categoría ' . $sqlcategorias['desc_categoria'] . ' eliminada correctamente.';
         } else {

@@ -10,6 +10,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 }
 
 require_once "../functions/config.php";
+require_once "../functions/sync_queue.php";
 date_default_timezone_set("America/Mexico_City");
 // Define variables and initialize with empty values
 $id_sucursal = $_SESSION["id_sucursal"];
@@ -39,6 +40,12 @@ $comentario = strtoupper($_POST['comentario']);
         if (mysqli_stmt_execute($stmt)) {
             $importe = round($cantidad * $precio, 2);
             $usuario = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM cc_users where id  =" . $id_usuario));
+            cc_sync_enqueue($link, $id_sucursal, 'entrada', 'upsert', [
+                'id_entrada' => (int) $id_entrada,
+            ], [
+                'tabla' => 'cc_entradas',
+                'codigo' => (string) $codigo,
+            ]);
             $response_array [] = array('id_entrada' => $id_entrada, 'codigo' => $codigo, 'descripcion' => $descripcion, 'precio' => $precio, 'cantidad' => $cantidad, 'comentario' => $comentario, 'fecha' => $fecha_ingreso, 'hora' => $hora_ingreso, 'importe' => $importe, 'usuario' => $usuario['username']);
         } else {
             $response_array [] = array('id_entrada' => 0);
@@ -51,6 +58,11 @@ if ($_POST['movimiento'] == 2) {
     $id_entrada = trim($_POST["id_entrada"]);
     $delete = mysqli_query($link, "DELETE FROM cc_entradas WHERE id_sucursal = '$id_sucursal' and id_entrada = $id_entrada");
     if ($delete) {
+        cc_sync_enqueue($link, $id_sucursal, 'entrada', 'delete', [
+            'id_entrada' => (int) $id_entrada,
+        ], [
+            'tabla' => 'cc_entradas',
+        ]);
         $response_array [] = array('id_entrada' => $id_entrada);
     } else {
         $response_array [] = array('id_entrada' => 0);

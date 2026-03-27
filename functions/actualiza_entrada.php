@@ -11,6 +11,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 <?php
 
 require_once "../functions/config.php";
+require_once "../functions/sync_queue.php";
 
 $id_entrada = $_POST['id'];
 $value = mb_strtoupper($_POST['value']);
@@ -28,6 +29,12 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     . "WHERE id_sucursal='$id_sucursal' and id_entrada='$id_entrada'")
             or die(mysqli_error());
     if ($update_venta) {
+        cc_sync_enqueue($link, $id_sucursal, 'entrada', 'upsert', [
+            'id_entrada' => (int) $id_entrada,
+        ], [
+            'tabla' => 'cc_entradas',
+            'columna' => (string) $columnName,
+        ]);
         echo $value;
     } else {
         echo 'Error, no se pudo actualizar ';

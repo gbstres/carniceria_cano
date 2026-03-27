@@ -11,6 +11,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 
 <?php
 require_once "../functions/config.php";
+require_once "../functions/sync_queue.php";
 date_default_timezone_set("America/Mexico_City");
 // Define variables and initialize with empty values
 
@@ -24,6 +25,26 @@ $id_usuario = $_SESSION["id"];
 $body = "";
 $title = "";
 $filtro_activo = 1;
+
+function asegurarSaldoCliente(mysqli $link, int $idSucursal, int $idCliente, int $idUsuario, string $fecha, string $hora): void
+{
+    $sql = "INSERT INTO cc_saldos_clientes
+                (id_sucursal, id_cliente, efectivo_hoy, efectivo_ayer, efectivo_mes, id_usuario, fecha_ingreso, hora_ingreso)
+            SELECT ?, ?, 0, 0, 0, ?, ?, ?
+            FROM DUAL
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM cc_saldos_clientes
+                WHERE id_sucursal = ?
+                  AND id_cliente = ?
+            )";
+
+    if ($stmt = mysqli_prepare($link, $sql)) {
+        mysqli_stmt_bind_param($stmt, "iiissii", $idSucursal, $idCliente, $idUsuario, $fecha, $hora, $idSucursal, $idCliente);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_close($stmt);
+    }
+}
 
 if (isset($_POST['agregar'])) {
 
@@ -83,27 +104,13 @@ if (isset($_POST['agregar'])) {
 
         // Inserta cliente
         if (mysqli_stmt_execute($stmt)) {
-
-            // Inserta saldo cliente (tu tabla cc_saldos_clientes)
-            $efectivo_hoy = 0.0;
-            $efectivo_ayer = 0.0;
-            $efectivo_mes = 0.0;
-
-            $sql2 = "INSERT INTO cc_saldos_clientes
-                        (id_sucursal, id_cliente, efectivo_hoy, efectivo_ayer, efectivo_mes, id_usuario, fecha_ingreso, hora_ingreso)
-                     VALUES (?,?,?,?,?,?,?,?)";
-
-            if ($stmt2 = mysqli_prepare($link, $sql2)) {
-                mysqli_stmt_bind_param(
-                        $stmt2,
-                        "iidddiss",
-                        $id_sucursal, $id_cliente,
-                        $efectivo_hoy, $efectivo_ayer, $efectivo_mes,
-                        $id_usuario, $fecha_ingreso, $hora_ingreso
-                );
-                mysqli_stmt_execute($stmt2);
-                mysqli_stmt_close($stmt2);
-            }
+            cc_sync_enqueue($link, $id_sucursal, 'cliente', 'upsert', [
+                'id_cliente' => (int) $id_cliente,
+            ], [
+                'tabla' => 'cc_clientes',
+                'clave_proveedor' => (string) $clave_proveedor,
+            ]);
+            asegurarSaldoCliente($link, $id_sucursal, $id_cliente, $id_usuario, $fecha_ingreso, $hora_ingreso);
 
             $body = 'Cliente ' . $nombre . ' ' . $apellido_paterno . ' agregado correctamente.';
             $title = 'Agregado';
@@ -136,6 +143,13 @@ if (isset($_POST['editar'])) {
                     . "WHERE id_sucursal = '$id_sucursal' and id_cliente = '$id_cliente'")
             or die(mysqli_error());
     if ($update1) {
+        asegurarSaldoCliente($link, $id_sucursal, (int) $id_cliente, (int) $id_usuario_act, $fecha_act, $hora_act);
+        cc_sync_enqueue($link, $id_sucursal, 'cliente', 'upsert', [
+            'id_cliente' => (int) $id_cliente,
+        ], [
+            'tabla' => 'cc_clientes',
+            'clave_proveedor' => (string) $clave_proveedor,
+        ]);
         $body = 'Cliente ' . $nombre . ' ' . $apellido_paterno . ' actualizado correctamente.';
         $title = 'Actualizado';
     } else {
@@ -156,6 +170,11 @@ if (isset($_GET['accion']) == 'delete' and (!isset($_POST['agregar'])) and (!iss
     } else {
         $delete = mysqli_query($link, "DELETE FROM cc_clientes WHERE id_sucursal = '$id_sucursal' and id_cliente = $id_cliente");
         if ($delete) {
+            cc_sync_enqueue($link, $id_sucursal, 'cliente', 'delete', [
+                'id_cliente' => (int) $id_cliente,
+            ], [
+                'tabla' => 'cc_clientes',
+            ]);
             $body = 'Cliente ' . $sqlclientes['nombre'] . ' ' . $sqlclientes['apellido_paterno'] . ' eliminado correctamente';
             $title = 'Eliminado';
         }

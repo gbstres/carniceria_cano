@@ -10,12 +10,18 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 }
 
 require_once "../functions/config.php";
+require_once "../functions/sync_queue.php";
 date_default_timezone_set("America/Mexico_City");
 // Define variables and initialize with empty values
 $id_sucursal = $_SESSION["id_sucursal"];
-$fecha_ingreso = date('y-m-d');
+$fecha_ingreso = date('Y-m-d');
 $hora_ingreso = date('H:i:s');
 $id_usuario = $_SESSION["id"];
+$estatus = 0;
+$id_cierre = 0;
+$id_usuario_act = $_SESSION["id"];
+$fecha_act = $fecha_ingreso;
+$hora_act = $hora_ingreso;
 
 
 if ($_POST['movimiento'] == 1) {
@@ -32,13 +38,19 @@ $comentario = strtoupper($_POST['comentario']);
         $id_gasto = $id_gasto + 1;
     }
 
-    $sql = "INSERT INTO cc_gastos (id_sucursal, id_gasto, codigo, descripcion, precio, cantidad, comentario, id_usuario, fecha_ingreso, hora_ingreso) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    $sql = "INSERT INTO cc_gastos (id_sucursal, id_gasto, codigo, descripcion, precio, cantidad, comentario, estatus, id_cierre, id_usuario, fecha_ingreso, hora_ingreso, id_usuario_act, fecha_act, hora_act) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     if ($stmt = mysqli_prepare($link, $sql)) {
         // Bind variables to the prepared statement as parameters
-        mysqli_stmt_bind_param($stmt, "iissddsiss", $id_sucursal, $id_gasto, $codigo, $descripcion, $precio, $cantidad, $comentario, $id_usuario, $fecha_ingreso, $hora_ingreso);
+        mysqli_stmt_bind_param($stmt, "iissddsiiississ", $id_sucursal, $id_gasto, $codigo, $descripcion, $precio, $cantidad, $comentario, $estatus, $id_cierre, $id_usuario, $fecha_ingreso, $hora_ingreso, $id_usuario_act, $fecha_act, $hora_act);
         if (mysqli_stmt_execute($stmt)) {
             $importe = round($cantidad * $precio, 2);
             $usuario = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM cc_users where id  =" . $id_usuario));
+            cc_sync_enqueue($link, $id_sucursal, 'gasto', 'upsert', [
+                'id_gasto' => (int) $id_gasto,
+            ], [
+                'tabla' => 'cc_gastos',
+                'codigo' => (string) $codigo,
+            ]);
             $response_array [] = array('id_gasto' => $id_gasto, 'codigo' => $codigo, 'descripcion' => $descripcion, 'precio' => $precio, 'cantidad' => $cantidad, 'comentario' => $comentario, 'fecha' => $fecha_ingreso, 'hora' => $hora_ingreso, 'importe' => $importe, 'usuario' => $usuario['username']);
         } else {
             $response_array [] = array('id_gasto' => 0);
@@ -51,6 +63,11 @@ if ($_POST['movimiento'] == 2) {
     $id_gasto = trim($_POST["id_gasto"]);
     $delete = mysqli_query($link, "DELETE FROM cc_gastos WHERE id_sucursal = '$id_sucursal' and id_gasto = $id_gasto");
     if ($delete) {
+        cc_sync_enqueue($link, $id_sucursal, 'gasto', 'delete', [
+            'id_gasto' => (int) $id_gasto,
+        ], [
+            'tabla' => 'cc_gastos',
+        ]);
         $response_array [] = array('id_gasto' => $id_gasto);
     } else {
         $response_array [] = array('id_gasto' => 0);

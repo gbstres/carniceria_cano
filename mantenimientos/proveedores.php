@@ -11,6 +11,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 
 <?php
 require_once "../functions/config.php";
+require_once "../functions/sync_queue.php";
 date_default_timezone_set("America/Mexico_City");
 // Define variables and initialize with empty values
 
@@ -23,6 +24,26 @@ $hora_ingreso = date('H:i:s');
 $id_usuario = $_SESSION["id"];
 $body = "";
 $title = "";
+
+function asegurarSaldoProveedor(mysqli $link, int $idSucursal, int $idProveedor, int $idUsuario, string $fecha, string $hora): void
+{
+    $sql = "INSERT INTO cc_saldos_proveedores
+                (id_sucursal, id_proveedor, efectivo_hoy, efectivo_ayer, efectivo_mes, id_usuario, fecha_ingreso, hora_ingreso)
+            SELECT ?, ?, 0, 0, 0, ?, ?, ?
+            FROM DUAL
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM cc_saldos_proveedores
+                WHERE id_sucursal = ?
+                  AND id_proveedor = ?
+            )";
+
+    if ($stmt = mysqli_prepare($link, $sql)) {
+        mysqli_stmt_bind_param($stmt, "iiissii", $idSucursal, $idProveedor, $idUsuario, $fecha, $hora, $idSucursal, $idProveedor);
+        mysqli_stmt_execute($stmt);
+        mysqli_stmt_close($stmt);
+    }
+}
 
 if (isset($_POST['agregar'])) {
 
@@ -52,7 +73,13 @@ if (isset($_POST['agregar'])) {
         $estatus = 0;
         $pagado = 0;
         if (mysqli_stmt_execute($stmt)) {
-            mysqli_stmt_execute($stmt2);
+            asegurarSaldoProveedor($link, $id_sucursal, $id_proveedor, $id_usuario, $fecha_ingreso, $hora_ingreso);
+            cc_sync_enqueue($link, $id_sucursal, 'proveedor', 'upsert', [
+                'id_proveedor' => (int) $id_proveedor,
+            ], [
+                'tabla' => 'cc_proveedores',
+                'clave_cliente' => (string) $clave_cliente,
+            ]);
             $body = 'Proveedor ' . $nombre_proveedor . ' agregado correctamente.';
             $title = 'Agregado';
         } else {
@@ -76,6 +103,13 @@ if (isset($_POST['editar'])) {
                     . "WHERE id_sucursal = '$id_sucursal' and id_proveedor = '$id_proveedor'")
             or die(mysqli_error());
     if ($update1) {
+        asegurarSaldoProveedor($link, $id_sucursal, (int) $id_proveedor, (int) $id_usuario_act, $fecha_act, $hora_act);
+        cc_sync_enqueue($link, $id_sucursal, 'proveedor', 'upsert', [
+            'id_proveedor' => (int) $id_proveedor,
+        ], [
+            'tabla' => 'cc_proveedores',
+            'clave_cliente' => (string) $clave_cliente,
+        ]);
         $body = 'Proveedor ' . $nombre_proveedor . ' actualizado correctamente.';
         $title = 'Actualizado';
     } else {
@@ -96,6 +130,11 @@ if (isset($_GET['accion']) == 'delete' and (!isset($_POST['agregar'])) and (!iss
     } else {
         $delete = mysqli_query($link, "DELETE FROM cc_proveedores WHERE id_sucursal = '$id_sucursal' and id_proveedor = $id_proveedor");
         if ($delete) {
+            cc_sync_enqueue($link, $id_sucursal, 'proveedor', 'delete', [
+                'id_proveedor' => (int) $id_proveedor,
+            ], [
+                'tabla' => 'cc_proveedores',
+            ]);
             $body = 'Proveedor ' . $sqlproveedores['nombre_proveedor'] . ' eliminado correctamente';
             $title = 'Eliminado';
         }

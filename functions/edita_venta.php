@@ -10,6 +10,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 }
 
 require_once "../functions/config.php";
+require_once "../functions/sync_queue.php";
 date_default_timezone_set("America/Mexico_City");
 // Define variables and initialize with empty values
 $codigo = 0;
@@ -24,6 +25,25 @@ $body = "";
 $title = "";
 $id_venta = $id_venta_t = $_POST['id_venta'];
 $id_cliente = $_POST['id_cliente'];
+
+function asegurarSaldoClienteVenta($link, $id_sucursal, $id_cliente, $id_usuario, $fecha, $hora) {
+    $id_sucursal = (int) $id_sucursal;
+    $id_cliente = (int) $id_cliente;
+    $id_usuario = (int) $id_usuario;
+    if ($id_cliente <= 0) {
+        return;
+    }
+
+    mysqli_query($link, "INSERT INTO cc_saldos_clientes
+        (id_sucursal, id_cliente, efectivo_hoy, efectivo_ayer, efectivo_mes, id_usuario, fecha_ingreso, hora_ingreso)
+        SELECT $id_sucursal, $id_cliente, 0, 0, 0, $id_usuario, '$fecha', '$hora'
+        FROM DUAL
+        WHERE NOT EXISTS (
+            SELECT 1 FROM cc_saldos_clientes
+            WHERE id_sucursal = $id_sucursal
+              AND id_cliente = $id_cliente
+        )");
+}
 
 //Agrega productos de inicio
 if ($_POST['movimiento'] == 1) {
@@ -63,6 +83,14 @@ if ($_POST['movimiento'] == 1) {
                 $pagado = 0;
                 mysqli_stmt_execute($stmt);
             }
+            cc_sync_enqueue($link, $id_sucursal, 'venta', 'upsert', [
+                'id_venta' => (int) $id_venta,
+                'id_consecutivo' => (int) $id_consecutivo,
+            ], [
+                'tabla' => 'cc_ventas',
+                'id_cliente' => (int) $id_cliente,
+                'codigo' => (string) $codigo,
+            ]);
             $response_array [] = array('id_venta' => $id_venta, 'id_consecutivo' => $id_consecutivo, 'descripcion' => $descripcion, 'id_cliente' => $id_cliente, 'fecha_ingreso' => $fecha_ingreso, 'hora_ingreso' => $hora_ingreso, 'clave_externa' => $clave_externa);
         } else {
             $response_array [] = array('id_venta' => 0, 'id_consecutivo' => 0, 'id_cliente' => 0);
@@ -75,11 +103,22 @@ else if ($_POST['movimiento'] == 2) {
     $id_consecutivo = trim($_POST["id_consecutivo"]);
     $delete = mysqli_query($link, "DELETE FROM cc_ventas WHERE id_sucursal = '$id_sucursal' and id_venta = $id_venta and id_consecutivo = $id_consecutivo");
     if ($delete) {
+        cc_sync_enqueue($link, $id_sucursal, 'venta', 'delete', [
+            'id_venta' => (int) $id_venta,
+            'id_consecutivo' => (int) $id_consecutivo,
+        ], [
+            'tabla' => 'cc_ventas',
+        ]);
         $sql3 = "SELECT * FROM cc_ventas where id_sucursal = '$id_sucursal' and id_venta = $id_venta";
         $result = mysqli_query($link, $sql3);
         $numero = mysqli_num_rows($result);
         if ($numero == 0) {
             mysqli_query($link, "DELETE FROM cc_det_ventas WHERE id_sucursal = '$id_sucursal' and id_venta = $id_venta");
+            cc_sync_enqueue($link, $id_sucursal, 'venta_detalle', 'delete', [
+                'id_venta' => (int) $id_venta,
+            ], [
+                'tabla' => 'cc_det_ventas',
+            ]);
             $response_array [] = array('id_venta' => 0, 'id_cliente' => 0);
         } else {
             $response_array [] = array('id_venta' => $id_venta);
@@ -101,6 +140,16 @@ else if ($_POST['movimiento'] == 3) {
                 . "estatus = 1, "
                 . "fecha_act='$fecha_ingreso', hora_act='$hora_ingreso', id_usuario_act='$id_usuario' "
                 . "WHERE id_sucursal='$id_sucursal' and id_venta='$id_venta'");
+        cc_sync_enqueue($link, $id_sucursal, 'venta', 'cancel', [
+            'id_venta' => (int) $id_venta,
+        ], [
+            'tabla' => 'cc_ventas',
+        ]);
+        cc_sync_enqueue($link, $id_sucursal, 'venta_detalle', 'upsert', [
+            'id_venta' => (int) $id_venta,
+        ], [
+            'tabla' => 'cc_det_ventas',
+        ]);
         $response_array [] = array('id_venta' => 0, 'id_consecutivo' => 0, 'id_cliente' => 0);
     } else {
         
@@ -117,6 +166,12 @@ else if ($_POST['movimiento'] == 4) {
                     . "WHERE id_sucursal='$id_sucursal' and id_venta='$id_venta'")
             or die(mysqli_error());
     if ($update1) {
+        cc_sync_enqueue($link, $id_sucursal, 'venta_detalle', 'upsert', [
+            'id_venta' => (int) $id_venta,
+        ], [
+            'tabla' => 'cc_det_ventas',
+            'id_cliente' => (int) $id_cliente,
+        ]);
         $response_array [] = array('id_venta' => $id_venta);
     } else {
         echo '<div class="alert alert-danger alert-dismissable"><button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>Error, no se pudo guardar el producto.</div>';
@@ -135,6 +190,19 @@ else if ($_POST['movimiento'] == 5) {
             or die(mysqli_error());
     if ($update1) {
         $row_det_venta = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM `cc_det_ventas` WHERE id_sucursal = '$id_sucursal' and id_venta = $id_venta"));
+        cc_sync_enqueue($link, $id_sucursal, 'venta_detalle', 'close', [
+            'id_venta' => (int) $id_venta,
+        ], [
+            'tabla' => 'cc_det_ventas',
+            'tipo_pago' => (int) $tipo_pago,
+            'id_empleado' => (int) $id_empleado,
+        ]);
+        cc_sync_enqueue($link, $id_sucursal, 'venta', 'upsert', [
+            'id_venta' => (int) $id_venta,
+        ], [
+            'tabla' => 'cc_ventas',
+            'motivo' => 'cierre',
+        ]);
         $response_array [] = array('id_venta' => $id_venta, 'fecha_ingreso' => $row_det_venta['fecha_ingreso'], 'hora_ingreso' => $row_det_venta['hora_ingreso']);
         if ($row_det_venta['id_cliente'] <> 0) {
             $id_cliente = $row_det_venta['id_cliente'];
@@ -178,6 +246,12 @@ else if ($_POST['movimiento'] == 7) {
                     . "WHERE id_sucursal='$id_sucursal' and id_venta='$id_venta' and estatus in (0)")
             or die(mysqli_error());
     if ($update4) {
+        cc_sync_enqueue($link, $id_sucursal, 'venta', 'cancel', [
+            'id_venta' => (int) $id_venta,
+        ], [
+            'tabla' => 'cc_ventas',
+            'motivo' => 'reporte',
+        ]);
         $response_array [] = array('id_venta' => $id_venta);
     } else {
         echo '<div class="alert alert-danger alert-dismissable"><button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>Error, no se pudo guardar el producto.</div>';
@@ -208,6 +282,14 @@ else if ($_POST['movimiento'] == 8) {
                 recalcula_cliente_producto($link, $id_sucursal, $importe, $id_cliente, $fecha_act, $hora_act, $id_usuario_act);
             }
             recalcula_almacen_venta_producto($link, $id_sucursal, $id_venta, $id_consecutivo, $fecha_act, $hora_act, $id_usuario_act);
+            cc_sync_enqueue($link, $id_sucursal, 'venta', 'upsert', [
+                'id_venta' => (int) $id_venta,
+                'id_consecutivo' => (int) $id_consecutivo,
+            ], [
+                'tabla' => 'cc_ventas',
+                'id_cliente' => (int) $id_cliente,
+                'codigo' => (string) $codigo,
+            ]);
             $response_array [] = array('id_venta' => $id_venta, 'id_consecutivo' => $id_consecutivo, 'descripcion' => $descripcion, 'id_cliente' => $id_cliente, 'fecha_ingreso' => $fecha_ingreso, 'hora_ingreso' => $hora_ingreso, 'clave_externa' => $clave_externa);
         } else {
             $response_array [] = array('id_venta' => 0, 'id_consecutivo' => 0, 'id_cliente' => 0);
@@ -218,6 +300,7 @@ else if ($_POST['movimiento'] == 8) {
 
 // recalcula saldo cliente
 function recalcula($link, $id_sucursal, $id_venta, $id_cliente, $fecha_act, $hora_act, $id_usuario_act) {
+    asegurarSaldoClienteVenta($link, $id_sucursal, $id_cliente, $id_usuario_act, $fecha_act, $hora_act);
     $row_saldo = mysqli_fetch_assoc(mysqli_query($link, "SELECT sum(cantidad * precio_venta) as 'saldo' FROM `cc_ventas` WHERE id_sucursal = '$id_sucursal' and id_venta = $id_venta"));
     $saldo = $row_saldo['saldo'];
     mysqli_query($link, "UPDATE cc_saldos_clientes SET efectivo_hoy = efectivo_hoy + $saldo, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act= $id_usuario_act WHERE id_sucursal= $id_sucursal and id_cliente = $id_cliente");
@@ -225,11 +308,13 @@ function recalcula($link, $id_sucursal, $id_venta, $id_cliente, $fecha_act, $hor
 
 //recalcula saldo cliente por producto
 function recalcula_cliente_producto($link, $id_sucursal, $importe, $id_cliente, $fecha_act, $hora_act, $id_usuario_act) {
+    asegurarSaldoClienteVenta($link, $id_sucursal, $id_cliente, $id_usuario_act, $fecha_act, $hora_act);
     mysqli_query($link, "UPDATE cc_saldos_clientes SET efectivo_hoy = efectivo_hoy + $importe, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act= $id_usuario_act WHERE id_sucursal= $id_sucursal and id_cliente = $id_cliente");
 }
 
 // recalcula saldo cliente si elimina la venta (update)
 function recalcula_eliminacion($link, $id_sucursal, $id_venta, $id_cliente, $fecha_act, $hora_act, $id_usuario_act) {
+    asegurarSaldoClienteVenta($link, $id_sucursal, $id_cliente, $id_usuario_act, $fecha_act, $hora_act);
     $row_saldo = mysqli_fetch_assoc(mysqli_query($link, "SELECT sum(cantidad * precio_venta) as 'saldo' FROM `cc_ventas` WHERE id_sucursal = '$id_sucursal' and id_venta = $id_venta and estatus in (0)"));
     $saldo = $row_saldo['saldo'];
     if ($row_saldo['saldo'] == null) {
@@ -357,8 +442,20 @@ WHERE a.id_sucursal = $id_sucursal AND a.id_venta = $id_venta  and a.estatus in 
 
 function recalcula_almacen_producto($link, $id_sucursal, $codigo, $cantidad, $fecha_act, $hora_act, $id_usuario_act) {
     mysqli_query($link, "UPDATE cc_productos SET almacen = almacen - $cantidad, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act= $id_usuario_act WHERE id_sucursal= $id_sucursal and codigo = $codigo");
+    cc_sync_enqueue($link, $id_sucursal, 'producto', 'upsert', [
+        'codigo' => (string) $codigo,
+    ], [
+        'tabla' => 'cc_productos',
+        'motivo' => 'movimiento_venta',
+    ]);
 }
 
 function recalcula_almacen_categoria($link, $id_sucursal, $id_categoria, $cantidad, $fecha_act, $hora_act, $id_usuario_act) {
     mysqli_query($link, "UPDATE cc_categorias SET almacen = almacen - $cantidad, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act= $id_usuario_act WHERE id_sucursal= $id_sucursal and id_categoria = $id_categoria");
+    cc_sync_enqueue($link, $id_sucursal, 'categoria', 'upsert', [
+        'id_categoria' => (int) $id_categoria,
+    ], [
+        'tabla' => 'cc_categorias',
+        'motivo' => 'movimiento_venta',
+    ]);
 }

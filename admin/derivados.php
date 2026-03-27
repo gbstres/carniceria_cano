@@ -9,6 +9,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 }
 
 require_once "../functions/config.php";
+require_once "../functions/sync_queue.php";
 date_default_timezone_set("America/Mexico_City");
 // Define variables and initialize with empty values
 $id_sucursal = $_SESSION["id_sucursal"];
@@ -18,7 +19,11 @@ if (isset($_GET['aksi']) && $_GET['aksi'] == 'delete') {
     $codigo_p = $_GET['codigo_p'];
     $delete = mysqli_query($link, "DELETE FROM cc_derivados WHERE id_sucursal = '$id_sucursal' and codigo_p = $codigo_p");
     if ($delete) {
-        
+        cc_sync_enqueue($link, $id_sucursal, 'derivado', 'delete', [
+            'codigo_p' => (int) $codigo_p,
+        ], [
+            'tabla' => 'cc_derivados',
+        ]);
     } else {
         
     }
@@ -477,4 +482,3 @@ if (isset($_GET['aksi']) && $_GET['aksi'] == 'delete') {
         </script>      
     </body>
 </html>
-

@@ -7,6 +7,7 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true){
 }
 
 require_once "../functions/config.php";
+require_once "../functions/sync_queue.php";
 $codigo = $_POST['id'];
 $value = mb_strtoupper($_POST['value']);
 $columnName = $_POST['columnName'];
@@ -22,6 +23,12 @@ date_default_timezone_set("America/Mexico_City");
                             . "WHERE codigo='$codigo' and id_sucursal='$id_sucursal'") 
                             or die(mysqli_error());
                     if($update_producto){
+                        cc_sync_enqueue($link, $id_sucursal, 'producto', 'upsert', [
+                            'codigo' => (string) $codigo,
+                        ], [
+                            'tabla' => 'cc_productos',
+                            'columna' => (string) $columnName,
+                        ]);
 			echo trim($value);
                     }else{
 			echo 'Error, no se pudo actualizar ';

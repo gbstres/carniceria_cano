@@ -9,6 +9,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 }
 
 require_once "../functions/config.php";
+require_once "../functions/sync_queue.php";
 date_default_timezone_set("America/Mexico_City");
 // Define variables and initialize with empty values
 $codigo = 0;
@@ -25,6 +26,19 @@ $id_usuario = $_SESSION["id"];
 $body = "";
 $title = "";
 $codigo_e = $descripcion_e = $precio_compra_e = $precio_venta_e = $almacen_e = $id_categoria_e = "";
+$photoProductCode = '';
+$productsPerPage = 25;
+$currentPage = isset($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
+$searchTerm = isset($_GET['buscar']) ? trim($_GET['buscar']) : '';
+
+function buildProductosPageUrl($page)
+{
+    $query = ['page' => max(1, (int) $page)];
+    if ($GLOBALS['searchTerm'] !== '') {
+        $query['buscar'] = $GLOBALS['searchTerm'];
+    }
+    return '?' . http_build_query($query);
+}
 if (isset($_POST['agregar'])) {
     $codigo_e = $codigo = trim($_POST["codigo"]);
     $descripcion_e = $descripcion = mb_strtoupper(trim($_POST["descripcion"]));
@@ -46,8 +60,15 @@ if (isset($_POST['agregar'])) {
             mysqli_stmt_bind_param($stmt, "iisdddiiiiss", $codigo, $id_sucursal, $descripcion, $precio_compra, $precio_venta, $almacen, $id_categoria, $centralizar_almacen, $activo, $id_usuario, $fecha_ingreso, $hora_ingreso);
 
             if (mysqli_stmt_execute($stmt)) {
+                cc_sync_enqueue($link, $id_sucursal, 'producto', 'upsert', [
+                    'codigo' => (string) $codigo,
+                ], [
+                    'tabla' => 'cc_productos',
+                    'id_categoria' => (int) $id_categoria,
+                ]);
                 $title = 'Agregado';
                 $body = 'Producto ' . $descripcion . ' agregado correctamente.';
+                $photoProductCode = $codigo;
                 $codigo_e = $codigo = "";
                 $descripcion_e = $descripcion = "";
                 $precio_compra_e = $precio_compra = "";
@@ -80,8 +101,15 @@ if (isset($_POST['editar'])) {
             or die(mysqli_error());
 
     if ($update1) {
+        cc_sync_enqueue($link, $id_sucursal, 'producto', 'upsert', [
+            'codigo' => (string) $codigo,
+        ], [
+            'tabla' => 'cc_productos',
+            'id_categoria' => (int) $id_categoria,
+        ]);
         $title = 'Actualizado';
         $body = 'Producto ' . $descripcion . ' actualizado correctamente.';
+        $photoProductCode = $codigo;
     } else {
         $title = 'No actualizado';
         $body = 'Producto ' . $descripcion . ' no actualizado.';
@@ -101,6 +129,11 @@ if (isset($_GET['accion']) == 'delete' and $title == '') {
 
         $delete = mysqli_query($link, "DELETE FROM cc_productos WHERE codigo='$codigo' and id_sucursal = '$id_sucursal'");
         if ($delete) {
+            cc_sync_enqueue($link, $id_sucursal, 'producto', 'delete', [
+                'codigo' => (string) $codigo,
+            ], [
+                'tabla' => 'cc_productos',
+            ]);
             $title = 'Eliminado';
             $body = 'Producto ' . $sqlproductos['descripcion'] . ' eliminado correctamente.';
         } else {
@@ -109,6 +142,58 @@ if (isset($_GET['accion']) == 'delete' and $title == '') {
         }
     }
 }
+
+$searchSql = '';
+if ($searchTerm !== '') {
+    $safeSearchTerm = mysqli_real_escape_string($link, $searchTerm);
+    $searchSql = " AND (
+        p.codigo LIKE '%$safeSearchTerm%'
+        OR p.descripcion LIKE '%$safeSearchTerm%'
+        OR c.desc_categoria LIKE '%$safeSearchTerm%'
+    )";
+}
+
+$countResult = mysqli_query($link, "
+    SELECT COUNT(*) AS total
+    FROM cc_productos p
+    LEFT JOIN cc_categorias c
+        ON c.id_sucursal = p.id_sucursal
+        AND c.id_categoria = p.id_categoria
+    WHERE p.id_sucursal = '$id_sucursal' $searchSql
+");
+$countRow = $countResult ? mysqli_fetch_assoc($countResult) : ['total' => 0];
+$totalProducts = (int) $countRow['total'];
+$totalPages = max(1, (int) ceil($totalProducts / $productsPerPage));
+
+if ($currentPage > $totalPages) {
+    $currentPage = $totalPages;
+}
+
+$offset = ($currentPage - 1) * $productsPerPage;
+$startProduct = $totalProducts > 0 ? $offset + 1 : 0;
+$endProduct = min($offset + $productsPerPage, $totalProducts);
+
+$sqlproductos = mysqli_query($link, "
+    SELECT
+        p.*,
+        u.username,
+        c.desc_categoria,
+        c.mayoreo,
+        ca.descripcion_corta
+    FROM cc_productos p
+    LEFT JOIN cc_users u
+        ON u.id = p.id_usuario
+    LEFT JOIN cc_categorias c
+        ON c.id_sucursal = p.id_sucursal
+        AND c.id_categoria = p.id_categoria
+    LEFT JOIN cc_claves ca
+        ON ca.nombre_clave = 'CENTRALIZAR_ALMACEN'
+        AND ca.clave = p.centralizar_almacen
+    WHERE p.id_sucursal = '$id_sucursal'
+        $searchSql
+    ORDER BY p.id_categoria ASC, p.descripcion ASC
+    LIMIT $offset, $productsPerPage
+");
 ?>
 
 <!doctype html>
@@ -268,6 +353,17 @@ if (isset($_GET['accion']) == 'delete' and $title == '') {
                         </form>
                         <br>
                         <br>
+                        <form method="get" class="row g-3 mb-3">
+                            <div class="col-md-8">
+                                <input type="text" class="form-control" name="buscar" placeholder="Buscar por codigo, descripcion o categoria" value="<?php echo htmlspecialchars($searchTerm, ENT_QUOTES, 'UTF-8'); ?>">
+                            </div>
+                            <div class="col-md-2 d-grid">
+                                <button type="submit" class="btn btn-primary">Buscar</button>
+                            </div>
+                            <div class="col-md-2 d-grid">
+                                <a href="productos.php" class="btn btn-outline-secondary">Limpiar</a>
+                            </div>
+                        </form>
                         <div class="table-responsive">
                             <table id="productos" class="display" style="width:100%" >
                                 <thead>
@@ -286,12 +382,7 @@ if (isset($_GET['accion']) == 'delete' and $title == '') {
                                     </tr>
                                 </thead>
                                 <?php
-                                $sqlproductos = mysqli_query($link, "SELECT * FROM cc_productos where id_sucursal = '$id_sucursal' order by id_categoria");
                                 while ($rowp = mysqli_fetch_assoc($sqlproductos)) {
-                                    //$sqlcatalogo = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM cc_catalogos where nombre_clave = 'ROL' and id_clave =" . $rowp['rol']));
-                                    $sqluser = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM cc_users where id =" . $rowp['id_usuario']));
-                                    $sqlcategorias = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM cc_categorias where id_sucursal = '$id_sucursal' and id_categoria =" . $rowp['id_categoria']));
-                                    $sqlca = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM cc_claves where nombre_clave = 'CENTRALIZAR_ALMACEN' and clave =" . $rowp['centralizar_almacen']));
                                     echo '
                                     <tr id="' . $rowp['codigo'] . '">
                                         <td>' . $rowp['codigo'] . '</td>
@@ -299,17 +390,17 @@ if (isset($_GET['accion']) == 'delete' and $title == '') {
                                         <td>' . $rowp['precio_compra'] . '</td>
                                         <td>' . $rowp['precio_venta'] . '</td>
                                         <td>' . $rowp['almacen'] . '</td>
-                                        <td class="' . $rowp['id_categoria'] . '">' . $sqlcategorias['desc_categoria'] . '</td>
+                                        <td class="' . $rowp['id_categoria'] . '">' . $rowp['desc_categoria'] . '</td>
                                         <td><input type="checkbox" class="form-check-input" disabled ';
-                                    if ($sqlcategorias['mayoreo'] == "1") {
+                                    if ($rowp['mayoreo'] == "1") {
                                         echo 'checked';
                                     } echo '></td>
-                                        <td class="' . $rowp['centralizar_almacen'] . '">' . $sqlca['descripcion_corta'] . '</td>   
+                                        <td class="' . $rowp['centralizar_almacen'] . '">' . $rowp['descripcion_corta'] . '</td>   
                                         <td class="' . $rowp['activo'] . '"><input type="checkbox" class="form-check-input" disabled ';
                                     if ($rowp['activo'] == "1") {
                                         echo 'checked';
                                     } echo '></td>
-                                        <td>' . $sqluser['username'] . '</td>
+                                        <td>' . $rowp['username'] . '</td>
                                         <td align="center">
                                             <a href="?accion=delete&codigo=' . $rowp['codigo'] . '" title="Eliminar" onclick="return confirm(\'¿Esta seguro de borrar el producto ' . $rowp['descripcion'] . '?\')"><img class="imga" src="../img/icons/trash.svg"></a>
                                             <a href="#" title="Editar categoría" data-bs-toggle="modal" data-bs-target="#editModal"><img class="imga" src="../img/icons/pencil-square.svg"></a>
@@ -321,6 +412,31 @@ if (isset($_GET['accion']) == 'delete' and $title == '') {
                                 <tfoot>
                                 </tfoot>
                             </table>
+                        </div>
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mt-3">
+                            <div>
+                                <?php
+                                echo 'Mostrando ' . $startProduct . ' a ' . $endProduct . ' de ' . $totalProducts . ' productos';
+                                if ($searchTerm !== '') {
+                                    echo ' para "' . htmlspecialchars($searchTerm, ENT_QUOTES, 'UTF-8') . '"';
+                                }
+                                ?>
+                            </div>
+                            <nav aria-label="Paginacion de productos">
+                                <ul class="pagination mb-0">
+                                    <li class="page-item <?php echo $currentPage <= 1 ? 'disabled' : ''; ?>">
+                                        <a class="page-link" href="<?php echo $currentPage <= 1 ? '#' : buildProductosPageUrl($currentPage - 1); ?>">Anterior</a>
+                                    </li>
+                                    <?php for ($page = 1; $page <= $totalPages; $page++): ?>
+                                        <li class="page-item <?php echo $page === $currentPage ? 'active' : ''; ?>">
+                                            <a class="page-link" href="<?php echo buildProductosPageUrl($page); ?>"><?php echo $page; ?></a>
+                                        </li>
+                                    <?php endfor; ?>
+                                    <li class="page-item <?php echo $currentPage >= $totalPages ? 'disabled' : ''; ?>">
+                                        <a class="page-link" href="<?php echo $currentPage >= $totalPages ? '#' : buildProductosPageUrl($currentPage + 1); ?>">Siguiente</a>
+                                    </li>
+                                </ul>
+                            </nav>
                         </div>
                     </div>
                 </div>
@@ -415,6 +531,7 @@ if (isset($_GET['accion']) == 'delete' and $title == '') {
                             </div>
                         </div>
                         <div class="modal-footer">
+                            <a href="producto_fotos.php" class="btn btn-outline-primary" id="edit_fotos_link">Fotos de producto</a>
                             <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
                             <button type="submit" class="btn btn-primary" name="editar">Guardar</button>
                         </div>
@@ -435,6 +552,7 @@ if (isset($_GET['accion']) == 'delete' and $title == '') {
                     </div>
                     <div class="modal-body">' . $body . '</div>
                     <div class="modal-footer">
+                        ' . ($photoProductCode !== '' ? '<a href="producto_fotos.php?codigo=' . urlencode($photoProductCode) . '" class="btn btn-outline-primary">Agregar fotos</a>' : '') . '
                         <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
                     </div>
                 </div>
@@ -469,6 +587,8 @@ if (isset($_GET['accion']) == 'delete' and $title == '') {
                                     "previous": "Anterior"
                                 }
                             },
+                            "paging": false,
+                            "info": false,
 
                         }
                 ).makeEditable({
@@ -546,6 +666,7 @@ if (isset($_GET['accion']) == 'delete' and $title == '') {
                 $("#almacen_e").val(almacen);
                 $("#id_categoria_e").val(categoria);
                 $("#centralizar_almacen_e").val(centralizar_almacen);
+                $("#edit_fotos_link").attr("href", "producto_fotos.php?codigo=" + encodeURIComponent(codigo));
                 if (activo == 0)
                     $("#activo_e").prop("checked", false);
                 else

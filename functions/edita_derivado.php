@@ -10,6 +10,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 }
 
 require_once "../functions/config.php";
+require_once "../functions/sync_queue.php";
 date_default_timezone_set("America/Mexico_City");
 $id_sucursal = $_SESSION["id_sucursal"];
 $fecha_ingreso = date('y-m-d');
@@ -27,6 +28,12 @@ if ($_POST['movimiento'] == 1) {
         // Bind variables to the prepared statement as parameters
         mysqli_stmt_bind_param($stmt, "iiidiss", $id_sucursal, $codigo_p, $codigo_d, $porcentaje, $id_usuario, $fecha_ingreso, $hora_ingreso);
         if (mysqli_stmt_execute($stmt)) {
+            cc_sync_enqueue($link, $id_sucursal, 'derivado', 'upsert', [
+                'codigo_p' => (int) $codigo_p,
+            ], [
+                'tabla' => 'cc_derivados',
+                'codigo_d' => (int) $codigo_d,
+            ]);
             $response_array [] = array('exito' => 1);
         } else {
             $response_array [] = array('exito' => 0);
@@ -38,6 +45,11 @@ if ($_POST['movimiento'] == 1) {
 if ($_POST['movimiento'] == 2) {
     $delete = mysqli_query($link, "DELETE FROM cc_derivados WHERE id_sucursal = '$id_sucursal' and codigo_p = $codigo_p");
     if ($delete) {
+        cc_sync_enqueue($link, $id_sucursal, 'derivado', 'delete', [
+            'codigo_p' => (int) $codigo_p,
+        ], [
+            'tabla' => 'cc_derivados',
+        ]);
         $response_array [] = array('exito' => 1);
     } else {
         $response_array [] = array('exito' => 0);

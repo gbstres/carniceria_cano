@@ -8,6 +8,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 }
 
 require_once "../functions/config.php";
+require_once "../functions/sync_queue.php";
 date_default_timezone_set("America/Mexico_City");
 // Define variables and initialize with empty values
 $id_sucursal = $_SESSION["id_sucursal"];
@@ -64,6 +65,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     . "WHERE id_sucursal='$id_sucursal' and id_cliente = '$id_cliente' and id_pago = '$id_pago'")
                             or die(mysqli_error());
                     if ($update1) {
+                        cc_sync_enqueue($link, $id_sucursal, 'pago_cliente', 'upsert', [
+                            'id_cliente' => (int) $id_cliente,
+                            'id_pago' => (int) $id_pago,
+                        ], [
+                            'tabla' => 'cc_pagos_clientes',
+                            'estatus' => (int) $movimiento_p,
+                        ]);
                         recalcula($link, $id_sucursal, $importe, $id_cliente, $fecha_act, $hora_act, $id_usuario_act);
                     } else {
                         
@@ -827,4 +835,3 @@ function recalcula($link, $id_sucursal, $importe, $id_cliente, $fecha_act, $hora
         </script>      
     </body>
 </html>
-

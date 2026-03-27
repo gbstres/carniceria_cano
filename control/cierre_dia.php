@@ -9,6 +9,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 }
 
 require_once "../functions/config.php";
+require_once "../functions/sync_queue.php";
 date_default_timezone_set("America/Mexico_City");
 // Define variables and initialize with empty values
 $id_sucursal = $_SESSION["id_sucursal"];
@@ -19,8 +20,10 @@ if (isset($_POST['fecha_cierre'])) {
     $comentarios = "";
     $estatus = 0;
     $id_usuario = $id_usuario_act = $_SESSION["id"];
-    $fecha_act = date('y-m-d');
+    $fecha_act = date('Y-m-d');
     $hora_act = date('H:i:s');
+    $fecha_act_cierre = 0;
+    $hora_act_cierre = 0;
     $rowcierre = mysqli_fetch_assoc(mysqli_query($link, "SELECT max(id_cierre) as id_cierre FROM cc_cierre WHERE id_sucursal = '$id_sucursal'"));
     $id_cierre = $rowcierre['id_cierre'];
     if ($id_cierre == null) {
@@ -30,15 +33,20 @@ if (isset($_POST['fecha_cierre'])) {
     }
 
     $exito = "S";
-    $sql = "INSERT INTO cc_cierre (id_sucursal, id_cierre, clave, importe, comentarios, estatus, id_usuario, fecha_ingreso, hora_ingreso) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    $sql = "INSERT INTO cc_cierre (id_sucursal, id_cierre, clave, importe, comentarios, estatus, id_usuario, fecha_ingreso, hora_ingreso, id_usuario_act, fecha_act, hora_act) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     for ($i = 1; $i <= 9; $i++) {
         if ($stmt = mysqli_prepare($link, $sql)) {
             // Bind variables to the prepared statement as parameters
             $importe = $_POST['clave_' . strval($i)];
             $clave = $i;
-            mysqli_stmt_bind_param($stmt, "iiidsiiss", $id_sucursal, $id_cierre, $clave, $importe, $comentarios, $estatus, $id_usuario, $fecha_ingreso, $hora_ingreso);
+            mysqli_stmt_bind_param($stmt, "iiidsiissiii", $id_sucursal, $id_cierre, $clave, $importe, $comentarios, $estatus, $id_usuario, $fecha_ingreso, $hora_ingreso, $id_usuario_act, $fecha_act_cierre, $hora_act_cierre);
             if (mysqli_stmt_execute($stmt)) {
-                
+                cc_sync_enqueue($link, $id_sucursal, 'cierre', 'upsert', [
+                    'id_cierre' => (int) $id_cierre,
+                    'clave' => (int) $clave,
+                ], [
+                    'tabla' => 'cc_cierre',
+                ]);
             } else {
                 $exito = 'N';
             }
@@ -52,14 +60,19 @@ if (isset($_POST['fecha_cierre'])) {
                 JOIN cc_saldos_clientes AS b
                 ON a.id_sucursal = b.id_sucursal AND a.id_cliente = b.id_cliente
                 WHERE a.id_sucursal = $id_sucursal AND activo = 1 and b.efectivo_hoy >= 100");
-    $sql = "INSERT INTO cc_cierre_clientes (id_sucursal, id_cierre, id_cliente, saldo, id_usuario, fecha_ingreso, hora_ingreso) VALUES (?, ?, ?, ?, ?, ?, ?)";
+    $sql = "INSERT INTO cc_cierre_clientes (id_sucursal, id_cierre, id_cliente, saldo, id_usuario, fecha_ingreso, hora_ingreso, id_usuario_act, fecha_act, hora_act) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     while ($rowcte = mysqli_fetch_assoc($sqlclientes)) {
         if ($stmt = mysqli_prepare($link, $sql)) {
             $id_cliente = $rowcte['id_cliente'];
             $saldo = $rowcte['saldo'];
-            mysqli_stmt_bind_param($stmt, "iiidiss", $id_sucursal, $id_cierre, $id_cliente, $saldo, $id_usuario, $fecha_ingreso, $hora_ingreso);
+            mysqli_stmt_bind_param($stmt, "iiidississ", $id_sucursal, $id_cierre, $id_cliente, $saldo, $id_usuario, $fecha_ingreso, $hora_ingreso, $id_usuario_act, $fecha_act, $hora_act);
             if (mysqli_stmt_execute($stmt)) {
-                
+                cc_sync_enqueue($link, $id_sucursal, 'cierre_cliente', 'upsert', [
+                    'id_cierre' => (int) $id_cierre,
+                    'id_cliente' => (int) $id_cliente,
+                ], [
+                    'tabla' => 'cc_cierre_clientes',
+                ]);
             } else {
                 $exito = 'N';
             }
@@ -97,6 +110,21 @@ if (isset($_POST['fecha_cierre'])) {
                         . "fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act='$id_usuario_act' "
                         . "WHERE id_sucursal='$id_sucursal' and estatus not in (3)")
                 or die(mysqli_error());
+
+        $sqlGastosCierre = mysqli_query($link, "SELECT id_gasto
+                FROM cc_gastos
+                WHERE id_sucursal = '$id_sucursal'
+                  AND id_cierre = $id_cierre
+                  AND estatus = '$estatus'");
+        while ($rowGasto = mysqli_fetch_assoc($sqlGastosCierre)) {
+            cc_sync_enqueue($link, $id_sucursal, 'gasto', 'upsert', [
+                'id_gasto' => (int) $rowGasto['id_gasto'],
+            ], [
+                'tabla' => 'cc_gastos',
+                'motivo' => 'cierre',
+                'id_cierre' => (int) $id_cierre,
+            ]);
+        }
     }
 }
 
@@ -1055,4 +1083,3 @@ if (isset($_POST['fecha_cierre'])) {
         </script> 
     </body>
 </html>
-

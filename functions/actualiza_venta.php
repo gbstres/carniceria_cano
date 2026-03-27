@@ -8,6 +8,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
     exit;
 }
 require_once "../functions/config.php";
+require_once "../functions/sync_queue.php";
 
 $cadena = $_POST['id'];
 $value = mb_strtoupper($_POST['value']);
@@ -109,10 +110,22 @@ WHERE a.id_sucursal = $id_sucursal AND a.id_venta = $id_venta AND a.id_consecuti
 
 function recalcula_almacen_producto($link, $id_sucursal, $codigo, $cantidad, $fecha_act, $hora_act, $id_usuario_act) {
     mysqli_query($link, "UPDATE cc_productos SET almacen = almacen - $cantidad, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act= $id_usuario_act WHERE id_sucursal= $id_sucursal and codigo = $codigo");
+    cc_sync_enqueue($link, $id_sucursal, 'producto', 'upsert', [
+        'codigo' => (string) $codigo,
+    ], [
+        'tabla' => 'cc_productos',
+        'motivo' => 'movimiento_venta',
+    ]);
 }
 
 function recalcula_almacen_categoria($link, $id_sucursal, $id_categoria, $cantidad, $fecha_act, $hora_act, $id_usuario_act) {
     mysqli_query($link, "UPDATE cc_categorias SET almacen = almacen - $cantidad, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act= $id_usuario_act WHERE id_sucursal= $id_sucursal and id_categoria = $id_categoria");
+    cc_sync_enqueue($link, $id_sucursal, 'categoria', 'upsert', [
+        'id_categoria' => (int) $id_categoria,
+    ], [
+        'tabla' => 'cc_categorias',
+        'motivo' => 'movimiento_venta',
+    ]);
 }
 
 ?>

@@ -12,11 +12,18 @@ require_once "config.php";
 $id_sucursal = $_SESSION["id_sucursal"];
 $response_array = array();
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
-    $id_cliente = trim($_POST["id_cliente"]);
-    
-    $row_saldo = mysqli_fetch_assoc(mysqli_query($link, "SELECT efectivo_hoy FROM cc_saldos_clientes where id_sucursal = $id_sucursal and id_cliente = $id_cliente"));
+    $id_cliente = (int) trim($_POST["id_cliente"]);
+    $saldo = 0;
 
-    $saldo = $row_saldo['efectivo_hoy'];
+    $result = mysqli_query($link, "SELECT efectivo_hoy FROM cc_saldos_clientes WHERE id_sucursal = $id_sucursal AND id_cliente = $id_cliente");
+    if ($result) {
+        $row_saldo = mysqli_fetch_assoc($result);
+        if ($row_saldo && isset($row_saldo['efectivo_hoy'])) {
+            $saldo = $row_saldo['efectivo_hoy'];
+        }
+        mysqli_free_result($result);
+    }
+
     $response_array[] = array(
         'saldo' => $saldo
     );
