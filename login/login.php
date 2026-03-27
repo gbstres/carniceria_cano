@@ -44,35 +44,31 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             session_start();
                         }
                         $sucursal = (int) $sucursal;
-                        $sqlsucursal = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM cc_sucursales where id_sucursal = '$sucursal'"));
-                        if (!$sqlsucursal || empty($sqlsucursal['id_sucursal'])) {
-                            $err = "La sucursal asociada al usuario no es valida.";
-                            goto login_end;
-                        }
                         // Store data in session variables
                         $_SESSION["loggedin"] = true;
                         $_SESSION["id"] = $id;
                         $_SESSION["nombre"] = $nombre;
                         $_SESSION["username"] = $username;
                         $_SESSION["rol"] = $rol;
-                        $_SESSION["id_sucursal"] = $sqlsucursal['id_sucursal'];
-                        $_SESSION["desc_sucursal"] = $sqlsucursal['desc_sucursal'];
+                        $sqlsucursal = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM cc_sucursales where id_sucursal = '$sucursal'"));
+                        if ($sqlsucursal && !empty($sqlsucursal['id_sucursal'])) {
+                            $_SESSION["id_sucursal"] = (int) $sqlsucursal['id_sucursal'];
+                            $_SESSION["desc_sucursal"] = $sqlsucursal['desc_sucursal'];
+                        } else {
+                            $_SESSION["id_sucursal"] = 0;
+                            $_SESSION["desc_sucursal"] = '';
+                        }
                         date_default_timezone_set("America/Mexico_City");
                         $fecha_acceso = date('y-m-d');
                         $hora_acceso = date('H:i:s');
                         mysqli_query($link, "UPDATE cc_users SET fecha_acceso='$fecha_acceso', hora_acceso='$hora_acceso' WHERE id=$id");
-                        
-                        switch ($_SESSION["rol"]) {
-                            case 1:
-                                header("location: " . $redirectAfterLogin);
-                                break;
-                            case 2:
-                                header("location: " . $redirectAfterLogin);
-                                break;
-                            case 3:
-                                header("location: " . $redirectAfterLogin);
-                                break;
+
+                        if ((int) $_SESSION["id_sucursal"] > 0) {
+                            header("location: " . $redirectAfterLogin);
+                        } else {
+                            header("location: ../login/cambio_sucursal.php");
                         }
+                        exit;
                     } else {
                         // Display an error message if password is not valid
                         $err = "La contraseña que has ingresado no es válida.";

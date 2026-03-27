@@ -11,8 +11,7 @@ require_once "../functions/config.php";
 $id_sucursal = isset($_SESSION["id_sucursal"]) ? (int) $_SESSION["id_sucursal"] : 0;
 
 if ($id_sucursal <= 0) {
-    session_destroy();
-    header("location: ../login/login.php");
+    header("location: ../login/cambio_sucursal.php");
     exit;
 }
 
