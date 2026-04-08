@@ -20,9 +20,12 @@ $precio_venta = 0;
 $almacen = 0;
 $id_categoria = 0;
 $activo = 0;
-$fecha_ingreso = date('y-m-d');
+$fecha_ingreso = date('Y-m-d');
 $hora_ingreso = date('H:i:s');
 $id_usuario = $_SESSION["id"];
+$fecha_act = date('Y-m-d');
+$hora_act = date('H:i:s');
+$id_usuario_act = $_SESSION["id"];
 $body = "";
 $title = "";
 $codigo_e = $descripcion_e = $precio_compra_e = $precio_venta_e = $almacen_e = $id_categoria_e = "";
@@ -54,10 +57,10 @@ if (isset($_POST['agregar'])) {
         $body = 'Producto ' . $descripcion . ' no se puede agregar, ya existe el código ' . $codigo_e . '.';
     } else {
 
-        $sql = "INSERT INTO cc_productos (codigo, id_sucursal, descripcion, precio_compra, precio_venta, almacen, id_categoria, centralizar_almacen, activo, id_usuario, fecha_ingreso, hora_ingreso) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO cc_productos (codigo, id_sucursal, descripcion, precio_compra, precio_venta, almacen, id_categoria, centralizar_almacen, activo, id_usuario, fecha_ingreso, hora_ingreso, id_usuario_act, fecha_act, hora_act) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         if ($stmt = mysqli_prepare($link, $sql)) {
             // Bind variables to the prepared statement as parameters
-            mysqli_stmt_bind_param($stmt, "iisdddiiiiss", $codigo, $id_sucursal, $descripcion, $precio_compra, $precio_venta, $almacen, $id_categoria, $centralizar_almacen, $activo, $id_usuario, $fecha_ingreso, $hora_ingreso);
+            mysqli_stmt_bind_param($stmt, "iisdddiiiississ", $codigo, $id_sucursal, $descripcion, $precio_compra, $precio_venta, $almacen, $id_categoria, $centralizar_almacen, $activo, $id_usuario, $fecha_ingreso, $hora_ingreso, $id_usuario_act, $fecha_act, $hora_act);
 
             if (mysqli_stmt_execute($stmt)) {
                 cc_sync_enqueue($link, $id_sucursal, 'producto', 'upsert', [

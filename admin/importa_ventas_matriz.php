@@ -280,7 +280,7 @@ function importarVenta($link, $link2, int $idSucursalLocal, int $idUsuario, int 
             (id_sucursal, id_compra, id_consecutivo, codigo, precio_compra, cantidad, clave_externa, estatus,
              id_usuario, fecha_ingreso, hora_ingreso)
           VALUES
-            ($idSucursalLocal, $idCompraLocal, $consec, '$codigo', $precioCompra, $cantidad, '$claveExEsc', 0,
+            ($idSucursalLocal, $idCompraLocal, $consec, '$codigo', $precioCompra, $cantidad, '$folioEsc', 0,
              $idUsuario, '$hoy', '$ahora')
         ");
 

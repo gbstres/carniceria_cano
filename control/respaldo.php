@@ -88,32 +88,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 </div>
             <?php endif; ?>
 
-            <?php if (is_array($detalle) && !empty($detalle['items'])): ?>
-                <div class="table-responsive">
-                    <table class="table table-sm table-bordered">
-                        <thead>
-                            <tr>
-                                <th>Id Sync</th>
-                                <th>Entidad</th>
-                                <th>Accion</th>
-                                <th>Estatus</th>
-                                <th>Error</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <?php foreach ($detalle['items'] as $item): ?>
-                                <tr>
-                                    <td><?php echo (int) ($item['id_sync'] ?? 0); ?></td>
-                                    <td><?php echo htmlspecialchars((string) ($item['entity_type'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
-                                    <td><?php echo htmlspecialchars((string) ($item['action_type'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
-                                    <td><?php echo htmlspecialchars((string) ($item['status'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
-                                    <td><?php echo htmlspecialchars((string) ($item['error'] ?? ''), ENT_QUOTES, 'UTF-8'); ?></td>
-                                </tr>
-                            <?php endforeach; ?>
-                        </tbody>
-                    </table>
-                </div>
-            <?php endif; ?>
         </div>
     </div>
 </main>

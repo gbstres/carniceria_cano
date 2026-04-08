@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // Initialize the session
 session_start();
 
@@ -941,12 +941,13 @@ if (isset($_POST['fecha_cierre'])) {
                                                         ocultarSpinner();
                                                         console.log(response);
                                                         const fecha = new Date().toLocaleTimeString();
-                                                        mostrarResultado(response + ' a las ' + fecha);
+                                                        mostrarResultado('Respaldo ejecutado correctamente a las ' + fecha);
 
                                                     },
                                                     error: function (response) {
-                                                        alert('No se realizó la actualización');
+                                                        ocultarSpinner();
                                                         console.log(response);
+                                                        mostrarResultado('No se pudo ejecutar el respaldo.', false);
                                                     }
                                                 });
                                             }
