@@ -9,13 +9,11 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 require_once "../functions/config.php";
 
 date_default_timezone_set("America/Mexico_City");
-header('Content-Type: text/html; charset=utf-8');
 
-$mensaje = "";
-$detalle = null;
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'run_batch')) {
+    header('Content-Type: application/json; charset=utf-8');
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $_REQUEST['limit'] = 5000;
+    $_REQUEST['limit'] = 500;
     $cc_sync_emit_json_header = false;
 
     ob_start();
@@ -23,18 +21,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $raw = trim(ob_get_clean());
 
     $detalle = json_decode($raw, true);
-
-    if (is_array($detalle) && ($detalle['ok'] ?? false)) {
-        $mensaje = "Respaldo manual completado. Procesados: "
-            . (int) ($detalle['processed'] ?? 0)
-            . ". Correctos: "
-            . (int) ($detalle['done'] ?? 0)
-            . ". Errores: "
-            . (int) ($detalle['failed'] ?? 0)
-            . ".";
-    } else {
-        $mensaje = "ERROR: No se pudo ejecutar el respaldo manual.";
+    if (!is_array($detalle)) {
+        echo json_encode([
+            'ok' => false,
+            'error' => 'No se pudo interpretar la respuesta del procesador.',
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        exit;
     }
+
+    echo json_encode($detalle, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+    exit;
 }
 ?>
 <!doctype html>
@@ -74,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 <h1 class="text-center">Respaldo</h1>
             </div>
 
-            <form class="row g-3 needs-validation" action="#" method="post" novalidate>
+            <form class="row g-3 needs-validation" action="#" method="post" novalidate id="formRespaldo">
                 <div class="col-12 text-center">
                     <input class="btn btn-primary black bg-silver" type="submit" value="Ejecutar respaldo manual" id="buscar_fecha">
                 </div>
@@ -82,16 +78,85 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             <br><br>
 
-            <?php if (!empty($mensaje)): ?>
-                <div class="alert <?php echo (strpos($mensaje, 'ERROR') === 0) ? 'alert-danger' : 'alert-success'; ?>">
-                    <?php echo htmlspecialchars($mensaje, ENT_QUOTES, 'UTF-8'); ?>
-                </div>
-            <?php endif; ?>
-
+            <div id="mensajeRespaldo" class="alert d-none"></div>
         </div>
     </div>
 </main>
 
 <script src="../js/bootstrap.bundle.min.js"></script>
+<script>
+    (function () {
+        const form = document.getElementById('formRespaldo');
+        const boton = document.getElementById('buscar_fecha');
+        const mensaje = document.getElementById('mensajeRespaldo');
+
+        function mostrarMensaje(texto, esError) {
+            mensaje.textContent = texto;
+            mensaje.classList.remove('d-none', 'alert-success', 'alert-danger', 'alert-info');
+            mensaje.classList.add(esError ? 'alert-danger' : 'alert-success');
+        }
+
+        function mostrarProcesando(texto) {
+            mensaje.textContent = texto;
+            mensaje.classList.remove('d-none', 'alert-success', 'alert-danger');
+            mensaje.classList.add('alert-info');
+        }
+
+        function ejecutarLote(acumulado) {
+            $.ajax({
+                url: 'respaldo.php',
+                data: {action: 'run_batch'},
+                dataType: 'json',
+                type: 'POST',
+                success: function (response) {
+                    if (!response || response.ok !== true) {
+                        boton.disabled = false;
+                        boton.value = 'Ejecutar respaldo manual';
+                        mostrarMensaje('No se pudo ejecutar el respaldo manual.', true);
+                        return;
+                    }
+
+                    acumulado.processed += parseInt(response.processed || 0, 10);
+                    acumulado.done += parseInt(response.done || 0, 10);
+                    acumulado.failed += parseInt(response.failed || 0, 10);
+
+                    if (parseInt(response.processed || 0, 10) > 0) {
+                        mostrarProcesando('Procesando respaldo... Llevamos ' + acumulado.processed + ' registros.');
+                        ejecutarLote(acumulado);
+                        return;
+                    }
+
+                    boton.disabled = false;
+                    boton.value = 'Ejecutar respaldo manual';
+                    mostrarMensaje(
+                        'Respaldo manual completado. Procesados: ' + acumulado.processed +
+                        '. Correctos: ' + acumulado.done +
+                        '. Errores: ' + acumulado.failed + '.',
+                        acumulado.failed > 0
+                    );
+                },
+                error: function () {
+                    boton.disabled = false;
+                    boton.value = 'Ejecutar respaldo manual';
+                    mostrarMensaje('No se pudo ejecutar el respaldo manual.', true);
+                }
+            });
+        }
+
+        form.addEventListener('submit', function (event) {
+            event.preventDefault();
+
+            boton.disabled = true;
+            boton.value = 'Procesando...';
+            mostrarProcesando('Iniciando respaldo...');
+
+            ejecutarLote({
+                processed: 0,
+                done: 0,
+                failed: 0
+            });
+        });
+    })();
+</script>
 </body>
 </html>
