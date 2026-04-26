@@ -133,7 +133,7 @@ function cc_sync_fetch_pending(mysqli $link, int $limit = 50): array
 {
     cc_sync_queue_bootstrap($link);
 
-    $limit = max(1, min(200, $limit));
+    $limit = max(1, min(10000, $limit));
     $result = mysqli_query($link, "SELECT * FROM cc_sync_queue
         WHERE status IN ('pending', 'error')
           AND available_at <= NOW()
