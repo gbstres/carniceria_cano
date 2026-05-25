@@ -269,7 +269,7 @@ if (isset($_GET['id_venta'])) {
                             </h5>
                         </div>
                         <br>
-                        <form>
+                        <form id="form_buscar_producto" onsubmit="return false;">
                             <div class="row justify-content-center mb-3">
 
                                 <div class="col-4 text-end" >
@@ -277,7 +277,7 @@ if (isset($_GET['id_venta'])) {
 
                                 </div>
                                 <div class="col-4 text-start">
-                                    <input class="btn btn-primary black bg-silver" type="submit" value="Agregar" id="addRow">
+                                    <input class="btn btn-primary black bg-silver" type="button" value="Agregar" id="addRow">
                                 </div>
                             </div>
                         </form>
@@ -627,9 +627,21 @@ if (isset($_GET['id_venta'])) {
 
 
                                             var counter = 1;
-                                            $('#addRow').on('click', function () {
+                                            var agregandoProducto = false;
+                                            $('#addRow').on('click', function (event) {
+                                                event.preventDefault();
+                                                if (agregandoProducto) {
+                                                    return;
+                                                }
+
                                                 var $this = $(this);
-                                                var parametros = {"busqueda": $("#codigo").val()};
+                                                var busquedaProducto = $("#codigo").val().trim();
+                                                if (busquedaProducto === '') {
+                                                    $("#codigo").focus();
+                                                    return;
+                                                }
+
+                                                var parametros = {"busqueda": busquedaProducto};
                                                 $.ajax({
                                                     type: "POST", //we are using POST method to submit the data to the server side
                                                     url: "../functions/extrae_producto.php", // get the route value
@@ -637,10 +649,10 @@ if (isset($_GET['id_venta'])) {
                                                     dataType: 'json',
                                                     //var parametros = {"codigo" : $("#codigo").val()}
                                                     beforeSend: function () {//We add this before send to disable the button once we submit it so that we prevent the multiple click
-                                                        $this.attr('disabled', true).html("Processing...");
+                                                        agregandoProducto = true;
+                                                        $this.attr('disabled', true);
                                                     },
                                                     success: function (response) {//once the request successfully process to the server side it will return result here
-                                                        $this.attr('disabled', false);
                                                         // We will display the result using alert
                                                         // $peso = ( response[0].peso / 1000);
                                                         console.log(response);
@@ -666,13 +678,34 @@ if (isset($_GET['id_venta'])) {
                                                     },
                                                     error: function (XMLHttpRequest, textStatus, errorThrown, response) {
                                                         console.log(response);
+                                                    },
+                                                    complete: function () {
+                                                        agregandoProducto = false;
                                                         $this.attr('disabled', false);
-                                                        alert('Agregar datos de entrada');
                                                     }
                                                 });
 
                                             });
                                             //$('#addRow').click();
+
+                                            var enterSeleccionoProducto = false;
+                                            $('#codigo').on('keydown', function (event) {
+                                                if (event.key === 'Enter') {
+                                                    enterSeleccionoProducto = $('.typeahead.dropdown-menu:visible').length > 0;
+                                                    event.preventDefault();
+                                                }
+                                            });
+
+                                            $('#codigo').on('keyup', function (event) {
+                                                if (event.key === 'Enter') {
+                                                    event.preventDefault();
+                                                    if (enterSeleccionoProducto) {
+                                                        enterSeleccionoProducto = false;
+                                                        return;
+                                                    }
+                                                    $('#addRow').trigger('click');
+                                                }
+                                            });
 
                                             $('#codigo').typeahead({
                                                 source: function (busqueda, resultado) {

@@ -821,7 +821,7 @@ function recalcula($link, $id_sucursal, $importe, $id_cliente, $fecha_act, $hora
                                     }
                                     function ventas(id_venta)
                                     {
-                                        window.location = "../reportes/ventas.php?id_venta=" + id_venta + "&id_cliente=" + <?php echo $id_cliente
+                                        window.location = "../reportes/edicion_ventas.php?id_venta=" + id_venta + "&id_cliente=" + <?php echo $id_cliente
                                                 ?>;
                                     }
                                     function obtenerValorSeleccionado() {

@@ -866,6 +866,24 @@ if ($sql_clave) {
                                             minLength: 2,
                                             delay: 600
                                         });
+                                        var enterSeleccionoCliente = false;
+                                        $('#cliente').on('keydown', function (event) {
+                                            if (event.key === 'Enter') {
+                                                enterSeleccionoCliente = $('.typeahead.dropdown-menu:visible').length > 0;
+                                                event.preventDefault();
+                                            }
+                                        });
+                                        $('#cliente').on('keyup', function (event) {
+                                            if (event.key === 'Enter') {
+                                                event.preventDefault();
+                                                if (enterSeleccionoCliente) {
+                                                    enterSeleccionoCliente = false;
+                                                    return;
+                                                }
+                                                bootstrap.Modal.getOrCreateInstance(document.getElementById("Modalclientes")).hide();
+                                                $("#codigo").focus();
+                                            }
+                                        });
                                         //Tablajeros cierre de venta
                                         $('#empleados').typeahead({
                                             source: function (busqueda, process) {
@@ -975,7 +993,8 @@ if (isset($_GET['id_venta'])) {
                                     });
                                     document.getElementById("form_cliente").addEventListener("submit", function (event) {
                                         event.preventDefault(); // Evita que el formulario se envíe automáticamente
-                                        agregarCliente(); // Llama a la función JavaScript para procesar los datos del formulario
+                                        bootstrap.Modal.getOrCreateInstance(document.getElementById("Modalclientes")).hide();
+                                        $("#codigo").focus();
                                     });
 
                                     var myForm_venta = document.getElementById('form_venta');

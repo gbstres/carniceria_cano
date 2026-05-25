@@ -62,3 +62,41 @@
         </div>
     </div>
 </nav>
+<script>
+    (function () {
+        const actionParams = ['accion', 'aksi', 'action'];
+        const url = new URL(window.location.href);
+        const hasTransactionAction = actionParams.some((param) => {
+            const value = (url.searchParams.get(param) || '').toLowerCase();
+            return ['delete', 'eliminar', 'principal'].includes(value);
+        });
+
+        if (hasTransactionAction && window.history && window.history.replaceState) {
+            actionParams.forEach((param) => url.searchParams.delete(param));
+            window.history.replaceState(null, document.title, url.pathname + url.search + url.hash);
+        }
+
+        document.addEventListener('submit', function (event) {
+            const form = event.target;
+            if (!form || (form.method || '').toLowerCase() !== 'post') {
+                return;
+            }
+
+            if (form.dataset.submitted === 'true') {
+                event.preventDefault();
+                return false;
+            }
+
+            window.setTimeout(function () {
+                if (event.defaultPrevented || (form.checkValidity && !form.checkValidity())) {
+                    return;
+                }
+
+                form.dataset.submitted = 'true';
+                form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(function (button) {
+                    button.disabled = true;
+                });
+            }, 0);
+        });
+    }());
+</script>
