@@ -134,6 +134,7 @@ if (isset($_POST['id_categoria'])) {
                                         <th>Código</th>
                                         <th>Descripción</th>
                                         <th>Cliente</th>
+                                        <th>Tipo</th>
                                         <th>Precio C</th>
                                         <th>Precio V</th>
                                         <th>Cantidad</th>
@@ -144,7 +145,7 @@ if (isset($_POST['id_categoria'])) {
                                 </thead>
                                 <?php
                                 $sqlventas = mysqli_query($link, "SELECT a.id_venta,a.fecha_ingreso,a.hora_ingreso,b.codigo,b.precio_compra,b.precio_venta,b.cantidad,"
-                                        . "round(b.precio_compra * b.cantidad,2) as importec, round(b.precio_venta * b.cantidad,2) as importev, a.id_cliente, b.id_consecutivo,b.estatus "
+                                        . "round(b.precio_compra * b.cantidad,2) as importec, round(b.precio_venta * b.cantidad,2) as importev, a.id_cliente, a.tipo_pago, b.id_consecutivo,b.estatus "
                                         . "FROM cc_det_ventas as a inner join cc_ventas as b on a.id_sucursal = b.id_sucursal and a.id_venta = b.id_venta "
                                         . "WHERE a.id_sucursal = '$id_sucursal' and a.fecha_ingreso between '$fecha1' and '$fecha2' and a.estatus in (1,3)"
                                         . " order by a.id_venta DESC");
@@ -155,6 +156,8 @@ if (isset($_POST['id_categoria'])) {
                                     //$sqlcatalogo = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM cc_catalogos where nombre_clave = 'ROL' and id_clave =" . $rowp['rol']));
                                     $producto = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM cc_productos where id_sucursal = '$id_sucursal' and codigo =" . $rowc['codigo']));
                                     $cliente = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM cc_clientes where id_sucursal = '$id_sucursal' and id_cliente =" . $rowc['id_cliente']));
+                                    $desc_pago = mysqli_fetch_assoc(mysqli_query($link, "SELECT descripcion_corta FROM cc_claves where nombre_clave = 'TIPO_PAGO' and clave = " . (int) $rowc['tipo_pago']));
+                                    $tipo_pago = empty($desc_pago) ? '' : $desc_pago['descripcion_corta'];
                                     if ($id_categoria == '0' or ($producto['id_categoria'] == $id_categoria)) {
                                         if (empty($cliente)) {
                                             $nombre_cliente = '';
@@ -183,6 +186,7 @@ if (isset($_POST['id_categoria'])) {
                                         <td>' . $rowc['codigo'] . '</td>
                                         <td>' . $producto['descripcion'] . '</td>    
                                         <td>' . $nombre_cliente . '</td>
+                                        <td>' . $tipo_pago . '</td>
                                         <td>' . $rowc['precio_compra'] . '</td>
                                         <td>' . $rowc['precio_venta'] . '</td>
                                         <td>' . $rowc['cantidad'] . '</td>
@@ -201,6 +205,7 @@ if (isset($_POST['id_categoria'])) {
                                         <th></th>
                                         <th></th>
                                         <th id="totales"></th>
+                                        <th></th>
                                         <th></th>
                                         <th></th>
                                         <th></th>
@@ -258,7 +263,7 @@ if (isset($_POST['id_categoria'])) {
                                                 },
                                                 footerCallback: function () {
                                                     var api = this.api();
-                                                    var columnasASumar = [8, 9, 10, 11]; // Columnas que quieres sumar
+                                                    var columnasASumar = [9, 10, 11, 12]; // Columnas que quieres sumar
 
                                                     function calcularTotales(columnas) {
                                                         var totals = columnas.map(() => 0); // Inicializar en 0
@@ -287,10 +292,10 @@ if (isset($_POST['id_categoria'])) {
 if (tienePermiso('ver')) {
     echo '
                                                     $(api.column(4).footer()).html(\'Total de venta\');
-                                                   $(api.column(8).footer()).html(resultados[0].toFixed(2));
-                                                    $(api.column(9).footer()).html(resultados[1].toFixed(2));
-                                                    $(api.column(10).footer()).html(resultados[2].toFixed(2));
-                                                    $(api.column(11).footer()).html(resultados[3].toFixed(2));
+                                                   $(api.column(9).footer()).html(resultados[0].toFixed(2));
+                                                    $(api.column(10).footer()).html(resultados[1].toFixed(2));
+                                                    $(api.column(11).footer()).html(resultados[2].toFixed(2));
+                                                    $(api.column(12).footer()).html(resultados[3].toFixed(2));
                                                         ';
 }
 ?>
@@ -346,4 +351,3 @@ if (tienePermiso('ver')) {
         </script>      
     </body>
 </html>
-

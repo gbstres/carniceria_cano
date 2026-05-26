@@ -215,12 +215,13 @@ function generarToken() {
                                         <th>Imp C</th>
                                         <th>Imp V</th>
                                         <th>T. V.</th>
+                                        <th>Tipo</th>
                                         <th>Acciones</th>
                                     </tr>
                                 </thead>
                                 <?php
                                 $sqlventas = mysqli_query($link, "SELECT a.id_venta,a.fecha_ingreso,a.hora_ingreso,b.codigo,b.precio_compra,b.precio_venta,b.cantidad,"
-                                        . "round(b.precio_compra * b.cantidad,2) as importec,round(b.precio_venta * b.cantidad,2) as importev, a.id_cliente, b.id_consecutivo,b.estatus "
+                                        . "round(b.precio_compra * b.cantidad,2) as importec,round(b.precio_venta * b.cantidad,2) as importev, a.id_cliente, a.tipo_pago, b.id_consecutivo,b.estatus "
                                         . "FROM cc_det_ventas as a inner join cc_ventas as b on a.id_sucursal = b.id_sucursal and a.id_venta = b.id_venta "
                                         . "WHERE a.id_sucursal = '$id_sucursal' and a.fecha_ingreso = '$fecha' and a.estatus in (1,3)"
                                         . " order by a.id_venta DESC");
@@ -235,6 +236,8 @@ function generarToken() {
                                         $cliente = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM cc_clientes where id_sucursal = '$id_sucursal' and id_cliente =" . $rowc['id_cliente']));
                                         $total_id = mysqli_fetch_assoc(mysqli_query($link, "SELECT sum(round(cantidad * precio_venta,2)) total_id FROM cc_ventas WHERE id_sucursal = $id_sucursal  and id_venta = " . $rowc['id_venta'] . " and estatus not in (2)"));
                                         $categoria = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM cc_categorias where id_sucursal = '$id_sucursal' and id_categoria =" . $producto['id_categoria']));
+                                        $desc_pago = mysqli_fetch_assoc(mysqli_query($link, "SELECT descripcion_corta FROM cc_claves where nombre_clave = 'TIPO_PAGO' and clave = " . (int) $rowc['tipo_pago']));
+                                        $tipo_pago = empty($desc_pago) ? '' : $desc_pago['descripcion_corta'];
                                         if (empty($cliente)) {
                                             $nombre_cliente = '';
                                         } else {
@@ -266,6 +269,7 @@ function generarToken() {
                                         <td>' . $importec . '</td>
                                         <td>' . $importev . '</td>
                                         <td>' . $total_id['total_id'] . '</td>
+                                        <td>' . $tipo_pago . '</td>
                                         <td align="center">';
                                         if ($rowc['estatus'] == 2) {
                                             echo '<a href="#" onclick="cancelar_reactivar(' . $rowc['id_venta'] . ',' . $rowc['id_consecutivo'] . ',0,' . $rowc['id_cliente'] . ')" title = "Reactivar"><img class = "imga" src = "../img/icons/check-circle.svg"></a>';
@@ -287,6 +291,7 @@ function generarToken() {
                                         <th></th>
                                         <th></th>
                                         <th id="total_venta"></th>
+                                        <th></th>
                                         <th></th>
                                         <th></th>
                                         <th></th>
@@ -407,7 +412,7 @@ if (tienePermiso('ver')) {
                                         const filaTabla = [];
 
                                         for (let j = 0; j < celdas.length; j++) {
-                                            if (j !== 13) {
+                                            if (j !== 14) {
                                                 filaTabla.push(celdas[j].innerText);
                                             }
                                         }
@@ -431,4 +436,3 @@ if (tienePermiso('ver')) {
         </script>      
     </body>
 </html>
-

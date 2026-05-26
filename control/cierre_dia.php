@@ -134,7 +134,7 @@ if (isset($_POST['fecha'])) {
     $fecha = date('Y-m-d');
 }
 
-$estatus = $totalv = $totalc = $efectivo = $entrada_efectivo = $salida_efectivo = $a_cuenta = $a_cuenta_efectivo = $a_cuenta_bancario = 0;
+$estatus = $totalv = $totalc = $efectivo = $entrada_efectivo = $salida_efectivo = $a_cuenta = $a_cuenta_efectivo = $a_cuenta_bancario = $a_cuenta_venta_efectivo = 0;
 
 $total_venta = 0;
 $sql = "
@@ -144,7 +144,8 @@ $sql = "
         SUM(CASE WHEN a.tipo_pago = 1 THEN ROUND(b.cantidad * b.precio_venta, 2) END) AS clave1,
         SUM(CASE WHEN a.tipo_pago = 2 THEN ROUND(b.cantidad * b.precio_venta, 2) END) AS clave8,
 	SUM(CASE WHEN a.tipo_pago = 3 THEN ROUND(b.cantidad * b.precio_venta, 2) END) AS clave9,
-	SUM(CASE WHEN a.id_cliente > 0 THEN ROUND(b.cantidad * b.precio_venta, 2) END) AS clave4
+	SUM(CASE WHEN a.id_cliente > 0 THEN ROUND(b.cantidad * b.precio_venta, 2) END) AS clave4,
+	SUM(CASE WHEN a.id_cliente > 0 AND a.tipo_pago = 1 THEN ROUND(b.cantidad * b.precio_venta, 2) END) AS clave4_efectivo
     FROM
         cc_det_ventas AS a
     INNER JOIN cc_ventas AS b
@@ -174,6 +175,9 @@ if (isset($row_venta['clave9'])) {
 // A cuenta (venta a clientes)
 if (isset($row_venta['clave4'])) {
     $val_claves[4] = $row_venta['clave4'];
+}
+if (isset($row_venta['clave4_efectivo'])) {
+    $a_cuenta_venta_efectivo = $row_venta['clave4_efectivo'];
 }
 
 if (isset($row_venta['totalv'])) {
@@ -231,7 +235,7 @@ if (isset($row_pagos_bancario['transferencia']))
 if (isset($row_pagos_bancario['tarjeta']))
     $val_claves[7] = $row_pagos_bancario['tarjeta'];
 
-$totalc = $val_claves[1] + $val_claves[2] + $val_claves[5] - $val_claves[3] - $val_claves[4]
+$totalc = $val_claves[1] + $val_claves[2] + $val_claves[5] - $val_claves[3] - $a_cuenta_venta_efectivo
 ?>
 <!doctype html>
 <html lang="en">
@@ -749,6 +753,18 @@ $totalc = $val_claves[1] + $val_claves[2] + $val_claves[5] - $val_claves[3] - $v
                                     </tr>
                                 </thead>';
                                 $totalgastoh = 0;
+                                $rowCuentaVentaEfectivo = mysqli_fetch_assoc(mysqli_query($link, "
+                                    SELECT SUM(ROUND(b.cantidad * b.precio_venta, 2)) AS total
+                                    FROM cc_det_ventas AS a
+                                    INNER JOIN cc_ventas AS b
+                                    ON a.id_sucursal = b.id_sucursal
+                                    AND a.id_venta = b.id_venta
+                                    WHERE a.id_sucursal = '$id_sucursal'
+                                      AND a.id_cierre = $id_cierre
+                                      AND a.id_cliente > 0
+                                      AND a.tipo_pago = 1
+                                      AND b.estatus NOT IN (2)"));
+                                $aCuentaVentaEfectivoHistorico = $rowCuentaVentaEfectivo['total'] ?? 0;
                                 $sqlclaves = mysqli_query($link, "SELECT * FROM cc_claves where nombre_clave = 'CIERRE' order by orden");
                                 while ($rowclaves = mysqli_fetch_assoc($sqlclaves)) {
                                     $clave = $rowclaves['clave'];
@@ -782,7 +798,7 @@ $totalc = $val_claves[1] + $val_claves[2] + $val_claves[5] - $val_claves[3] - $v
                                             $totalgastoh = $totalgastoh + $importeC;
                                             break;
                                         case 4:
-                                            $totalgastoh = $totalgastoh - $importeC;
+                                            $totalgastoh = $totalgastoh - $aCuentaVentaEfectivoHistorico;
                                             break;
                                     }
                                 }
