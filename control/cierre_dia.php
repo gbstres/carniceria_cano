@@ -88,27 +88,27 @@ if (isset($_POST['fecha_cierre'])) {
         $update1 = mysqli_query($link, "UPDATE cc_det_ventas SET "
                         . "estatus='$estatus', id_cierre=$id_cierre, "
                         . "fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act='$id_usuario_act' "
-                        . "WHERE id_sucursal='$id_sucursal' and estatus not in (3)")
+                        . "WHERE id_sucursal='$id_sucursal' and estatus = 1")
                 or die(mysqli_error());
         $update2 = mysqli_query($link, "UPDATE cc_gastos SET "
                         . "estatus='$estatus', id_cierre=$id_cierre, "
                         . "fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act='$id_usuario_act' "
-                        . "WHERE id_sucursal='$id_sucursal' and estatus not in (3)")
+                        . "WHERE id_sucursal='$id_sucursal' and estatus = 0")
                 or die(mysqli_error());
         $update3 = mysqli_query($link, "UPDATE cc_entradas SET "
                         . "estatus='$estatus', id_cierre=$id_cierre, "
                         . "fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act='$id_usuario_act' "
-                        . "WHERE id_sucursal='$id_sucursal' and estatus not in (3)")
+                        . "WHERE id_sucursal='$id_sucursal' and estatus = 0")
                 or die(mysqli_error());
         $update4 = mysqli_query($link, "UPDATE cc_pagos_clientes SET "
                         . "estatus='$estatus', id_cierre=$id_cierre, "
                         . "fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act='$id_usuario_act' "
-                        . "WHERE id_sucursal='$id_sucursal' and estatus not in (3)")
+                        . "WHERE id_sucursal='$id_sucursal' and estatus = 0")
                 or die(mysqli_error());
         $update5 = mysqli_query($link, "UPDATE cc_gastos SET "
                         . "estatus='$estatus', id_cierre=$id_cierre, "
                         . "fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act='$id_usuario_act' "
-                        . "WHERE id_sucursal='$id_sucursal' and estatus not in (3)")
+                        . "WHERE id_sucursal='$id_sucursal' and estatus = 0")
                 or die(mysqli_error());
 
         $sqlGastosCierre = mysqli_query($link, "SELECT id_gasto
