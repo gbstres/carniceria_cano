@@ -14,11 +14,11 @@ if (in_array($ccHost, ['localhost', '127.0.0.1', '::1'], true)) {
 }
 ?>
 <nav class="navbar navbar-expand-lg bg-light rounded" aria-label="Eleventh navbar example">
+    <div style="position: fixed; top: 8px; right: 8px; z-index: 9999; padding: 4px 10px; border-radius: 4px; font-size: 12px; font-weight: 700;" class="<?php echo $ccEntornoClase; ?>" title="Entorno actual: <?php echo htmlspecialchars($ccHost, ENT_QUOTES, 'UTF-8'); ?>">
+        <?php echo htmlspecialchars($ccEntorno, ENT_QUOTES, 'UTF-8'); ?>
+    </div>
     <div class="container-fluid">
         <a class="navbar-brand" href="#">Carnicería Cano</a>
-        <span class="badge <?php echo $ccEntornoClase; ?> me-2" title="Entorno actual: <?php echo htmlspecialchars($ccHost, ENT_QUOTES, 'UTF-8'); ?>">
-            <?php echo htmlspecialchars($ccEntorno, ENT_QUOTES, 'UTF-8'); ?>
-        </span>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarsExample09" aria-controls="navbarsExample09" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
