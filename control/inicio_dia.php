@@ -51,22 +51,22 @@ if (isset($_POST['fecha_cierre'])) {
         $update1 = mysqli_query($link, "UPDATE cc_det_ventas SET "
                         . "estatus='$estatus', id_cierre=$id_cierre, "
                         . "fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act='$id_usuario_act' "
-                        . "WHERE id_sucursal='$id_sucursal' and estatus not in (3)")
+                        . "WHERE id_sucursal='$id_sucursal' and estatus = 1 and id_cierre = 0")
                 or die(mysqli_error());
         $update2 = mysqli_query($link, "UPDATE cc_gastos SET "
                         . "estatus='$estatus', id_cierre=$id_cierre, "
                         . "fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act='$id_usuario_act' "
-                        . "WHERE id_sucursal='$id_sucursal' and estatus not in (3)")
+                        . "WHERE id_sucursal='$id_sucursal' and estatus = 0 and id_cierre = 0")
                 or die(mysqli_error());
         $update3 = mysqli_query($link, "UPDATE cc_entradas SET "
                         . "estatus='$estatus', id_cierre=$id_cierre, "
                         . "fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act='$id_usuario_act' "
-                        . "WHERE id_sucursal='$id_sucursal' and estatus not in (3)")
+                        . "WHERE id_sucursal='$id_sucursal' and estatus = 0 and id_cierre = 0")
                 or die(mysqli_error());
         $update4 = mysqli_query($link, "UPDATE cc_pagos_clientes SET "
                         . "estatus='$estatus', id_cierre=$id_cierre, "
                         . "fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act='$id_usuario_act' "
-                        . "WHERE id_sucursal='$id_sucursal' and estatus not in (3)")
+                        . "WHERE id_sucursal='$id_sucursal' and estatus = 0 and id_cierre = 0")
                 or die(mysqli_error());
     }
 }
@@ -93,7 +93,7 @@ $sql = "
     INNER JOIN cc_ventas AS b
     ON
         a.id_sucursal = b.id_sucursal AND a.id_venta = b.id_venta "
-        . " where a.id_sucursal = '$id_sucursal' and a.estatus = 1 and b.estatus = 0";
+        . " where a.id_sucursal = '$id_sucursal' and a.estatus = 1 and a.id_cierre = 0 and b.estatus = 0";
 $sqlventa = mysqli_query($link, $sql);
 $row_venta = mysqli_fetch_assoc($sqlventa);
 
@@ -134,7 +134,7 @@ if (isset($row_venta['total_clientes'])) {
 //Salida efectivo
 $sqlgastos = mysqli_query($link, "SELECT sum(ROUND(a.cantidad * a.precio,2)) AS total_gastos "
         . "FROM cc_gastos as a "
-        . "WHERE a.id_sucursal = '$id_sucursal' and a.estatus = 0;");
+        . "WHERE a.id_sucursal = '$id_sucursal' and a.estatus = 0 and a.id_cierre = 0;");
 $row_gastos = mysqli_fetch_assoc($sqlgastos);
 if (isset($row_gastos['total_gastos'])) {
     $salida_efectivo = $row_gastos['total_gastos'];
@@ -144,7 +144,7 @@ if (isset($row_gastos['total_gastos'])) {
 //Entrada efectivo
 $sqlentradas = mysqli_query($link, "SELECT sum(ROUND(a.cantidad * a.precio,2)) AS total_entradas "
         . "FROM cc_entradas as a "
-        . "WHERE a.id_sucursal = '$id_sucursal' and a.estatus = 0;");
+        . "WHERE a.id_sucursal = '$id_sucursal' and a.estatus = 0 and a.id_cierre = 0;");
 $row_entradas = mysqli_fetch_assoc($sqlentradas);
 if (isset($row_entradas['total_entradas'])) {
     $val_claves[2] = $row_entradas['total_entradas'];
@@ -153,7 +153,7 @@ if (isset($row_entradas['total_entradas'])) {
 
 $sqlpagos = mysqli_query($link, "SELECT sum(a.importe) total_pagos "
         . "FROM cc_pagos_clientes as a "
-        . "WHERE a.id_sucursal = '$id_sucursal' and a.estatus = 0 and tipo_pago = 1;");
+        . "WHERE a.id_sucursal = '$id_sucursal' and a.estatus = 0 and a.id_cierre = 0 and tipo_pago = 1;");
 $row_pagos = mysqli_fetch_assoc($sqlpagos);
 if (isset($row_pagos['total_pagos']))
     $a_cuenta_efectivo = $row_pagos['total_pagos'];
@@ -164,7 +164,7 @@ $sqlpagos_bancario = mysqli_query($link, "
 	SUM(CASE WHEN a.tipo_pago = 2 THEN a.importe END) AS transferencia,
 	SUM(CASE WHEN a.tipo_pago = 3 THEN a.importe END) AS tarjeta 
         FROM cc_pagos_clientes as a  "
-        . " WHERE a.id_sucursal = '$id_sucursal' and a.estatus = 0 and tipo_pago not in(1);");
+        . " WHERE a.id_sucursal = '$id_sucursal' and a.estatus = 0 and a.id_cierre = 0 and tipo_pago not in(1);");
 $row_pagos_bancario = mysqli_fetch_assoc($sqlpagos_bancario);
 //
 if (isset($row_pagos_bancario['efectivo']))
@@ -823,4 +823,3 @@ if (isset($_POST['fecha_cierre'])) {
         </script> 
     </body>
 </html>
-
