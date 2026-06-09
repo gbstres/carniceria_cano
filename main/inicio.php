@@ -1287,7 +1287,8 @@ if ($descripcion_corta == 1) {
                                         var ventimp = window.open('Imprimir.html', target = 'blank', 'width=' + anchura + ',height=' + altura + ',top=' + y + ',left=' + x + ',toolbar=no,location=no,status=no,menubar=no,scrollbars=no,directories=no,resizable=no')
                                         ventimp.document.write(ficha.innerHTML);
                                         ventimp.document.close();
-                                        esperaImagenesEImprime(ventimp);
+                                        ventimp.print();
+                                        ventimp.close();
                                     }
                                     function imprSelec(nombre) {
                                         llenadatosimpresion();
@@ -1387,51 +1388,8 @@ if ($descripcion_corta == 1) {
                                         var ventimp = window.open('Imprimir.html', target = 'blank', 'width=' + anchura + ',height=' + altura + ',top=' + y + ',left=' + x + ',toolbar=no,location=no,status=no,menubar=no,scrollbars=no,directories=no,resizable=no')
                                         ventimp.document.write(ficha.innerHTML);
                                         ventimp.document.close();
-                                        esperaImagenesEImprime(ventimp);
-                                    }
-                                    function esperaImagenesEImprime(ventimp) {
-                                        var imagenes = Array.prototype.slice.call(ventimp.document.images || []);
-                                        var pendientes = imagenes.filter(function (img) {
-                                            return !img.complete;
-                                        }).length;
-                                        var yaImprimio = false;
-                                        var cerrarVentana = function () {
-                                            setTimeout(function () {
-                                                if (!ventimp.closed) {
-                                                    ventimp.close();
-                                                }
-                                            }, 300);
-                                        };
-                                        var imprime = function () {
-                                            if (yaImprimio) {
-                                                return;
-                                            }
-                                            yaImprimio = true;
-                                            setTimeout(function () {
-                                                ventimp.onafterprint = cerrarVentana;
-                                                ventimp.focus();
-                                                ventimp.print();
-                                                setTimeout(cerrarVentana, 1500);
-                                            }, 250);
-                                        };
-
-                                        if (pendientes === 0) {
-                                            imprime();
-                                            return;
-                                        }
-
-                                        imagenes.forEach(function (img) {
-                                            if (img.complete) {
-                                                return;
-                                            }
-                                            img.onload = img.onerror = function () {
-                                                pendientes--;
-                                                if (pendientes <= 0) {
-                                                    imprime();
-                                                }
-                                            };
-                                        });
-                                        setTimeout(imprime, 3000);
+                                        ventimp.print();
+                                        ventimp.close();
                                     }
                                     function sumaTotal()
                                     {
