@@ -59,6 +59,18 @@ if ($sql_clave) {
         $descripcion_corta = $sqlproductos['descripcion_corta'];
     }
 }
+
+$qr_opiniones = [
+    1 => [
+        'imagen' => '../img/qr_opiniones_sucursal_1.png',
+        'link' => 'https://maps.app.goo.gl/HzouN291vd59Zna47',
+    ],
+    2 => [
+        'imagen' => '../img/qr_opiniones_sucursal_2.png',
+        'link' => 'https://maps.app.goo.gl/DAwy2xZrYjvKsWzHA',
+    ],
+];
+$qr_opinion = $qr_opiniones[$id_sucursal] ?? $qr_opiniones[1];
 ?>
 
 
@@ -314,6 +326,22 @@ if ($sql_clave) {
                                     font-size: 13px ;
                                     text-align: center;
                                 }
+                                #qr_opiniones {
+                                    text-align: center;
+                                    margin-top: 10px;
+                                }
+                                #qr_opiniones p {
+                                    margin: 3px 0;
+                                    font-size: 12px;
+                                }
+                                #qr_opiniones img {
+                                    width: 120px;
+                                    height: 120px;
+                                }
+                                #qr_opiniones .qr_link {
+                                    font-size: 9px;
+                                    word-break: break-all;
+                                }
                             </style>
                             <div style="text-align: center">
                                 <h3><?php echo $_SESSION["desc_sucursal"]; ?></h3>
@@ -396,6 +424,12 @@ if ($sql_clave) {
                                     </tr>
                                 </tfoot>                            
                             </table>
+                            <div id="qr_opiniones">
+                                <p><strong>Tu opini&oacute;n nos ayuda a mejorar</strong></p>
+                                <p>Escanea el c&oacute;digo y calif&iacute;canos en Google</p>
+                                <img src="<?php echo $qr_opinion['imagen']; ?>" alt="QR opiniones Google">
+                                <p class="qr_link"><?php echo $qr_opinion['link']; ?></p>
+                            </div>
                             <br><br><br><br>
                         </div>
                         <!-- Div de impresión para abrir caja -->
