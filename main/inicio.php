@@ -70,7 +70,7 @@ $qr_opiniones = [
         'link' => 'https://maps.app.goo.gl/DAwy2xZrYjvKsWzHA',
     ],
 ];
-$qr_opinion = $qr_opiniones[$id_sucursal] ?? $qr_opiniones[1];
+$qr_opinion = $qr_opiniones[$id_sucursal] ?? null;
 ?>
 
 
@@ -424,12 +424,14 @@ $qr_opinion = $qr_opiniones[$id_sucursal] ?? $qr_opiniones[1];
                                     </tr>
                                 </tfoot>                            
                             </table>
-                            <div id="qr_opiniones">
-                                <p><strong>Tu opini&oacute;n nos ayuda a mejorar</strong></p>
-                                <p>Escanea el c&oacute;digo y calif&iacute;canos en Google</p>
-                                <img src="<?php echo $qr_opinion['imagen']; ?>" alt="QR opiniones Google">
-                                <p class="qr_link"><?php echo $qr_opinion['link']; ?></p>
-                            </div>
+                            <?php if ($qr_opinion !== null) { ?>
+                                <div id="qr_opiniones">
+                                    <p><strong>Tu opini&oacute;n nos ayuda a mejorar</strong></p>
+                                    <p>Escanea el c&oacute;digo y calif&iacute;canos en Google</p>
+                                    <img src="<?php echo $qr_opinion['imagen']; ?>" alt="QR opiniones Google">
+                                    <p class="qr_link"><?php echo $qr_opinion['link']; ?></p>
+                                </div>
+                            <?php } ?>
                             <br><br><br><br>
                         </div>
                         <!-- Div de impresión para abrir caja -->
