@@ -46,12 +46,13 @@ if ($_POST['movimiento'] == 1) {
     }
 
 
-    $sql = "INSERT INTO cc_ventas (id_sucursal, id_venta, id_consecutivo, codigo, precio_compra, precio_venta, cantidad, id_usuario, fecha_ingreso, hora_ingreso) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    $sql = "INSERT INTO cc_ventas (id_sucursal, id_venta, id_consecutivo, codigo, precio_compra, precio_venta, cantidad, estatus, id_usuario, fecha_ingreso, hora_ingreso) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     if ($stmt = mysqli_prepare($link, $sql)) {
         // Bind variables to the prepared statement as parameters
-        mysqli_stmt_bind_param($stmt, "iiisdddiss", $id_sucursal, $id_venta, $id_consecutivo, $codigo, $precio_compra, $precio_venta, $cantidad, $id_usuario, $fecha_ingreso, $hora_ingreso);
+        mysqli_stmt_bind_param($stmt, "iiisdddiiss", $id_sucursal, $id_venta, $id_consecutivo, $codigo, $precio_compra, $precio_venta, $cantidad, $estatus, $id_usuario, $fecha_ingreso, $hora_ingreso);
         $precio_venta = trim($_POST["precio_venta"]);
         $cantidad = trim($_POST["cantidad"]);
+        $estatus = 0;
         if (mysqli_stmt_execute($stmt)) {
             $sql1 = "SELECT * FROM cc_det_ventas where id_sucursal = '$id_sucursal' and id_venta = $id_venta";
             $result = mysqli_query($link, $sql1);

@@ -68,12 +68,13 @@ if ($_POST['movimiento'] == 1) {
     }
 
 
-    $sql = "INSERT INTO cc_ventas (id_sucursal, id_venta, id_consecutivo, codigo, precio_compra, precio_venta, cantidad, clave_externa, id_usuario, fecha_ingreso, hora_ingreso) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    $sql = "INSERT INTO cc_ventas (id_sucursal, id_venta, id_consecutivo, codigo, precio_compra, precio_venta, cantidad, clave_externa, estatus, id_usuario, fecha_ingreso, hora_ingreso) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     if ($stmt = mysqli_prepare($link, $sql)) {
 // Bind variables to the prepared statement as parameters
-        mysqli_stmt_bind_param($stmt, "iiisdddsiss", $id_sucursal, $id_venta, $id_consecutivo, $codigo, $precio_compra, $precio_venta, $cantidad, $clave_externa, $id_usuario, $fecha_ingreso, $hora_ingreso);
+        mysqli_stmt_bind_param($stmt, "iiisdddsiiss", $id_sucursal, $id_venta, $id_consecutivo, $codigo, $precio_compra, $precio_venta, $cantidad, $clave_externa, $estatus, $id_usuario, $fecha_ingreso, $hora_ingreso);
         $precio_venta = trim($_POST["precio_venta"]);
         $cantidad = trim($_POST["cantidad"]);
+        $estatus = 0;
         if (mysqli_stmt_execute($stmt)) {
             if ($id_venta_t == '' OR $id_venta_t == '0') {
                 $sql2 = "INSERT INTO cc_det_ventas (id_sucursal, id_venta, estatus, id_cliente, pagado, id_usuario, fecha_ingreso, hora_ingreso) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
@@ -271,11 +272,12 @@ else if ($_POST['movimiento'] == 8) {
     $rowventa = mysqli_fetch_assoc(mysqli_query($link, "SELECT max(id_consecutivo) as id_consecutivo FROM `cc_ventas` WHERE id_sucursal = '$id_sucursal' and id_venta = $id_venta"));
     $id_consecutivo = intval($rowventa['id_consecutivo']) + 1;
 
-    $sql = "INSERT INTO cc_ventas (id_sucursal, id_venta, id_consecutivo, codigo, precio_compra, precio_venta, cantidad, clave_externa, id_usuario, fecha_ingreso, hora_ingreso) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    $sql = "INSERT INTO cc_ventas (id_sucursal, id_venta, id_consecutivo, codigo, precio_compra, precio_venta, cantidad, clave_externa, estatus, id_usuario, fecha_ingreso, hora_ingreso) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     if ($stmt = mysqli_prepare($link, $sql)) {
-        mysqli_stmt_bind_param($stmt, "iiisdddsiss", $id_sucursal, $id_venta, $id_consecutivo, $codigo, $precio_compra, $precio_venta, $cantidad, $clave_externa, $id_usuario, $fecha_ingreso, $hora_ingreso);
+        mysqli_stmt_bind_param($stmt, "iiisdddsiiss", $id_sucursal, $id_venta, $id_consecutivo, $codigo, $precio_compra, $precio_venta, $cantidad, $clave_externa, $estatus, $id_usuario, $fecha_ingreso, $hora_ingreso);
         $precio_venta = trim($_POST["precio_venta"]);
         $cantidad = trim($_POST["cantidad"]);
+        $estatus = 0;
         if (mysqli_stmt_execute($stmt)) {
             if ($id_cliente != 0) {
                 $importe = $precio_venta * $cantidad;
