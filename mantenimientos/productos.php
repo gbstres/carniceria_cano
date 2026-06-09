@@ -389,6 +389,7 @@ $sqlproductos = mysqli_query($link, "
                                 </thead>
                                 <?php
                                 while ($rowp = mysqli_fetch_assoc($sqlproductos)) {
+                                    $producto_mayoreo = isset($rowp['mayoreo']) ? $rowp['mayoreo'] : 0;
                                     echo '
                                     <tr id="' . $rowp['codigo'] . '">
                                         <td>' . $rowp['codigo'] . '</td>
@@ -397,8 +398,8 @@ $sqlproductos = mysqli_query($link, "
                                         <td>' . $rowp['precio_venta'] . '</td>
                                         <td>' . $rowp['almacen'] . '</td>
                                         <td class="' . $rowp['id_categoria'] . '">' . $rowp['desc_categoria'] . '</td>
-                                        <td class="' . $rowp['mayoreo'] . '"><input type="checkbox" class="form-check-input" disabled ';
-                                    if ($rowp['mayoreo'] == "1") {
+                                        <td class="' . $producto_mayoreo . '"><input type="checkbox" class="form-check-input" disabled ';
+                                    if ($producto_mayoreo == "1") {
                                         echo 'checked';
                                     } echo '></td>
                                         <td class="' . $rowp['centralizar_almacen'] . '">' . $rowp['descripcion_corta'] . '</td>   
