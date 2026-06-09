@@ -263,6 +263,7 @@ function storefront_fetch_price_products(mysqli $link, $idSucursal)
             p.codigo,
             p.descripcion,
             p.precio_venta,
+            p.id_categoria,
             COALESCE(c.desc_categoria, 'Sin categoria') AS categoria
         FROM cc_productos p
         LEFT JOIN cc_categorias c
@@ -271,7 +272,7 @@ function storefront_fetch_price_products(mysqli $link, $idSucursal)
         WHERE p.id_sucursal = " . $idSucursal . "
             AND p.activo = 1
             AND COALESCE(p.mayoreo, 0) = 0
-        ORDER BY categoria ASC, p.descripcion ASC
+        ORDER BY p.id_categoria ASC, categoria ASC, p.descripcion ASC
     ";
 
     if ($result = mysqli_query($link, $sql)) {
