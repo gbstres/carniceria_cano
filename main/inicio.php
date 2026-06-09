@@ -1394,11 +1394,24 @@ if ($descripcion_corta == 1) {
                                         var pendientes = imagenes.filter(function (img) {
                                             return !img.complete;
                                         }).length;
-                                        var imprime = function () {
+                                        var yaImprimio = false;
+                                        var cerrarVentana = function () {
                                             setTimeout(function () {
+                                                if (!ventimp.closed) {
+                                                    ventimp.close();
+                                                }
+                                            }, 300);
+                                        };
+                                        var imprime = function () {
+                                            if (yaImprimio) {
+                                                return;
+                                            }
+                                            yaImprimio = true;
+                                            setTimeout(function () {
+                                                ventimp.onafterprint = cerrarVentana;
                                                 ventimp.focus();
                                                 ventimp.print();
-                                                ventimp.close();
+                                                setTimeout(cerrarVentana, 1500);
                                             }, 250);
                                         };
 
