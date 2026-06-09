@@ -3,7 +3,9 @@ session_start();
 
 require_once __DIR__ . '/functions/config.php';
 
-define('STOREFRONT_SUCURSAL_ID', 9);
+if (!defined('STOREFRONT_SUCURSAL_ID')) {
+    define('STOREFRONT_SUCURSAL_ID', 9);
+}
 
 if (!isset($_SESSION['store_cart']) || !is_array($_SESSION['store_cart'])) {
     $_SESSION['store_cart'] = [];
@@ -250,6 +252,48 @@ function storefront_fetch_products(mysqli $link)
         '105' => ['codigo' => '105', 'descripcion' => 'Chuleta de cerdo', 'precio_venta' => 142.00, 'almacen' => 14.0, 'categoria' => 'Cerdo'],
         '106' => ['codigo' => '106', 'descripcion' => 'Pechuga de pollo', 'precio_venta' => 119.00, 'almacen' => 31.0, 'categoria' => 'Pollo'],
     ]);
+}
+
+function storefront_fetch_price_products(mysqli $link, $idSucursal)
+{
+    $products = [];
+    $idSucursal = (int) $idSucursal;
+    $sql = "
+        SELECT
+            p.codigo,
+            p.descripcion,
+            p.precio_venta,
+            COALESCE(c.desc_categoria, 'Sin categoria') AS categoria
+        FROM cc_productos p
+        LEFT JOIN cc_categorias c
+            ON c.id_sucursal = p.id_sucursal
+            AND c.id_categoria = p.id_categoria
+        WHERE p.id_sucursal = " . $idSucursal . "
+            AND p.activo = 1
+            AND COALESCE(p.mayoreo, 0) = 0
+        ORDER BY categoria ASC, p.descripcion ASC
+    ";
+
+    if ($result = mysqli_query($link, $sql)) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            $row['precio_venta'] = (float) $row['precio_venta'];
+            $products[] = $row;
+        }
+        mysqli_free_result($result);
+    }
+
+    return $products;
+}
+
+function storefront_fetch_branch_name(mysqli $link, $idSucursal)
+{
+    $idSucursal = (int) $idSucursal;
+    $result = mysqli_query($link, "SELECT desc_sucursal FROM cc_sucursales WHERE id_sucursal = " . $idSucursal . " LIMIT 1");
+    if ($result && $row = mysqli_fetch_assoc($result)) {
+        mysqli_free_result($result);
+        return $row['desc_sucursal'];
+    }
+    return 'Sucursal ' . $idSucursal;
 }
 
 function storefront_cart_totals(array $cart)

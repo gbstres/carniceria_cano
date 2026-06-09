@@ -63,14 +63,16 @@ if ($sql_clave) {
 $qr_opiniones = [
     1 => [
         'imagen' => '../img/qr_opiniones_sucursal_1.png',
-        'link' => 'https://maps.app.goo.gl/HzouN291vd59Zna47',
     ],
     2 => [
         'imagen' => '../img/qr_opiniones_sucursal_2.png',
-        'link' => 'https://maps.app.goo.gl/DAwy2xZrYjvKsWzHA',
     ],
 ];
 $qr_opinion = $qr_opiniones[$id_sucursal] ?? null;
+$qr_precio_imagen = '../img/qr_precios_sucursal_' . $id_sucursal . '.png';
+$qr_precio = file_exists(__DIR__ . '/../img/qr_precios_sucursal_' . $id_sucursal . '.png')
+        ? ['imagen' => $qr_precio_imagen]
+        : null;
 ?>
 
 
@@ -326,21 +328,24 @@ $qr_opinion = $qr_opiniones[$id_sucursal] ?? null;
                                     font-size: 13px ;
                                     text-align: center;
                                 }
-                                #qr_opiniones {
+                                .ticket_qr {
                                     text-align: center;
                                     margin-top: 10px;
                                 }
-                                #qr_opiniones p {
+                                .ticket_qr p {
                                     margin: 3px 0;
                                     font-size: 12px;
                                 }
-                                #qr_opiniones img {
+                                .ticket_qr img {
                                     width: 120px;
                                     height: 120px;
                                 }
-                                #qr_opiniones .qr_link {
-                                    font-size: 9px;
-                                    word-break: break-all;
+                                .ticket_qr_grid {
+                                    display: flex;
+                                    justify-content: center;
+                                    gap: 14px;
+                                    align-items: flex-start;
+                                    flex-wrap: wrap;
                                 }
                             </style>
                             <div style="text-align: center">
@@ -424,12 +429,22 @@ $qr_opinion = $qr_opiniones[$id_sucursal] ?? null;
                                     </tr>
                                 </tfoot>                            
                             </table>
-                            <?php if ($qr_opinion !== null) { ?>
-                                <div id="qr_opiniones">
-                                    <p><strong>Tu opini&oacute;n nos ayuda a mejorar</strong></p>
-                                    <p>Escanea el c&oacute;digo y calif&iacute;canos en Google</p>
-                                    <img src="<?php echo $qr_opinion['imagen']; ?>" alt="QR opiniones Google">
-                                    <p class="qr_link"><?php echo $qr_opinion['link']; ?></p>
+                            <?php if ($qr_opinion !== null || $qr_precio !== null) { ?>
+                                <div class="ticket_qr_grid">
+                                    <?php if ($qr_opinion !== null) { ?>
+                                        <div class="ticket_qr">
+                                            <p><strong>Tu opini&oacute;n nos ayuda a mejorar</strong></p>
+                                            <p>Calif&iacute;canos en Google</p>
+                                            <img src="<?php echo $qr_opinion['imagen']; ?>" alt="QR opiniones Google">
+                                        </div>
+                                    <?php } ?>
+                                    <?php if ($qr_precio !== null) { ?>
+                                        <div class="ticket_qr">
+                                            <p><strong>Consulta nuestros precios</strong></p>
+                                            <p>Lista de menudeo por sucursal</p>
+                                            <img src="<?php echo $qr_precio['imagen']; ?>" alt="QR precios menudeo">
+                                        </div>
+                                    <?php } ?>
                                 </div>
                             <?php } ?>
                             <br><br><br><br>
@@ -1272,8 +1287,7 @@ if ($descripcion_corta == 1) {
                                         var ventimp = window.open('Imprimir.html', target = 'blank', 'width=' + anchura + ',height=' + altura + ',top=' + y + ',left=' + x + ',toolbar=no,location=no,status=no,menubar=no,scrollbars=no,directories=no,resizable=no')
                                         ventimp.document.write(ficha.innerHTML);
                                         ventimp.document.close();
-                                        ventimp.print();
-                                        ventimp.close();
+                                        esperaImagenesEImprime(ventimp);
                                     }
                                     function imprSelec(nombre) {
                                         llenadatosimpresion();
@@ -1373,8 +1387,38 @@ if ($descripcion_corta == 1) {
                                         var ventimp = window.open('Imprimir.html', target = 'blank', 'width=' + anchura + ',height=' + altura + ',top=' + y + ',left=' + x + ',toolbar=no,location=no,status=no,menubar=no,scrollbars=no,directories=no,resizable=no')
                                         ventimp.document.write(ficha.innerHTML);
                                         ventimp.document.close();
-                                        ventimp.print();
-                                        ventimp.close();
+                                        esperaImagenesEImprime(ventimp);
+                                    }
+                                    function esperaImagenesEImprime(ventimp) {
+                                        var imagenes = Array.prototype.slice.call(ventimp.document.images || []);
+                                        var pendientes = imagenes.filter(function (img) {
+                                            return !img.complete;
+                                        }).length;
+                                        var imprime = function () {
+                                            setTimeout(function () {
+                                                ventimp.focus();
+                                                ventimp.print();
+                                                ventimp.close();
+                                            }, 250);
+                                        };
+
+                                        if (pendientes === 0) {
+                                            imprime();
+                                            return;
+                                        }
+
+                                        imagenes.forEach(function (img) {
+                                            if (img.complete) {
+                                                return;
+                                            }
+                                            img.onload = img.onerror = function () {
+                                                pendientes--;
+                                                if (pendientes <= 0) {
+                                                    imprime();
+                                                }
+                                            };
+                                        });
+                                        setTimeout(imprime, 3000);
                                     }
                                     function sumaTotal()
                                     {
