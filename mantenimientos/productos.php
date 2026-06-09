@@ -19,6 +19,7 @@ $precio_compra = 0;
 $precio_venta = 0;
 $almacen = 0;
 $id_categoria = 0;
+$mayoreo = 0;
 $activo = 0;
 $fecha_ingreso = date('Y-m-d');
 $hora_ingreso = date('H:i:s');
@@ -49,6 +50,7 @@ if (isset($_POST['agregar'])) {
     $precio_venta_e = $precio_venta = trim($_POST["precio_venta"]);
     $almacen_e = $almacen = trim($_POST["almacen"]);
     $id_categoria_e = $id_categoria = trim($_POST["id_categoria"]);
+    $mayoreo = isset($_POST['mayoreo']) ? 1 : 0;
     $centralizar_almacen = trim($_POST["centralizar_almacen"]);
     $activo = isset($_POST['activo']) ? 1 : 0;
     $consulta = mysqli_query($link, "SELECT * FROM cc_productos WHERE codigo='$codigo' and id_sucursal = '$id_sucursal'");
@@ -57,10 +59,10 @@ if (isset($_POST['agregar'])) {
         $body = 'Producto ' . $descripcion . ' no se puede agregar, ya existe el código ' . $codigo_e . '.';
     } else {
 
-        $sql = "INSERT INTO cc_productos (codigo, id_sucursal, descripcion, precio_compra, precio_venta, almacen, id_categoria, centralizar_almacen, activo, id_usuario, fecha_ingreso, hora_ingreso, id_usuario_act, fecha_act, hora_act) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO cc_productos (codigo, id_sucursal, descripcion, precio_compra, precio_venta, almacen, id_categoria, mayoreo, centralizar_almacen, activo, id_usuario, fecha_ingreso, hora_ingreso, id_usuario_act, fecha_act, hora_act) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         if ($stmt = mysqli_prepare($link, $sql)) {
             // Bind variables to the prepared statement as parameters
-            mysqli_stmt_bind_param($stmt, "iisdddiiiississ", $codigo, $id_sucursal, $descripcion, $precio_compra, $precio_venta, $almacen, $id_categoria, $centralizar_almacen, $activo, $id_usuario, $fecha_ingreso, $hora_ingreso, $id_usuario_act, $fecha_act, $hora_act);
+            mysqli_stmt_bind_param($stmt, "iisdddiiiiississ", $codigo, $id_sucursal, $descripcion, $precio_compra, $precio_venta, $almacen, $id_categoria, $mayoreo, $centralizar_almacen, $activo, $id_usuario, $fecha_ingreso, $hora_ingreso, $id_usuario_act, $fecha_act, $hora_act);
 
             if (mysqli_stmt_execute($stmt)) {
                 cc_sync_enqueue($link, $id_sucursal, 'producto', 'upsert', [
@@ -92,13 +94,14 @@ if (isset($_POST['editar'])) {
     $precio_venta = trim($_POST["precio_venta_e"]);
     $almacen = trim($_POST["almacen_e"]);
     $id_categoria = trim($_POST["id_categoria_e"]);
+    $mayoreo = isset($_POST['mayoreo_e']) ? 1 : 0;
     $centralizar_almacen = trim($_POST["centralizar_almacen_e"]);
     $activo = isset($_POST['activo_e']) ? 1 : 0;
     $id_usuario_act = $_SESSION["id"];
     $fecha_act = date('Y-m-d');
     $hora_act = date('H:i:s');
     $update1 = mysqli_query($link, "UPDATE cc_productos SET "
-                    . "descripcion='$descripcion', precio_compra='$precio_compra', precio_venta='$precio_venta', almacen='$almacen', id_categoria='$id_categoria', centralizar_almacen = '$centralizar_almacen', activo='$activo', "
+                    . "descripcion='$descripcion', precio_compra='$precio_compra', precio_venta='$precio_venta', almacen='$almacen', id_categoria='$id_categoria', mayoreo='$mayoreo', centralizar_almacen = '$centralizar_almacen', activo='$activo', "
                     . "fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act='$id_usuario_act' "
                     . "WHERE codigo='$codigo' and id_sucursal='$id_sucursal'")
             or die(mysqli_error());
@@ -181,7 +184,6 @@ $sqlproductos = mysqli_query($link, "
         p.*,
         u.username,
         c.desc_categoria,
-        c.mayoreo,
         ca.descripcion_corta
     FROM cc_productos p
     LEFT JOIN cc_users u
@@ -346,8 +348,9 @@ $sqlproductos = mysqli_query($link, "
                                     </div>
                                 </div>
                                 <div class="col-6">
-                                    <label for="checkMayoreo" class="form-label">¿Activo?</label><br>
-                                    <input class="form-check-input" name="activo" type="checkbox" value="1" id="mayoreo" checked><br>
+                                    <label class="form-label">Opciones</label><br>
+                                    <input class="form-check-input" name="mayoreo" type="checkbox" value="1" id="mayoreo">&nbsp;&nbsp;Mayoreo<br>
+                                    <input class="form-check-input" name="activo" type="checkbox" value="1" id="activo" checked>&nbsp;&nbsp;Activo<br>
                                 </div>
                             </div>
                             <div class="col-12 text-center" >
@@ -394,7 +397,7 @@ $sqlproductos = mysqli_query($link, "
                                         <td>' . $rowp['precio_venta'] . '</td>
                                         <td>' . $rowp['almacen'] . '</td>
                                         <td class="' . $rowp['id_categoria'] . '">' . $rowp['desc_categoria'] . '</td>
-                                        <td><input type="checkbox" class="form-check-input" disabled ';
+                                        <td class="' . $rowp['mayoreo'] . '"><input type="checkbox" class="form-check-input" disabled ';
                                     if ($rowp['mayoreo'] == "1") {
                                         echo 'checked';
                                     } echo '></td>
@@ -529,8 +532,9 @@ $sqlproductos = mysqli_query($link, "
                                 </div>
                             </div>
                             <div class="mb-3">
-                                <label for="checkMayoreo" class="form-label">¿Activo?</label><br>
-                                <input class="form-check-input" name="activo_e" type="checkbox" value="1" id="activo_e" checked><br>
+                                <label class="form-label">Opciones</label><br>
+                                <input class="form-check-input" name="mayoreo_e" type="checkbox" value="1" id="mayoreo_e">&nbsp;&nbsp;Mayoreo<br>
+                                <input class="form-check-input" name="activo_e" type="checkbox" value="1" id="activo_e" checked>&nbsp;&nbsp;Activo<br>
                             </div>
                         </div>
                         <div class="modal-footer">
@@ -659,6 +663,7 @@ $sqlproductos = mysqli_query($link, "
                 var precio_venta = $(icono).parents("tr").find("td").eq(3).text();
                 var almacen = $(icono).parents("tr").find("td").eq(4).text();
                 var categoria = $(icono).parents("tr").find("td").eq(5).attr('class');
+                var mayoreo = $(icono).parents("tr").find("td").eq(6).attr('class');
                 var centralizar_almacen = $(icono).parents("tr").find("td").eq(7).attr('class');
                 var activo = $(icono).parents("tr").find("td").eq(8).attr('class');
                 $("#ModalLabelTitle").html("Editar el código: " + codigo);
@@ -670,6 +675,10 @@ $sqlproductos = mysqli_query($link, "
                 $("#id_categoria_e").val(categoria);
                 $("#centralizar_almacen_e").val(centralizar_almacen);
                 $("#edit_fotos_link").attr("href", "producto_fotos.php?codigo=" + encodeURIComponent(codigo));
+                if (mayoreo == 0)
+                    $("#mayoreo_e").prop("checked", false);
+                else
+                    $("#mayoreo_e").prop("checked", true);
                 if (activo == 0)
                     $("#activo_e").prop("checked", false);
                 else
