@@ -9,6 +9,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 }
 
 require_once "../functions/config.php";
+require_once "../functions/sync_queue.php";
 date_default_timezone_set("America/Mexico_City");
 // Define variables and initialize with empty values
 $id_sucursal = $_SESSION["id_sucursal"];
@@ -68,6 +69,67 @@ if (isset($_POST['fecha_cierre'])) {
                         . "fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act='$id_usuario_act' "
                         . "WHERE id_sucursal='$id_sucursal' and estatus = 0 and id_cierre = 0")
                 or die(mysqli_error());
+
+        $sqlVentasCierre = mysqli_query($link, "SELECT id_venta
+                FROM cc_det_ventas
+                WHERE id_sucursal = '$id_sucursal'
+                  AND id_cierre = $id_cierre
+                  AND estatus = '$estatus'");
+        while ($rowVenta = mysqli_fetch_assoc($sqlVentasCierre)) {
+            cc_sync_enqueue($link, $id_sucursal, 'venta_detalle', 'upsert', [
+                'id_venta' => (int) $rowVenta['id_venta'],
+            ], [
+                'tabla' => 'cc_det_ventas',
+                'motivo' => 'cierre',
+                'id_cierre' => (int) $id_cierre,
+            ]);
+        }
+
+        $sqlGastosCierre = mysqli_query($link, "SELECT id_gasto
+                FROM cc_gastos
+                WHERE id_sucursal = '$id_sucursal'
+                  AND id_cierre = $id_cierre
+                  AND estatus = '$estatus'");
+        while ($rowGasto = mysqli_fetch_assoc($sqlGastosCierre)) {
+            cc_sync_enqueue($link, $id_sucursal, 'gasto', 'upsert', [
+                'id_gasto' => (int) $rowGasto['id_gasto'],
+            ], [
+                'tabla' => 'cc_gastos',
+                'motivo' => 'cierre',
+                'id_cierre' => (int) $id_cierre,
+            ]);
+        }
+
+        $sqlEntradasCierre = mysqli_query($link, "SELECT id_entrada
+                FROM cc_entradas
+                WHERE id_sucursal = '$id_sucursal'
+                  AND id_cierre = $id_cierre
+                  AND estatus = '$estatus'");
+        while ($rowEntrada = mysqli_fetch_assoc($sqlEntradasCierre)) {
+            cc_sync_enqueue($link, $id_sucursal, 'entrada', 'upsert', [
+                'id_entrada' => (int) $rowEntrada['id_entrada'],
+            ], [
+                'tabla' => 'cc_entradas',
+                'motivo' => 'cierre',
+                'id_cierre' => (int) $id_cierre,
+            ]);
+        }
+
+        $sqlPagosCierre = mysqli_query($link, "SELECT id_cliente, id_pago
+                FROM cc_pagos_clientes
+                WHERE id_sucursal = '$id_sucursal'
+                  AND id_cierre = $id_cierre
+                  AND estatus = '$estatus'");
+        while ($rowPago = mysqli_fetch_assoc($sqlPagosCierre)) {
+            cc_sync_enqueue($link, $id_sucursal, 'pago_cliente', 'upsert', [
+                'id_cliente' => (int) $rowPago['id_cliente'],
+                'id_pago' => (int) $rowPago['id_pago'],
+            ], [
+                'tabla' => 'cc_pagos_clientes',
+                'motivo' => 'cierre',
+                'id_cierre' => (int) $id_cierre,
+            ]);
+        }
     }
 }
 
