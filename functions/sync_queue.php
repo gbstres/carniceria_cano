@@ -96,6 +96,10 @@ function cc_sync_get_entity_config(string $entityType): ?array
             'table' => 'cc_cierre_clientes',
             'keys' => ['id_cierre', 'id_cliente'],
         ],
+        'saldo_cliente' => [
+            'table' => 'cc_saldos_clientes',
+            'keys' => ['id_cliente'],
+        ],
         'pago_cliente' => [
             'table' => 'cc_pagos_clientes',
             'keys' => ['id_cliente', 'id_pago'],
@@ -129,6 +133,109 @@ function cc_sync_get_entity_config(string $entityType): ?array
     return $map[$entityType] ?? null;
 }
 
+function cc_sync_enqueue_cierre_movimientos(mysqli $link, int $idSucursal, int $idCierre, int $estatus = 3): void
+{
+    $sqlVentasCierre = mysqli_query($link, "SELECT id_venta
+            FROM cc_det_ventas
+            WHERE id_sucursal = $idSucursal
+              AND id_cierre = $idCierre
+              AND estatus = $estatus");
+    while ($sqlVentasCierre && $rowVenta = mysqli_fetch_assoc($sqlVentasCierre)) {
+        cc_sync_enqueue($link, $idSucursal, 'venta_detalle', 'upsert', [
+            'id_venta' => (int) $rowVenta['id_venta'],
+        ], [
+            'tabla' => 'cc_det_ventas',
+            'motivo' => 'cierre',
+            'id_cierre' => $idCierre,
+        ]);
+    }
+
+    $sqlGastosCierre = mysqli_query($link, "SELECT id_gasto
+            FROM cc_gastos
+            WHERE id_sucursal = $idSucursal
+              AND id_cierre = $idCierre
+              AND estatus = $estatus");
+    while ($sqlGastosCierre && $rowGasto = mysqli_fetch_assoc($sqlGastosCierre)) {
+        cc_sync_enqueue($link, $idSucursal, 'gasto', 'upsert', [
+            'id_gasto' => (int) $rowGasto['id_gasto'],
+        ], [
+            'tabla' => 'cc_gastos',
+            'motivo' => 'cierre',
+            'id_cierre' => $idCierre,
+        ]);
+    }
+
+    $sqlEntradasCierre = mysqli_query($link, "SELECT id_entrada
+            FROM cc_entradas
+            WHERE id_sucursal = $idSucursal
+              AND id_cierre = $idCierre
+              AND estatus = $estatus");
+    while ($sqlEntradasCierre && $rowEntrada = mysqli_fetch_assoc($sqlEntradasCierre)) {
+        cc_sync_enqueue($link, $idSucursal, 'entrada', 'upsert', [
+            'id_entrada' => (int) $rowEntrada['id_entrada'],
+        ], [
+            'tabla' => 'cc_entradas',
+            'motivo' => 'cierre',
+            'id_cierre' => $idCierre,
+        ]);
+    }
+
+    $sqlPagosCierre = mysqli_query($link, "SELECT id_cliente, id_pago
+            FROM cc_pagos_clientes
+            WHERE id_sucursal = $idSucursal
+              AND id_cierre = $idCierre
+              AND estatus = $estatus");
+    while ($sqlPagosCierre && $rowPago = mysqli_fetch_assoc($sqlPagosCierre)) {
+        cc_sync_enqueue($link, $idSucursal, 'pago_cliente', 'upsert', [
+            'id_cliente' => (int) $rowPago['id_cliente'],
+            'id_pago' => (int) $rowPago['id_pago'],
+        ], [
+            'tabla' => 'cc_pagos_clientes',
+            'motivo' => 'cierre',
+            'id_cierre' => $idCierre,
+        ]);
+    }
+
+    $sqlSaldosCliente = mysqli_query($link, "SELECT id_cliente
+            FROM cc_saldos_clientes
+            WHERE id_sucursal = $idSucursal");
+    while ($sqlSaldosCliente && $rowSaldo = mysqli_fetch_assoc($sqlSaldosCliente)) {
+        cc_sync_enqueue($link, $idSucursal, 'saldo_cliente', 'upsert', [
+            'id_cliente' => (int) $rowSaldo['id_cliente'],
+        ], [
+            'tabla' => 'cc_saldos_clientes',
+            'motivo' => 'cierre',
+            'id_cierre' => $idCierre,
+        ]);
+    }
+
+    $sqlProductos = mysqli_query($link, "SELECT codigo
+            FROM cc_productos
+            WHERE id_sucursal = $idSucursal");
+    while ($sqlProductos && $rowProducto = mysqli_fetch_assoc($sqlProductos)) {
+        cc_sync_enqueue($link, $idSucursal, 'producto', 'upsert', [
+            'codigo' => (string) $rowProducto['codigo'],
+        ], [
+            'tabla' => 'cc_productos',
+            'motivo' => 'cierre',
+            'id_cierre' => $idCierre,
+        ]);
+    }
+
+    $sqlCategorias = mysqli_query($link, "SELECT id_categoria
+            FROM cc_categorias
+            WHERE id_sucursal = $idSucursal");
+    while ($sqlCategorias && $rowCategoria = mysqli_fetch_assoc($sqlCategorias)) {
+        cc_sync_enqueue($link, $idSucursal, 'categoria', 'upsert', [
+            'id_categoria' => (int) $rowCategoria['id_categoria'],
+        ], [
+            'tabla' => 'cc_categorias',
+            'motivo' => 'cierre',
+            'id_cierre' => $idCierre,
+        ]);
+    }
+}
+
 function cc_sync_fetch_pending(mysqli $link, int $limit = 50): array
 {
     cc_sync_queue_bootstrap($link);
@@ -144,6 +251,7 @@ function cc_sync_fetch_pending(mysqli $link, int $limit = 50): array
             WHEN 'proveedor' THEN 3
             WHEN 'producto' THEN 4
             WHEN 'derivado' THEN 5
+            WHEN 'saldo_cliente' THEN 14
             WHEN 'pago_cliente' THEN 15
             WHEN 'cierre' THEN 20
             WHEN 'cierre_cliente' THEN 21
