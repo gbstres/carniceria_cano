@@ -428,6 +428,50 @@ $totalc = $val_claves[1] + $val_claves[2] + $val_claves[5] - $val_claves[3] - $a
                             <br>
                             <div class="card">
                                 <div class="card-header">
+                                    <h5 class="card-title mb-0">Entradas</h5>
+                                </div>
+                            </div>
+                            <table id="entradas0" class="display w-70 mx-auto">
+                                <thead>
+                                    <tr>
+                                        <th>Id</th>
+                                        <th>Descripción</th>
+                                        <th>Saldo</th>
+                                    </tr>
+                                </thead>
+                                <?php
+                                $sqlentradas = mysqli_query($link,
+                                        "SELECT
+                                        a.id_entrada,
+                                        a.descripcion,
+                                        ROUND(a.cantidad * a.precio, 2) AS importe
+                                    FROM
+                                        cc_entradas as a
+                                    WHERE
+                                        a.id_sucursal = $id_sucursal AND a.estatus = 0 AND a.id_cierre = 0");
+                                $totale = 0;
+                                while ($rowent = mysqli_fetch_assoc($sqlentradas)) {
+                                    echo '
+                                    <tr id="">
+                                        <td>' . $rowent['id_entrada'] . '</td>
+                                        <td>' . $rowent['descripcion'] . '</td>
+                                        <td>' . $rowent['importe'] . '</td>
+                                    </tr>
+                                        ';
+                                    $totale = $totale + $rowent['importe'];
+                                }
+                                ?>
+                                <tfoot>
+                                    <tr>
+                                        <th></th>
+                                        <th id="total_entradas">Total</th>
+                                        <th><?php echo number_format($totale, 2) ?></th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                            <br>
+                            <div class="card">
+                                <div class="card-header">
                                     <h5 class="card-title mb-0">Clientes con saldo</h5>
                                 </div>
                             </div>
@@ -677,6 +721,52 @@ $totalc = $val_claves[1] + $val_claves[2] + $val_claves[5] - $val_claves[3] - $a
                             <br>
                             <div class="card">
                                 <div class="card-header">
+                                    <h5 class="card-title mb-0">Entradas</h5>
+                                </div>
+                            </div>
+                            <div class="col-12 d-flex justify-content-center" id=tabla_entradas' . $id_cierre . '>
+                            <table id="entradas' . $id_cierre . '" class="display w-70 mx-auto" style="width: 100%;">
+                                <thead>
+                                    <tr>
+                                        <th>Id</th>
+                                        <th>Descripción</th>
+                                        <th>Saldo</th>
+                                    </tr>
+                                </thead>';
+
+                                $sqlentradas = mysqli_query($link,
+                                        "SELECT
+                                        a.id_entrada,
+                                        a.descripcion,
+                                        ROUND(a.cantidad * a.precio, 2) AS importe
+                                    FROM
+                                        cc_entradas as a
+                                    WHERE
+                                        a.id_sucursal = $id_sucursal AND a.id_cierre = $id_cierre");
+                                $totale = 0;
+                                while ($rowent = mysqli_fetch_assoc($sqlentradas)) {
+                                    echo '
+                                    <tr id="">
+                                        <td>' . $rowent['id_entrada'] . '</td>
+                                        <td>' . $rowent['descripcion'] . '</td>
+                                        <td>' . $rowent['importe'] . '</td>
+                                    </tr>
+                                        ';
+                                    $totale = $totale + $rowent['importe'];
+                                }
+                                echo '
+                                <tfoot>
+                                    <tr>
+                                        <th></th>
+                                        <th id="total_entradas">Total</th>
+                                        <th>' . number_format($totale, 2) . '</th>
+                                    </tr>
+                                </tfoot>
+                            </table>
+                            </div>
+                            <br>
+                            <div class="card">
+                                <div class="card-header">
                                     <h5 class="card-title mb-0">Clientes con saldo</h5>
                                 </div>
                             </div>
@@ -817,6 +907,7 @@ $totalc = $val_claves[1] + $val_claves[2] + $val_claves[5] - $val_claves[3] - $a
                 <style>
                     #tabla_principal_cierre, #tabla_principal_cierre table, #tabla_principal_cierre th, #tabla_principal_cierre td, #tabla_movimientos_cierre table, #tabla_movimientos_cierre th, #tabla_movimientos_cierre td,
                     #tabla_gastos_cierre, #tabla_gastos_cierre table, #tabla_gastos_cierre th, #tabla_gastos_cierre td,
+                    #tabla_entradas_cierre, #tabla_entradas_cierre table, #tabla_entradas_cierre th, #tabla_entradas_cierre td,
                     #tabla_clientes_cierre, #tabla_clientes_cierre table, #tabla_clientes_cierre th, #tabla_clientes_cierre td
                     {
                         border: 1px solid;
@@ -858,6 +949,10 @@ $totalc = $val_claves[1] + $val_claves[2] + $val_claves[5] - $val_claves[3] - $a
                 <br>
                 <h5>Gastos<h5>
                 <div id="tabla_gastos_cierre">
+                </div>
+                <br>
+                <h5>Entradas<h5>
+                <div id="tabla_entradas_cierre">
                 </div>
                 <br>
                 <h5>Clientes con saldo<h5>
@@ -968,6 +1063,7 @@ if (isset($_POST['fecha_cierre'])) {
 
                                             $('#tabla_movimientos_cierre').empty();
                                             $('#tabla_gastos_cierre').empty();
+                                            $('#tabla_entradas_cierre').empty();
                                             $('#tabla_clientes_cierre').empty();
                                             $('#tabla_principal_cierre').empty();
                                             extrae_tabla(consecutivo);
@@ -981,6 +1077,8 @@ if (isset($_POST['fecha_cierre'])) {
                                             var miVariable = "tabla_gastos" + consecutivo;
                                             $('#tabla_gastos_cierre').html($('#' + miVariable).html());
 
+                                            var miVariable = "tabla_entradas" + consecutivo;
+                                            $('#tabla_entradas_cierre').html($('#' + miVariable).html());
 
                                             var miVariable = "tabla_clientes" + consecutivo;
                                             $('#tabla_clientes_cierre').html($('#' + miVariable).html());
