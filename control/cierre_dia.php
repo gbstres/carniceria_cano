@@ -24,6 +24,30 @@ if (isset($_POST['fecha_cierre'])) {
     $hora_act = date('H:i:s');
     $fecha_act_cierre = 0;
     $hora_act_cierre = 0;
+    $ejecutar_cierre = false;
+    $cierre_lock_obtenido = false;
+    $cierre_lock_name = 'cierre_dia_' . (int) $id_sucursal;
+
+    $rowlock = mysqli_fetch_assoc(mysqli_query($link, "SELECT GET_LOCK('$cierre_lock_name', 10) AS cierre_lock"));
+    if ((int) ($rowlock['cierre_lock'] ?? 0) !== 1) {
+        echo '<script type="text/javascript">alert("Ya hay un cierre en proceso. Intente nuevamente en unos segundos.");</script>';
+    } else {
+        $cierre_lock_obtenido = true;
+        $rowpendientes = mysqli_fetch_assoc(mysqli_query($link, "
+            SELECT
+                (SELECT COUNT(*) FROM cc_det_ventas WHERE id_sucursal = '$id_sucursal' AND estatus = 1 AND id_cierre = 0) +
+                (SELECT COUNT(*) FROM cc_gastos WHERE id_sucursal = '$id_sucursal' AND estatus = 0 AND id_cierre = 0) +
+                (SELECT COUNT(*) FROM cc_entradas WHERE id_sucursal = '$id_sucursal' AND estatus = 0 AND id_cierre = 0) +
+                (SELECT COUNT(*) FROM cc_pagos_clientes WHERE id_sucursal = '$id_sucursal' AND estatus = 0 AND id_cierre = 0)
+                AS total_pendientes"));
+        if ((int) ($rowpendientes['total_pendientes'] ?? 0) <= 0) {
+            echo '<script type="text/javascript">alert("No hay movimientos pendientes para cerrar. Es posible que el cierre ya se haya ejecutado.");</script>';
+        } else {
+            $ejecutar_cierre = true;
+        }
+    }
+
+    if ($ejecutar_cierre) {
     $rowcierre = mysqli_fetch_assoc(mysqli_query($link, "SELECT max(id_cierre) as id_cierre FROM cc_cierre WHERE id_sucursal = '$id_sucursal'"));
     $id_cierre = $rowcierre['id_cierre'];
     if ($id_cierre == null) {
@@ -107,6 +131,11 @@ if (isset($_POST['fecha_cierre'])) {
                 or die(mysqli_error());
 
         cc_sync_enqueue_cierre_movimientos($link, (int) $id_sucursal, (int) $id_cierre, (int) $estatus);
+    }
+    }
+
+    if ($cierre_lock_obtenido) {
+        mysqli_query($link, "SELECT RELEASE_LOCK('$cierre_lock_name')");
     }
 }
 
@@ -1013,11 +1042,19 @@ if (isset($_POST['fecha_cierre'])) {
 
 
                                         function cierre_caja() {
+                                            const botonCierre = document.getElementById('cierra');
+                                            if (botonCierre && botonCierre.dataset.procesando === '1') {
+                                                return;
+                                            }
                                             if (confirm("¿Desea ejecutar el cierre?")) {
-                                                {
-                                                    guardarCierre();
-                                                    $("#form_cierre").submit();
+                                                if (botonCierre) {
+                                                    botonCierre.dataset.procesando = '1';
+                                                    botonCierre.classList.add('disabled');
+                                                    botonCierre.setAttribute('aria-disabled', 'true');
+                                                    botonCierre.textContent = 'Cerrando...';
                                                 }
+                                                guardarCierre();
+                                                $("#form_cierre").submit();
                                             }
                                         }
 
