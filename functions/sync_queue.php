@@ -355,6 +355,12 @@ function cc_sync_upsert_remote_rows(mysqli $linkRemote, string $table, array $ro
         if (array_key_exists('id_usuario_act', $row) && $row['id_usuario_act'] === null) {
             $row['id_usuario_act'] = $row['id_usuario'] ?? 0;
         }
+        if (array_key_exists('fecha_act', $row) && $row['fecha_act'] === null) {
+            $row['fecha_act'] = $row['fecha_ingreso'] ?? date('Y-m-d');
+        }
+        if (array_key_exists('hora_act', $row) && $row['hora_act'] === null) {
+            $row['hora_act'] = $row['hora_ingreso'] ?? date('H:i:s');
+        }
 
         $columns = array_keys($row);
         $columnList = implode(',', array_map(fn($column) => "`$column`", $columns));
