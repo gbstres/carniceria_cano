@@ -59,6 +59,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'run_
     <link href="../css/navbar.css" rel="stylesheet">
     <link href="../css/jquery.dataTables.min.css" rel="stylesheet">
     <link href="../css/gijgo.min.css" rel="stylesheet" type="text/css" />
+    <style>
+        #mensajeRespaldo {
+            white-space: pre-line;
+        }
+    </style>
 </head>
 <body>
 <main>
@@ -112,13 +117,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'run_
                     if (!response || response.ok !== true) {
                         boton.disabled = false;
                         boton.value = 'Ejecutar respaldo manual';
-                        mostrarMensaje('No se pudo ejecutar el respaldo manual.', true);
+                        mostrarMensaje(
+                            'No se pudo ejecutar el respaldo manual.' +
+                            (response && response.error ? '\n\nDetalle: ' + response.error : ''),
+                            true
+                        );
                         return;
                     }
 
                     acumulado.processed += parseInt(response.processed || 0, 10);
                     acumulado.done += parseInt(response.done || 0, 10);
                     acumulado.failed += parseInt(response.failed || 0, 10);
+                    (response.items || []).forEach(function (item) {
+                        if (item.status === 'error') {
+                            acumulado.errors.push(
+                                '#' + item.id_sync + ' ' +
+                                item.entity_type + '/' + item.action_type + ': ' +
+                                (item.error || 'Error sin detalle')
+                            );
+                        }
+                    });
 
                     if (parseInt(response.processed || 0, 10) > 0) {
                         mostrarProcesando('Procesando respaldo... Llevamos ' + acumulado.processed + ' registros.');
@@ -128,12 +146,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'run_
 
                     boton.disabled = false;
                     boton.value = 'Ejecutar respaldo manual';
-                    mostrarMensaje(
-                        'Respaldo manual completado. Procesados: ' + acumulado.processed +
+                    let textoFinal = 'Respaldo manual completado. Procesados: ' + acumulado.processed +
                         '. Correctos: ' + acumulado.done +
-                        '. Errores: ' + acumulado.failed + '.',
-                        acumulado.failed > 0
-                    );
+                        '. Errores: ' + acumulado.failed + '.';
+
+                    if (acumulado.errors.length > 0) {
+                        textoFinal += '\n\nDetalle de errores:\n' + acumulado.errors.join('\n');
+                    }
+
+                    mostrarMensaje(textoFinal, acumulado.failed > 0);
                 },
                 error: function () {
                     boton.disabled = false;
@@ -153,7 +174,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'run_
             ejecutarLote({
                 processed: 0,
                 done: 0,
-                failed: 0
+                failed: 0,
+                errors: []
             });
         });
     })();
