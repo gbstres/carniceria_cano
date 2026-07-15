@@ -29,8 +29,8 @@ $filtro_activo = 1;
 function asegurarSaldoCliente(mysqli $link, int $idSucursal, int $idCliente, int $idUsuario, string $fecha, string $hora): void
 {
     $sql = "INSERT INTO cc_saldos_clientes
-                (id_sucursal, id_cliente, efectivo_hoy, efectivo_ayer, efectivo_mes, id_usuario, fecha_ingreso, hora_ingreso)
-            SELECT ?, ?, 0, 0, 0, ?, ?, ?
+                (id_sucursal, id_cliente, efectivo_hoy, efectivo_ayer, efectivo_mes, id_usuario, fecha_ingreso, hora_ingreso, id_usuario_act, fecha_act, hora_act)
+            SELECT ?, ?, 0, 0, 0, ?, ?, ?, ?, ?, ?
             FROM DUAL
             WHERE NOT EXISTS (
                 SELECT 1
@@ -40,7 +40,7 @@ function asegurarSaldoCliente(mysqli $link, int $idSucursal, int $idCliente, int
             )";
 
     if ($stmt = mysqli_prepare($link, $sql)) {
-        mysqli_stmt_bind_param($stmt, "iiissii", $idSucursal, $idCliente, $idUsuario, $fecha, $hora, $idSucursal, $idCliente);
+        mysqli_stmt_bind_param($stmt, "iiississii", $idSucursal, $idCliente, $idUsuario, $fecha, $hora, $idUsuario, $fecha, $hora, $idSucursal, $idCliente);
         mysqli_stmt_execute($stmt);
         mysqli_stmt_close($stmt);
     }

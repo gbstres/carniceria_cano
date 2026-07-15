@@ -352,6 +352,10 @@ function cc_sync_delete_remote_rows(mysqli $linkRemote, string $table, int $idSu
 function cc_sync_upsert_remote_rows(mysqli $linkRemote, string $table, array $rows): void
 {
     foreach ($rows as $row) {
+        if (array_key_exists('id_usuario_act', $row) && $row['id_usuario_act'] === null) {
+            $row['id_usuario_act'] = $row['id_usuario'] ?? 0;
+        }
+
         $columns = array_keys($row);
         $columnList = implode(',', array_map(fn($column) => "`$column`", $columns));
         $values = [];

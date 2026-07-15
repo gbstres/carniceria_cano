@@ -35,8 +35,8 @@ $summary = [
 ];
 
 $sqlClientes = "INSERT INTO cc_saldos_clientes
-    (id_sucursal, id_cliente, efectivo_hoy, efectivo_ayer, efectivo_mes, id_usuario, fecha_ingreso, hora_ingreso)
-    SELECT c.id_sucursal, c.id_cliente, 0, 0, 0, ?, ?, ?
+    (id_sucursal, id_cliente, efectivo_hoy, efectivo_ayer, efectivo_mes, id_usuario, fecha_ingreso, hora_ingreso, id_usuario_act, fecha_act, hora_act)
+    SELECT c.id_sucursal, c.id_cliente, 0, 0, 0, ?, ?, ?, ?, ?, ?
     FROM cc_clientes c
     LEFT JOIN cc_saldos_clientes s
         ON s.id_sucursal = c.id_sucursal
@@ -44,7 +44,7 @@ $sqlClientes = "INSERT INTO cc_saldos_clientes
     WHERE s.id_cliente IS NULL";
 
 if ($stmtClientes = mysqli_prepare($link, $sqlClientes)) {
-    mysqli_stmt_bind_param($stmtClientes, "iss", $idUsuario, $fecha, $hora);
+    mysqli_stmt_bind_param($stmtClientes, "ississ", $idUsuario, $fecha, $hora, $idUsuario, $fecha, $hora);
     mysqli_stmt_execute($stmtClientes);
     $summary['clientes_insertados'] = mysqli_stmt_affected_rows($stmtClientes);
     mysqli_stmt_close($stmtClientes);

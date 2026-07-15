@@ -25,9 +25,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     $numero = mysqli_num_rows($result);
     if ($numero == 0) {
         $efectivo_hoy = $efectivo_ayer = $efectivo_mes = 0;
-        $sql2 = "INSERT INTO cc_saldos_clientes (id_sucursal, id_cliente, efectivo_hoy, efectivo_ayer, efectivo_mes, id_usuario, fecha_ingreso, hora_ingreso) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        $sql2 = "INSERT INTO cc_saldos_clientes (id_sucursal, id_cliente, efectivo_hoy, efectivo_ayer, efectivo_mes, id_usuario, fecha_ingreso, hora_ingreso, id_usuario_act, fecha_act, hora_act) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         $stmt = mysqli_prepare($link, $sql2);
-        mysqli_stmt_bind_param($stmt, "iidddiss", $id_sucursal, $id_cliente, $efectivo_hoy, $efectivo_ayer, $efectivo_mes, $id_usuario, $fecha_ingreso, $hora_ingreso);
+        mysqli_stmt_bind_param($stmt, "iidddississ", $id_sucursal, $id_cliente, $efectivo_hoy, $efectivo_ayer, $efectivo_mes, $id_usuario, $fecha_ingreso, $hora_ingreso, $id_usuario_act, $fecha_act, $hora_act);
         $estatus = 0;
         $pagado = 0;
         mysqli_stmt_execute($stmt);
