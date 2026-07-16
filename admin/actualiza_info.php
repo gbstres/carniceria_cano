@@ -13,6 +13,8 @@ require_once "../functions/config_2.php";
 date_default_timezone_set("America/Mexico_City");
 // Define variables and initialize with empty values
 $id_sucursal = $_SESSION["id_sucursal"];
+$alertMessage = "";
+$alertType = "info";
 
 if (isset($_POST['fecha'])) {
     
@@ -25,29 +27,40 @@ if (isset($_POST['fecha'])) {
     $fecha = date('Y-m-d');
 }
 
+$forzarCatalogo = isset($_POST['forzar_catalogo']) && (string) $_POST['forzar_catalogo'] === '1';
+
 
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
     // valida fecha
     if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
-        echo "Fecha inválida.";
-        exit;
-    }
+        $alertType = "danger";
+        $alertMessage = "Fecha inválida.";
+    } elseif (!$forzarCatalogo && (!isset($_POST['check']) || !is_array($_POST['check']))) {
+        $alertType = "warning";
+        $alertMessage = "No se marcó ningún checkbox.";
+    } else {
+        $tablasSeleccionadas = isset($_POST['check']) && is_array($_POST['check']) ? $_POST['check'] : [];
 
-    if (!isset($_POST['check']) || !is_array($_POST['check'])) {
-        echo "No se marcó ningún checkbox.";
-        exit;
-    }
+        if ($forzarCatalogo) {
+            $rsCatalogo = mysqli_query($link, "SELECT id FROM cc_tablas_respaldo WHERE nombre_tabla IN ('cc_categorias', 'cc_productos')");
+            while ($rowCatalogo = mysqli_fetch_assoc($rsCatalogo)) {
+                $tablasSeleccionadas[(int) $rowCatalogo['id']] = 1;
+            }
+            if ($rsCatalogo) {
+                mysqli_free_result($rsCatalogo);
+            }
+        }
 
-    // Transacción en LOCAL (porque estás escribiendo en local)
-    mysqli_begin_transaction($link);
-    try {
+        // Transacción en LOCAL (porque estás escribiendo en local)
+        mysqli_begin_transaction($link);
+        try {
 
-        // opcional
-        mysqli_query($link, "SET FOREIGN_KEY_CHECKS=0");
+            // opcional
+            mysqli_query($link, "SET FOREIGN_KEY_CHECKS=0");
 
-        foreach ($_POST['check'] as $id => $value) {
+            foreach ($tablasSeleccionadas as $id => $value) {
 
             $id = (int)$id;
             if ((int)$value !== 1) continue;
@@ -67,6 +80,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // valida nombre de tabla
             if (!preg_match('/^[a-zA-Z0-9_]+$/', $tabla)) continue;
 
+            $forzarTablaCatalogo = $forzarCatalogo && in_array($tabla, ['cc_categorias', 'cc_productos'], true);
+
             // columnas y PK
             $columnas = [];
             $llaves = [];
@@ -85,15 +100,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 continue;
             }
 
-            // WHERE correcto (paréntesis)
             $fechaEsc = mysqli_real_escape_string($link2, $fecha);
             $idSuc = (int)$id_sucursal;
 
-            // Si tu tabla NO tiene id_sucursal, este WHERE fallará.
-            // (Si algunas no lo tienen, hay que detectarlo con hasColumn.)
-            $cad1 = "SELECT * FROM `$tabla`
-                     WHERE id_sucursal = $idSuc
-                       AND (fecha_ingreso = '$fechaEsc' OR fecha_act = '$fechaEsc')";
+            if ($forzarTablaCatalogo) {
+                $cad1 = "SELECT * FROM `$tabla`
+                         WHERE id_sucursal = $idSuc";
+            } else {
+                // Si tu tabla NO tiene id_sucursal, este WHERE fallará.
+                // (Si algunas no lo tienen, hay que detectarlo con hasColumn.)
+                $cad1 = "SELECT * FROM `$tabla`
+                         WHERE id_sucursal = $idSuc
+                           AND (fecha_ingreso = '$fechaEsc' OR fecha_act = '$fechaEsc')";
+            }
 
             $sqltabla = mysqli_query($link2, $cad1);
             if (!$sqltabla) continue;
@@ -107,6 +126,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 $vals = [];
                 foreach ($columnas as $c) {
                     $v = $rows[$c];
+                    if (in_array($c, ['fecha_ingreso', 'fecha_act'], true) && ($v === '0000-00-00' || $v === null || $v === '')) {
+                        $v = date('Y-m-d');
+                    }
+                    if (in_array($c, ['hora_ingreso', 'hora_act'], true) && ($v === '00:00:00' || $v === null || $v === '')) {
+                        $v = date('H:i:s');
+                    }
                     if ($v === null) {
                         $vals[] = "NULL";
                     } else {
@@ -126,14 +151,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             mysqli_free_result($sqltabla);
         }
 
-        mysqli_query($link, "SET FOREIGN_KEY_CHECKS=1");
-        mysqli_commit($link);
+            mysqli_query($link, "SET FOREIGN_KEY_CHECKS=1");
+            mysqli_commit($link);
 
-        echo "Recuperación completada correctamente.";
+            $alertType = "success";
+            $alertMessage = "Recuperación completada correctamente.";
 
-    } catch (Throwable $e) {
-        mysqli_rollback($link);
-        echo "ERROR: " . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8');
+        } catch (Throwable $e) {
+            mysqli_rollback($link);
+            mysqli_query($link, "SET FOREIGN_KEY_CHECKS=1");
+            $alertType = "danger";
+            $alertMessage = "ERROR: " . $e->getMessage();
+        }
     }
 }
 ?>
@@ -194,11 +223,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         <div class="col-sm-8 mx-auto">
                             <h1 class="text-center">Actualiza información del servidor</h1>
                         </div>
+                        <?php if ($alertMessage !== "") { ?>
+                            <div class="alert alert-<?php echo htmlspecialchars($alertType, ENT_QUOTES, 'UTF-8'); ?> alert-dismissible fade show" role="alert">
+                                <?php echo htmlspecialchars($alertMessage, ENT_QUOTES, 'UTF-8'); ?>
+                                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                            </div>
+                        <?php } ?>
                         <form class="row g-3 needs-validation" action="#" method="post" novalidate>
                             <div class="row g-3">
                                 <div class="col-6">
                                     <label for="Fecha" class="form-label">Seleccione la fecha:</label>
                                     <input name="fecha" id="datepicker" width="276" autocomplete="off" readonly="" value="<?php echo $fecha ?>"/>
+                                </div>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-12">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="1" id="forzar_catalogo" name="forzar_catalogo">
+                                        <label class="form-check-label" for="forzar_catalogo">
+                                            Forzar actualización completa de categorías y productos sin filtrar por fecha
+                                        </label>
+                                    </div>
                                 </div>
                             </div>
                             <div class="col-12 text-center" >
@@ -271,6 +316,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $('#datepicker').datepicker({
                 uiLibrary: 'bootstrap5',
                 format: 'yyyy-mm-dd'
+            });
+
+            $('form').on('submit', function (event) {
+                if ($('#forzar_catalogo').is(':checked')) {
+                    var mensaje = 'Advertencia: se actualizará la información completa desde GCP para cc_categorias y cc_productos, sin filtrar por fecha. ¿Desea continuar?';
+                    if (!confirm(mensaje)) {
+                        event.preventDefault();
+                        event.stopPropagation();
+                        return false;
+                    }
+                }
             });
 
         </script>      
