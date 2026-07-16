@@ -8,6 +8,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 
 require_once "../functions/config.php";    // LOCAL
 require_once "../functions/config_2.php";  // GCP
+require_once "../functions/sync_queue.php";
 date_default_timezone_set("America/Mexico_City");
 
 $idSucursalLocal = (int) ($_SESSION["id_sucursal"] ?? 0);
@@ -267,6 +268,14 @@ function importarVenta($link, $link2, int $idSucursalLocal, int $idUsuario, int 
     ($idSucursalLocal, $idCompraLocal, '$folioEsc', 1, 0, $idProveedorLocal, 0, $tipoPago,
      $idUsuario, '$hoy', '$ahora')
 ");
+    cc_sync_enqueue($link, $idSucursalLocal, 'compra_detalle', 'upsert', [
+        'id_compra' => $idCompraLocal,
+    ], [
+        'tabla' => 'cc_det_compras',
+        'motivo' => 'importacion_matriz',
+        'folio_externo' => $folioExterno,
+        'id_venta_matriz' => $idVentaMat,
+    ]);
 
     // 5) Insertar partidas + actualizar stock
     $consec = 1;
@@ -283,9 +292,18 @@ function importarVenta($link, $link2, int $idSucursalLocal, int $idUsuario, int 
             ($idSucursalLocal, $idCompraLocal, $consec, '$codigo', $precioCompra, $cantidad, '$folioEsc', 0,
              $idUsuario, '$hoy', '$ahora')
         ");
+        cc_sync_enqueue($link, $idSucursalLocal, 'compra', 'upsert', [
+            'id_compra' => $idCompraLocal,
+            'id_consecutivo' => $consec,
+        ], [
+            'tabla' => 'cc_compras',
+            'motivo' => 'importacion_matriz',
+            'folio_externo' => $folioExterno,
+            'id_venta_matriz' => $idVentaMat,
+        ]);
 
         // ✅ actualizar stock según reglas
-        aplicarStock($link, $idSucursalLocal, (string) $p['codigo'], $cantidad);
+        aplicarStock($link, $idSucursalLocal, (string) $p['codigo'], $cantidad, $idCompraLocal, $folioExterno, $idVentaMat);
 
         $consec++;
     }
@@ -401,7 +419,7 @@ function expandirPartidasConDerivados(mysqli $link, int $idSucursalLocal, array 
 /**
  * Aplica la suma de stock según centralizar_almacen.
  */
-function aplicarStock(mysqli $link, int $idSucursalLocal, string $codigo, float $cantidad): void {
+function aplicarStock(mysqli $link, int $idSucursalLocal, string $codigo, float $cantidad, int $idCompraLocal, string $folioExterno, int $idVentaMat): void {
     $prod = getProductoLocal($link, $idSucursalLocal, $codigo);
     if (!$prod)
         throw new Exception("Producto no existe (stock): $codigo");
@@ -426,6 +444,15 @@ function aplicarStock(mysqli $link, int $idSucursalLocal, string $codigo, float 
             throw new Exception("No se pudo actualizar almacen producto: $codigo");
         }
         mysqli_stmt_close($st);
+        cc_sync_enqueue($link, $idSucursalLocal, 'producto', 'upsert', [
+            'codigo' => $codigo,
+        ], [
+            'tabla' => 'cc_productos',
+            'motivo' => 'importacion_matriz_stock',
+            'id_compra' => $idCompraLocal,
+            'folio_externo' => $folioExterno,
+            'id_venta_matriz' => $idVentaMat,
+        ]);
     } elseif ($cent === 2) {
         $st = mysqli_prepare($link, "
             UPDATE cc_categorias
@@ -443,6 +470,16 @@ function aplicarStock(mysqli $link, int $idSucursalLocal, string $codigo, float 
             throw new Exception("No se pudo actualizar almacen categoría id_categoria=$idCat (código $codigo)");
         }
         mysqli_stmt_close($st);
+        cc_sync_enqueue($link, $idSucursalLocal, 'categoria', 'upsert', [
+            'id_categoria' => $idCat,
+        ], [
+            'tabla' => 'cc_categorias',
+            'motivo' => 'importacion_matriz_stock',
+            'id_compra' => $idCompraLocal,
+            'folio_externo' => $folioExterno,
+            'id_venta_matriz' => $idVentaMat,
+            'codigo' => $codigo,
+        ]);
     } else {
         // Si llega un valor distinto (por error de datos), mejor fallar para no descontrolar almacenes.
         throw new Exception("centralizar_almacen inválido ($cent) para código $codigo");
