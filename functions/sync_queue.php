@@ -292,6 +292,37 @@ function cc_sync_mark_error(mysqli $link, int $idSync, string $message): void
         WHERE id_sync = " . (int) $idSync);
 }
 
+function cc_sync_get_writable_columns(mysqli $link, string $table): array
+{
+    static $cache = [];
+
+    if (isset($cache[$table])) {
+        return $cache[$table];
+    }
+
+    $result = mysqli_query($link, "SHOW COLUMNS FROM `$table`");
+    if (!$result) {
+        throw new RuntimeException("Local columns $table: " . mysqli_error($link));
+    }
+
+    $columns = [];
+    while ($row = mysqli_fetch_assoc($result)) {
+        $extra = strtoupper((string) ($row['Extra'] ?? ''));
+        if (strpos($extra, 'GENERATED') !== false) {
+            continue;
+        }
+        $columns[] = (string) $row['Field'];
+    }
+    mysqli_free_result($result);
+
+    if (empty($columns)) {
+        throw new RuntimeException("No hay columnas escribibles en $table");
+    }
+
+    $cache[$table] = $columns;
+    return $columns;
+}
+
 function cc_sync_load_local_rows(mysqli $link, string $table, int $idSucursal, array $entityData): array
 {
     $where = ["id_sucursal = " . (int) $idSucursal];
@@ -310,7 +341,9 @@ function cc_sync_load_local_rows(mysqli $link, string $table, int $idSucursal, a
         }
     }
 
-    $sql = "SELECT * FROM `$table` WHERE " . implode(' AND ', $where);
+    $columns = cc_sync_get_writable_columns($link, $table);
+    $columnList = implode(',', array_map(fn($column) => "`$column`", $columns));
+    $sql = "SELECT $columnList FROM `$table` WHERE " . implode(' AND ', $where);
     $result = mysqli_query($link, $sql);
     if (!$result) {
         throw new RuntimeException("Local select $table: " . mysqli_error($link));
