@@ -56,6 +56,7 @@ if (in_array($ccHost, ['localhost', '127.0.0.1', '::1'], true)) {
                         <li><a class="dropdown-item" href="../reportes/por_fecha.php">Venta x fecha</a></li>
                         <li><a class="dropdown-item" href="../reportes/compra_por_dia.php">Compra x día</a></li>
                         <li><a class="dropdown-item" href="../reportes/compra_por_fecha.php">Compra x fecha</a></li>
+                        <li><a class="dropdown-item" href="../reportes/stock.php">Stock</a></li>
                         <?php
                         if (tienePermiso('ver')) {
                             echo '
