@@ -87,6 +87,7 @@ if (in_array($ccHost, ['localhost', '127.0.0.1', '::1'], true)) {
                     <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown" aria-expanded="false">Admin y sistemas</a>
                     <ul class="dropdown-menu">
                         <li><a class="dropdown-item" href="../admin/derivados.php">Derivados</a></li>
+                        <li><a class="dropdown-item" href="../admin/equivalencias_productos.php">Equivalencias productos</a></li>
                         <li><a class="dropdown-item" href="../admin/act_sistema.php">Actualizar sistema</a></li>
                         <li><a class="dropdown-item" href="../admin/actualiza_info.php">Actualiza inf. del servidor</a></li>
                         <li><a class="dropdown-item" href="../admin/importa_ventas_matriz.php">Importar Ventas</a></li>

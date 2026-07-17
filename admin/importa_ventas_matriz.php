@@ -39,6 +39,23 @@ function asegurarEsquemaImportacionMatriz(mysqli $link): void {
     if (!$existe) {
         qOrFail($link, "ALTER TABLE cc_det_compras ADD COLUMN folio_externo VARCHAR(30) NULL DEFAULT NULL AFTER id_compra");
     }
+
+    qOrFail($link, "CREATE TABLE IF NOT EXISTS cc_equivalencias_productos (
+        id_sucursal INT NOT NULL,
+        codigo_origen VARCHAR(10) NOT NULL,
+        codigo_destino VARCHAR(10) NOT NULL,
+        factor DECIMAL(10,4) NOT NULL DEFAULT 1,
+        activo TINYINT(1) NOT NULL DEFAULT 1,
+        id_usuario INT NOT NULL DEFAULT 0,
+        fecha_ingreso DATE NOT NULL,
+        hora_ingreso TIME NOT NULL,
+        id_usuario_act INT NOT NULL DEFAULT 0,
+        fecha_act DATE NOT NULL,
+        hora_act TIME NOT NULL,
+        PRIMARY KEY (id_sucursal, codigo_origen),
+        KEY idx_equivalencias_destino (id_sucursal, codigo_destino),
+        KEY idx_equivalencias_activo (activo)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci");
 }
 
 /**
@@ -253,8 +270,9 @@ function importarVenta($link, $link2, int $idSucursalLocal, int $idUsuario, int 
         return;
     }
 
-    // 2) Expandir por derivados (si aplica)
+    // 2) Expandir por derivados (si aplica) y resolver equivalencias de inventario.
     $partidasExp = expandirPartidasConDerivados($link, $idSucursalLocal, $partidas);
+    $partidasExp = aplicarEquivalenciasProductos($link, $idSucursalLocal, $partidasExp);
 
     // 3) Validar que todos los códigos existan en cc_productos (si falta 1, no generar compra)
     $faltantes = [];
@@ -343,6 +361,63 @@ function getProductoLocal(mysqli $link, int $idSucursalLocal, string $codigo): ?
     mysqli_free_result($res);
     mysqli_stmt_close($st);
     return $row;
+}
+
+function getEquivalenciaProducto(mysqli $link, int $idSucursalLocal, string $codigo): ?array {
+    $st = mysqli_prepare($link, "
+        SELECT codigo_destino, factor
+        FROM cc_equivalencias_productos
+        WHERE id_sucursal = ?
+          AND codigo_origen = ?
+          AND activo = 1
+        LIMIT 1
+    ");
+    if (!$st) {
+        throw new Exception("Prepare getEquivalenciaProducto: " . mysqli_error($link));
+    }
+    mysqli_stmt_bind_param($st, "is", $idSucursalLocal, $codigo);
+    mysqli_stmt_execute($st);
+    $res = mysqli_stmt_get_result($st);
+    $row = mysqli_fetch_assoc($res) ?: null;
+    mysqli_free_result($res);
+    mysqli_stmt_close($st);
+    return $row;
+}
+
+function aplicarEquivalenciasProductos(mysqli $link, int $idSucursalLocal, array $partidas): array {
+    $out = [];
+
+    foreach ($partidas as $p) {
+        $codigoOrigen = (string) $p['codigo'];
+        $codigoInventario = $codigoOrigen;
+        $cantidadInventario = (float) $p['cantidad'];
+        $equivalencia = getEquivalenciaProducto($link, $idSucursalLocal, $codigoOrigen);
+
+        if ($equivalencia !== null) {
+            $codigoInventario = (string) $equivalencia['codigo_destino'];
+            $cantidadInventario *= (float) $equivalencia['factor'];
+        }
+
+        $out[] = [
+            'codigo' => $codigoInventario,
+            'cantidad' => $cantidadInventario,
+            'precio_compra' => (float) $p['precio_compra'],
+            'origen' => $p['origen'] ?? $codigoOrigen,
+            'codigo_operacion' => $codigoOrigen,
+        ];
+    }
+
+    $grp = [];
+    foreach ($out as $x) {
+        $k = $x['codigo'] . '|' . number_format((float) $x['precio_compra'], 2, '.', '');
+        if (!isset($grp[$k])) {
+            $grp[$k] = $x;
+        } else {
+            $grp[$k]['cantidad'] += (float) $x['cantidad'];
+        }
+    }
+
+    return array_values($grp);
 }
 
 /**
