@@ -27,6 +27,20 @@ function qOrFail($link, string $sql) {
     return $r;
 }
 
+function asegurarEsquemaImportacionMatriz(mysqli $link): void {
+    $rs = mysqli_query($link, "SHOW COLUMNS FROM cc_det_compras LIKE 'folio_externo'");
+    if (!$rs) {
+        throw new Exception("No se pudo revisar cc_det_compras: " . mysqli_error($link));
+    }
+
+    $existe = mysqli_num_rows($rs) > 0;
+    mysqli_free_result($rs);
+
+    if (!$existe) {
+        qOrFail($link, "ALTER TABLE cc_det_compras ADD COLUMN folio_externo VARCHAR(30) NULL DEFAULT NULL AFTER id_compra");
+    }
+}
+
 /**
  * Proveedor LOCAL que representa a la MATRIZ.
  * Aquí usamos: cc_proveedores.clave_cliente (porque ese hace match con cc_clientes.clave_proveedor en matriz)
@@ -495,6 +509,7 @@ $ventasPreview = [];
 $provMatriz = null;
 
 try {
+    asegurarEsquemaImportacionMatriz($link);
     $provMatriz = getProveedorMatrizLocal($link, $idSucursalLocal);
 
     if (isset($_POST['accion']) && $_POST['accion'] === 'preview') {
