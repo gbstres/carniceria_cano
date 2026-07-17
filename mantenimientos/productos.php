@@ -313,11 +313,10 @@ $sqlproductos = mysqli_query($link, "
 //$query = $link -> query ("SELECT * FROM sbb_telas");
                                             $query = mysqli_query($link, "SELECT * FROM cc_categorias where id_sucursal = $id_sucursal order by mayoreo,desc_categoria");
                                             while ($valores = mysqli_fetch_array($query)) {
-                                                $mayoreo = $valores['mayoreo'] ? 'MAYOREO' : 'MENUDEO';
                                                 if ($valores['id_categoria'] == $id_categoria_e) {
-                                                    echo '<option value="' . $valores['id_categoria'] . '" selected="selected">' . $valores['desc_categoria'] . ' - ' . $mayoreo . '</option>';
+                                                    echo '<option value="' . $valores['id_categoria'] . '" selected="selected">' . $valores['desc_categoria'] . '</option>';
                                                 } else {
-                                                    echo '<option value="' . $valores['id_categoria'] . '">' . $valores['desc_categoria'] . ' - ' . $mayoreo . '</option>';
+                                                    echo '<option value="' . $valores['id_categoria'] . '">' . $valores['desc_categoria'] . '</option>';
                                                 }
                                             }
                                             ?>
@@ -505,8 +504,7 @@ $sqlproductos = mysqli_query($link, "
 //$query = $link -> query ("SELECT * FROM sbb_telas");
                                         $query = mysqli_query($link, "SELECT * FROM cc_categorias where id_sucursal = $id_sucursal order by mayoreo,desc_categoria");
                                         while ($valores = mysqli_fetch_array($query)) {
-                                            $mayoreo = $valores['mayoreo'] ? 'MAYOREO' : 'MENUDEO';
-                                            echo '<option value="' . $valores['id_categoria'] . '">' . $valores['desc_categoria'] . ' - ' . $mayoreo . '</option>';
+                                            echo '<option value="' . $valores['id_categoria'] . '">' . $valores['desc_categoria'] . '</option>';
                                         }
                                         ?>
                                     </select>
