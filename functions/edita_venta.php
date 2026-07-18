@@ -442,10 +442,73 @@ WHERE a.id_sucursal = $id_sucursal AND a.id_venta = $id_venta  and a.estatus in 
     }
 }
 
+function existe_tabla_equivalencias_productos_venta($link) {
+    static $existe = null;
+    if ($existe !== null) {
+        return $existe;
+    }
+
+    $res = mysqli_query($link, "SHOW TABLES LIKE 'cc_equivalencias_productos'");
+    $existe = $res && mysqli_num_rows($res) > 0;
+    if ($res) {
+        mysqli_free_result($res);
+    }
+    return $existe;
+}
+
+function get_equivalencia_producto_venta($link, $id_sucursal, $codigo) {
+    if (!existe_tabla_equivalencias_productos_venta($link)) {
+        return null;
+    }
+
+    $st = mysqli_prepare($link, "
+        SELECT codigo_destino, factor
+        FROM cc_equivalencias_productos
+        WHERE id_sucursal = ?
+          AND codigo_origen = ?
+          AND activo = 1
+        LIMIT 1
+    ");
+    if (!$st) {
+        return null;
+    }
+
+    $codigo = (string) $codigo;
+    mysqli_stmt_bind_param($st, "is", $id_sucursal, $codigo);
+    mysqli_stmt_execute($st);
+    $res = mysqli_stmt_get_result($st);
+    $row = mysqli_fetch_assoc($res) ?: null;
+    mysqli_free_result($res);
+    mysqli_stmt_close($st);
+
+    return $row;
+}
+
+function resolver_inventario_producto_venta($link, $id_sucursal, $codigo, $cantidad) {
+    $codigoInventario = (string) $codigo;
+    $cantidadInventario = (float) $cantidad;
+    $equivalencia = get_equivalencia_producto_venta($link, $id_sucursal, $codigoInventario);
+
+    if ($equivalencia !== null) {
+        $codigoInventario = (string) $equivalencia['codigo_destino'];
+        $cantidadInventario = round($cantidadInventario * (float) $equivalencia['factor'], 3);
+    }
+
+    return [
+        'codigo' => $codigoInventario,
+        'cantidad' => $cantidadInventario,
+    ];
+}
+
 function recalcula_almacen_producto($link, $id_sucursal, $codigo, $cantidad, $fecha_act, $hora_act, $id_usuario_act) {
-    mysqli_query($link, "UPDATE cc_productos SET almacen = almacen - $cantidad, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act= $id_usuario_act WHERE id_sucursal= $id_sucursal and codigo = $codigo");
+    $inventario = resolver_inventario_producto_venta($link, $id_sucursal, $codigo, $cantidad);
+    $codigoInventario = (string) $inventario['codigo'];
+    $codigoSql = mysqli_real_escape_string($link, $codigoInventario);
+    $cantidad = (float) $inventario['cantidad'];
+
+    mysqli_query($link, "UPDATE cc_productos SET almacen = almacen - $cantidad, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act= $id_usuario_act WHERE id_sucursal= $id_sucursal and codigo = '$codigoSql'");
     cc_sync_enqueue($link, $id_sucursal, 'producto', 'upsert', [
-        'codigo' => (string) $codigo,
+        'codigo' => $codigoInventario,
     ], [
         'tabla' => 'cc_productos',
         'motivo' => 'movimiento_venta',
