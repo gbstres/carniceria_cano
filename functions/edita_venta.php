@@ -92,7 +92,8 @@ if ($_POST['movimiento'] == 1) {
                 'id_cliente' => (int) $id_cliente,
                 'codigo' => (string) $codigo,
             ]);
-            $response_array [] = array('id_venta' => $id_venta, 'id_consecutivo' => $id_consecutivo, 'descripcion' => $descripcion, 'id_cliente' => $id_cliente, 'fecha_ingreso' => $fecha_ingreso, 'hora_ingreso' => $hora_ingreso, 'clave_externa' => $clave_externa);
+            $stockVenta = get_stock_restante_producto_venta($link, $id_sucursal, $codigo, $cantidad);
+            $response_array [] = array('id_venta' => $id_venta, 'id_consecutivo' => $id_consecutivo, 'descripcion' => $descripcion, 'id_cliente' => $id_cliente, 'fecha_ingreso' => $fecha_ingreso, 'hora_ingreso' => $hora_ingreso, 'clave_externa' => $clave_externa, 'stock_actual' => $stockVenta['stock_actual'], 'stock_restante' => $stockVenta['stock_restante'], 'codigo_inventario' => $stockVenta['codigo_inventario']);
         } else {
             $response_array [] = array('id_venta' => 0, 'id_consecutivo' => 0, 'id_cliente' => 0);
         }
@@ -292,7 +293,8 @@ else if ($_POST['movimiento'] == 8) {
                 'id_cliente' => (int) $id_cliente,
                 'codigo' => (string) $codigo,
             ]);
-            $response_array [] = array('id_venta' => $id_venta, 'id_consecutivo' => $id_consecutivo, 'descripcion' => $descripcion, 'id_cliente' => $id_cliente, 'fecha_ingreso' => $fecha_ingreso, 'hora_ingreso' => $hora_ingreso, 'clave_externa' => $clave_externa);
+            $stockVenta = get_stock_restante_producto_venta($link, $id_sucursal, $codigo, $cantidad);
+            $response_array [] = array('id_venta' => $id_venta, 'id_consecutivo' => $id_consecutivo, 'descripcion' => $descripcion, 'id_cliente' => $id_cliente, 'fecha_ingreso' => $fecha_ingreso, 'hora_ingreso' => $hora_ingreso, 'clave_externa' => $clave_externa, 'stock_actual' => $stockVenta['stock_actual'], 'stock_restante' => $stockVenta['stock_restante'], 'codigo_inventario' => $stockVenta['codigo_inventario']);
         } else {
             $response_array [] = array('id_venta' => 0, 'id_consecutivo' => 0, 'id_cliente' => 0);
         }
@@ -497,6 +499,28 @@ function resolver_inventario_producto_venta($link, $id_sucursal, $codigo, $canti
     return [
         'codigo' => $codigoInventario,
         'cantidad' => $cantidadInventario,
+    ];
+}
+
+function get_stock_restante_producto_venta($link, $id_sucursal, $codigo, $cantidad) {
+    $inventario = resolver_inventario_producto_venta($link, $id_sucursal, $codigo, $cantidad);
+    $codigoInventario = (string) $inventario['codigo'];
+    $codigoSql = mysqli_real_escape_string($link, $codigoInventario);
+    $stockActual = null;
+
+    $res = mysqli_query($link, "SELECT almacen FROM cc_productos WHERE id_sucursal = $id_sucursal AND codigo = '$codigoSql' LIMIT 1");
+    if ($res) {
+        $row = mysqli_fetch_assoc($res);
+        if ($row) {
+            $stockActual = (float) $row['almacen'];
+        }
+        mysqli_free_result($res);
+    }
+
+    return [
+        'codigo_inventario' => $codigoInventario,
+        'stock_actual' => $stockActual,
+        'stock_restante' => $stockActual === null ? null : round($stockActual - (float) $inventario['cantidad'], 3),
     ];
 }
 

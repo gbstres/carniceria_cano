@@ -202,6 +202,33 @@ $qr_precio = file_exists(__DIR__ . '/../img/qr_precios_sucursal_' . $id_sucursal
                 font-size: 16px ;
                 text-align: center;
             }
+            #venta tbody tr.stock-alerta td {
+                background-color: #fff3cd !important;
+            }
+            #venta tbody tr.stock-agotado td {
+                background-color: #f8d7da !important;
+            }
+            #venta tbody td[data-stock-label]::after {
+                content: attr(data-stock-label);
+                display: inline-block;
+                margin-left: 8px;
+                padding: 2px 6px;
+                border-radius: 4px;
+                font-size: 12px;
+                font-weight: 700;
+                line-height: 1.2;
+                white-space: nowrap;
+            }
+            #venta tbody tr.stock-alerta td[data-stock-label]::after {
+                color: #664d03;
+                background-color: #ffec99;
+                border: 1px solid #ffd43b;
+            }
+            #venta tbody tr.stock-agotado td[data-stock-label]::after {
+                color: #842029;
+                background-color: #f5c2c7;
+                border: 1px solid #ea868f;
+            }
         </style>
 
 
@@ -1101,6 +1128,34 @@ if (isset($_GET['id_venta'])) {
                                         $("#codigo").val("");
                                         $("#codigo").focus();
                                     }
+                                    function getClaseAlertaStock(stockRestante) {
+                                        stockRestante = parseFloat(stockRestante);
+                                        if (isNaN(stockRestante)) {
+                                            return '';
+                                        }
+                                        if (stockRestante <= 0) {
+                                            return 'stock-agotado';
+                                        }
+                                        if (stockRestante <= 1) {
+                                            return 'stock-alerta';
+                                        }
+                                        return '';
+                                    }
+                                    function aplicaAlertaStock(rowNode, stockRestante) {
+                                        stockRestante = parseFloat(stockRestante);
+                                        if (isNaN(stockRestante)) {
+                                            return;
+                                        }
+                                        var clase = getClaseAlertaStock(stockRestante);
+                                        if (clase !== '') {
+                                            $(rowNode).addClass(clase);
+                                        }
+                                        if (stockRestante <= 0) {
+                                            $(rowNode).find('td').eq(1).attr('data-stock-label', 'Sin stock');
+                                        } else if (stockRestante <= 1) {
+                                            $(rowNode).find('td').eq(1).attr('data-stock-label', 'Stock bajo: ' + stockRestante.toFixed(3));
+                                        }
+                                    }
                                     function edita_venta(codigo, cantidad, precio_venta, consecutivo, movimiento, clave_externa, tipo_producto)
                                     {
                                         id_cliente = $("#id_cliente").val();
@@ -1128,16 +1183,19 @@ if (isset($_GET['id_venta'])) {
                                                 {
                                                     total = (parseFloat(precio_venta) * parseFloat(cantidad)).toFixed(2);
                                                     tD = $('#venta').DataTable();
+                                                    var descripcionVenta = response[0].descripcion;
+                                                    var accionBorrar = '<a href="#" onclick="remove(this,' + response[0].id_consecutivo + ');" title="Eliminar" class=".remove"><img src="../img/icons/trash.svg"></a>';
 
 <?php
 if ($descripcion_corta == 1) {
-    echo 'tD.row.add([codigo, response[0].descripcion, precio_venta, cantidad, response[0].clave_externa, total, \'<a href="#" onclick="remove(this,\' + response[0].id_consecutivo + \');" title="Eliminar" class=".remove"><img src="../img/icons/trash.svg"></a>\']).node().id = response[0].id_venta + \',\' + response[0].id_consecutivo;';
+    echo 'var rowNode = tD.row.add([codigo, descripcionVenta, precio_venta, cantidad, response[0].clave_externa, total, accionBorrar]).node();';
 } else {
-    echo 'tD.row.add([codigo, response[0].descripcion, precio_venta, cantidad, total, \'<a href="#" onclick="remove(this,\' + response[0].id_consecutivo + \');" title="Eliminar" class=".remove"><img src="../img/icons/trash.svg"></a>\']).node().id = response[0].id_venta + \',\' + response[0].id_consecutivo;';
+    echo 'var rowNode = tD.row.add([codigo, descripcionVenta, precio_venta, cantidad, total, accionBorrar]).node();';
 }
 ?>
 
-
+                                                    rowNode.id = response[0].id_venta + ',' + response[0].id_consecutivo;
+                                                    aplicaAlertaStock(rowNode, response[0].stock_restante);
 
                                                     tD.draw(false);
                                                     makeEditable();
