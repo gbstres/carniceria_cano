@@ -14,6 +14,135 @@ date_default_timezone_set("America/Mexico_City");
 // Define variables and initialize with empty values
 $id_sucursal = $_SESSION["id_sucursal"];
 
+function render_stock_bajo_cierre($link, $id_sucursal) {
+    $id_sucursal = (int) $id_sucursal;
+    $html = '';
+    $stockBajo = [];
+    $resEquivalencias = mysqli_query($link, "SHOW TABLES LIKE 'cc_equivalencias_productos'");
+    $tieneEquivalencias = $resEquivalencias && mysqli_num_rows($resEquivalencias) > 0;
+    if ($resEquivalencias) {
+        mysqli_free_result($resEquivalencias);
+    }
+
+    if ($tieneEquivalencias) {
+        $sqlProductos = mysqli_query($link, "
+            SELECT
+                p.codigo AS codigo,
+                p.descripcion AS descripcion,
+                COALESCE(c.desc_categoria, '') AS categoria,
+                CASE
+                    WHEN e.codigo_destino IS NULL THEN ''
+                    ELSE CONCAT(e.codigo_destino, ' - ', COALESCE(pd.descripcion, ''))
+                END AS destino,
+                COALESCE(pd.almacen, p.almacen) AS almacen
+            FROM cc_productos p
+            LEFT JOIN cc_categorias c
+                ON c.id_sucursal = p.id_sucursal
+               AND c.id_categoria = p.id_categoria
+            LEFT JOIN cc_equivalencias_productos e
+                ON e.id_sucursal = p.id_sucursal
+               AND e.codigo_origen = p.codigo
+               AND e.activo = 1
+            LEFT JOIN cc_productos pd
+                ON pd.id_sucursal = e.id_sucursal
+               AND pd.codigo = e.codigo_destino
+            WHERE p.id_sucursal = $id_sucursal
+              AND p.centralizar_almacen = 1
+              AND COALESCE(pd.almacen, p.almacen) < 5
+        ");
+    } else {
+        $sqlProductos = mysqli_query($link, "
+            SELECT
+                p.codigo AS codigo,
+                p.descripcion AS descripcion,
+                COALESCE(c.desc_categoria, '') AS categoria,
+                '' AS destino,
+                p.almacen AS almacen
+            FROM cc_productos p
+            LEFT JOIN cc_categorias c
+                ON c.id_sucursal = p.id_sucursal
+               AND c.id_categoria = p.id_categoria
+            WHERE p.id_sucursal = $id_sucursal
+              AND p.centralizar_almacen = 1
+              AND p.almacen < 5
+        ");
+    }
+
+    while ($row = mysqli_fetch_assoc($sqlProductos)) {
+        $row['tipo'] = 'Producto';
+        $stockBajo[] = $row;
+    }
+
+    $sqlCategorias = mysqli_query($link, "
+        SELECT
+            CAST(id_categoria AS CHAR) AS codigo,
+            desc_categoria AS descripcion,
+            '' AS categoria,
+            '' AS destino,
+            almacen
+        FROM cc_categorias
+        WHERE id_sucursal = $id_sucursal
+          AND id_categoria IN (1, 2)
+          AND almacen < 5
+    ");
+
+    while ($row = mysqli_fetch_assoc($sqlCategorias)) {
+        $row['tipo'] = 'Categoría';
+        $stockBajo[] = $row;
+    }
+
+    usort($stockBajo, function ($a, $b) {
+        $cmp = (float) $a['almacen'] <=> (float) $b['almacen'];
+        if ($cmp !== 0) {
+            return $cmp;
+        }
+        $cmp = strcmp((string) $a['tipo'], (string) $b['tipo']);
+        if ($cmp !== 0) {
+            return $cmp;
+        }
+        $cmp = strcmp((string) $a['categoria'], (string) $b['categoria']);
+        if ($cmp !== 0) {
+            return $cmp;
+        }
+        return strcmp((string) $a['descripcion'], (string) $b['descripcion']);
+    });
+    $stockBajo = array_slice($stockBajo, 0, 20);
+
+    $html .= '<div class="col-12 d-flex justify-content-center">
+        <table class="display w-70 mx-auto stock-bajo-tabla" style="width: 100%;">
+            <thead>
+                <tr>
+                    <th>Tipo</th>
+                    <th>Código/ID</th>
+                    <th>Descripción</th>
+                    <th>Categoría</th>
+                    <th>Destino</th>
+                    <th>Stock</th>
+                </tr>
+            </thead>
+            <tbody>';
+
+    $totalFilas = 0;
+    foreach ($stockBajo as $row) {
+        $totalFilas++;
+        $html .= '<tr>
+            <td>' . htmlspecialchars($row['tipo'], ENT_QUOTES, 'UTF-8') . '</td>
+            <td>' . htmlspecialchars($row['codigo'], ENT_QUOTES, 'UTF-8') . '</td>
+            <td>' . htmlspecialchars($row['descripcion'], ENT_QUOTES, 'UTF-8') . '</td>
+            <td>' . htmlspecialchars($row['categoria'], ENT_QUOTES, 'UTF-8') . '</td>
+            <td>' . htmlspecialchars($row['destino'], ENT_QUOTES, 'UTF-8') . '</td>
+            <td class="text-end">' . number_format((float) $row['almacen'], 3) . '</td>
+        </tr>';
+    }
+
+    if ($totalFilas === 0) {
+        $html .= '<tr><td colspan="6" class="text-center">Sin productos ni categorías con stock menor a 5</td></tr>';
+    }
+
+    $html .= '</tbody></table></div>';
+    return $html;
+}
+
 if (isset($_POST['fecha_cierre'])) {
     $hora_ingreso = date('H:i:s');
     $fecha_ingreso = $_POST['fecha_cierre'];
@@ -549,6 +678,15 @@ $totalc = $val_claves[1] + $val_claves[2] + $val_claves[5] - $val_claves[3] - $a
                             <br>
                             <div class="card">
                                 <div class="card-header">
+                                    <h5 class="card-title mb-0">Stock bajo</h5>
+                                </div>
+                            </div>
+                            <div id="tabla_stock_bajo0">
+                                <?php echo render_stock_bajo_cierre($link, $id_sucursal); ?>
+                            </div>
+                            <br>
+                            <div class="card">
+                                <div class="card-header">
                                     <h5 class="card-title mb-0">Resumen</h5>
                                 </div>
                             </div>
@@ -842,6 +980,15 @@ $totalc = $val_claves[1] + $val_claves[2] + $val_claves[5] - $val_claves[3] - $a
                             <br>
                             <div class="card">
                                 <div class="card-header">
+                                    <h5 class="card-title mb-0">Stock bajo</h5>
+                                </div>
+                            </div>
+                            <div id="tabla_stock_bajo' . $id_cierre . '">
+                                ' . render_stock_bajo_cierre($link, $id_sucursal) . '
+                            </div>
+                            <br>
+                            <div class="card">
+                                <div class="card-header">
                                     <h5 class="card-title mb-0">Resumen</h5>
                                 </div>
                             </div>
@@ -937,7 +1084,8 @@ $totalc = $val_claves[1] + $val_claves[2] + $val_claves[5] - $val_claves[3] - $a
                     #tabla_principal_cierre, #tabla_principal_cierre table, #tabla_principal_cierre th, #tabla_principal_cierre td, #tabla_movimientos_cierre table, #tabla_movimientos_cierre th, #tabla_movimientos_cierre td,
                     #tabla_gastos_cierre, #tabla_gastos_cierre table, #tabla_gastos_cierre th, #tabla_gastos_cierre td,
                     #tabla_entradas_cierre, #tabla_entradas_cierre table, #tabla_entradas_cierre th, #tabla_entradas_cierre td,
-                    #tabla_clientes_cierre, #tabla_clientes_cierre table, #tabla_clientes_cierre th, #tabla_clientes_cierre td
+                    #tabla_clientes_cierre, #tabla_clientes_cierre table, #tabla_clientes_cierre th, #tabla_clientes_cierre td,
+                    #tabla_stock_bajo_cierre, #tabla_stock_bajo_cierre table, #tabla_stock_bajo_cierre th, #tabla_stock_bajo_cierre td
                     {
                         border: 1px solid;
                         border-collapse: collapse;
@@ -986,6 +1134,10 @@ $totalc = $val_claves[1] + $val_claves[2] + $val_claves[5] - $val_claves[3] - $a
                 <br>
                 <h5>Clientes con saldo<h5>
                 <div id="tabla_clientes_cierre">
+                </div>
+                <br>
+                <h5>Stock bajo<h5>
+                <div id="tabla_stock_bajo_cierre">
                 </div>
                 <br>
                 <h5>Resumen<h5>
@@ -1102,6 +1254,7 @@ if (isset($_POST['fecha_cierre'])) {
                                             $('#tabla_gastos_cierre').empty();
                                             $('#tabla_entradas_cierre').empty();
                                             $('#tabla_clientes_cierre').empty();
+                                            $('#tabla_stock_bajo_cierre').empty();
                                             $('#tabla_principal_cierre').empty();
                                             extrae_tabla(consecutivo);
 
@@ -1119,6 +1272,9 @@ if (isset($_POST['fecha_cierre'])) {
 
                                             var miVariable = "tabla_clientes" + consecutivo;
                                             $('#tabla_clientes_cierre').html($('#' + miVariable).html());
+
+                                            var miVariable = "tabla_stock_bajo" + consecutivo;
+                                            $('#tabla_stock_bajo_cierre').html($('#' + miVariable).html());
 
 
 
