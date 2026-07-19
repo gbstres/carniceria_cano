@@ -1161,7 +1161,7 @@ if (isset($_GET['id_venta'])) {
                                         if (stockRestante < 0) {
                                             $(rowNode).find('td').eq(1).attr('data-stock-label', 'Sin stock');
                                         } else if (stockRestante < limiteStock) {
-                                            $(rowNode).find('td').eq(1).attr('data-stock-label', 'Stock bajo: ' + stockRestante.toFixed(3) + ' / ' + limiteStock.toFixed(3));
+                                            $(rowNode).find('td').eq(1).attr('data-stock-label', 'Stock bajo: ' + stockRestante.toFixed(1));
                                         }
                                     }
                                     function edita_venta(codigo, cantidad, precio_venta, consecutivo, movimiento, clave_externa, tipo_producto)
