@@ -1128,32 +1128,40 @@ if (isset($_GET['id_venta'])) {
                                         $("#codigo").val("");
                                         $("#codigo").focus();
                                     }
-                                    function getClaseAlertaStock(stockRestante) {
+                                    function getClaseAlertaStock(stockRestante, limiteStock) {
                                         stockRestante = parseFloat(stockRestante);
+                                        limiteStock = parseFloat(limiteStock);
                                         if (isNaN(stockRestante)) {
                                             return '';
                                         }
-                                        if (stockRestante <= 0) {
+                                        if (isNaN(limiteStock)) {
+                                            limiteStock = 5;
+                                        }
+                                        if (stockRestante < 0) {
                                             return 'stock-agotado';
                                         }
-                                        if (stockRestante < 5) {
+                                        if (stockRestante < limiteStock) {
                                             return 'stock-alerta';
                                         }
                                         return '';
                                     }
-                                    function aplicaAlertaStock(rowNode, stockRestante) {
+                                    function aplicaAlertaStock(rowNode, stockRestante, limiteStock) {
                                         stockRestante = parseFloat(stockRestante);
+                                        limiteStock = parseFloat(limiteStock);
                                         if (isNaN(stockRestante)) {
                                             return;
                                         }
-                                        var clase = getClaseAlertaStock(stockRestante);
+                                        if (isNaN(limiteStock)) {
+                                            limiteStock = 5;
+                                        }
+                                        var clase = getClaseAlertaStock(stockRestante, limiteStock);
                                         if (clase !== '') {
                                             $(rowNode).addClass(clase);
                                         }
-                                        if (stockRestante <= 0) {
+                                        if (stockRestante < 0) {
                                             $(rowNode).find('td').eq(1).attr('data-stock-label', 'Sin stock');
-                                        } else if (stockRestante < 5) {
-                                            $(rowNode).find('td').eq(1).attr('data-stock-label', 'Stock bajo: ' + stockRestante.toFixed(3));
+                                        } else if (stockRestante < limiteStock) {
+                                            $(rowNode).find('td').eq(1).attr('data-stock-label', 'Stock bajo: ' + stockRestante.toFixed(3) + ' / ' + limiteStock.toFixed(3));
                                         }
                                     }
                                     function edita_venta(codigo, cantidad, precio_venta, consecutivo, movimiento, clave_externa, tipo_producto)
@@ -1195,7 +1203,7 @@ if ($descripcion_corta == 1) {
 ?>
 
                                                     rowNode.id = response[0].id_venta + ',' + response[0].id_consecutivo;
-                                                    aplicaAlertaStock(rowNode, response[0].stock_restante);
+                                                    aplicaAlertaStock(rowNode, response[0].stock_restante, response[0].limite_stock);
 
                                                     tD.draw(false);
                                                     makeEditable();

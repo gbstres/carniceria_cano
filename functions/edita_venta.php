@@ -93,7 +93,7 @@ if ($_POST['movimiento'] == 1) {
                 'codigo' => (string) $codigo,
             ]);
             $stockVenta = get_stock_restante_producto_venta($link, $id_sucursal, $codigo, $cantidad);
-            $response_array [] = array('id_venta' => $id_venta, 'id_consecutivo' => $id_consecutivo, 'descripcion' => $descripcion, 'id_cliente' => $id_cliente, 'fecha_ingreso' => $fecha_ingreso, 'hora_ingreso' => $hora_ingreso, 'clave_externa' => $clave_externa, 'stock_actual' => $stockVenta['stock_actual'], 'stock_restante' => $stockVenta['stock_restante'], 'codigo_inventario' => $stockVenta['codigo_inventario']);
+            $response_array [] = array('id_venta' => $id_venta, 'id_consecutivo' => $id_consecutivo, 'descripcion' => $descripcion, 'id_cliente' => $id_cliente, 'fecha_ingreso' => $fecha_ingreso, 'hora_ingreso' => $hora_ingreso, 'clave_externa' => $clave_externa, 'stock_actual' => $stockVenta['stock_actual'], 'stock_restante' => $stockVenta['stock_restante'], 'limite_stock' => $stockVenta['limite_stock'], 'codigo_inventario' => $stockVenta['codigo_inventario']);
         } else {
             $response_array [] = array('id_venta' => 0, 'id_consecutivo' => 0, 'id_cliente' => 0);
         }
@@ -294,7 +294,7 @@ else if ($_POST['movimiento'] == 8) {
                 'codigo' => (string) $codigo,
             ]);
             $stockVenta = get_stock_restante_producto_venta($link, $id_sucursal, $codigo, $cantidad);
-            $response_array [] = array('id_venta' => $id_venta, 'id_consecutivo' => $id_consecutivo, 'descripcion' => $descripcion, 'id_cliente' => $id_cliente, 'fecha_ingreso' => $fecha_ingreso, 'hora_ingreso' => $hora_ingreso, 'clave_externa' => $clave_externa, 'stock_actual' => $stockVenta['stock_actual'], 'stock_restante' => $stockVenta['stock_restante'], 'codigo_inventario' => $stockVenta['codigo_inventario']);
+            $response_array [] = array('id_venta' => $id_venta, 'id_consecutivo' => $id_consecutivo, 'descripcion' => $descripcion, 'id_cliente' => $id_cliente, 'fecha_ingreso' => $fecha_ingreso, 'hora_ingreso' => $hora_ingreso, 'clave_externa' => $clave_externa, 'stock_actual' => $stockVenta['stock_actual'], 'stock_restante' => $stockVenta['stock_restante'], 'limite_stock' => $stockVenta['limite_stock'], 'codigo_inventario' => $stockVenta['codigo_inventario']);
         } else {
             $response_array [] = array('id_venta' => 0, 'id_consecutivo' => 0, 'id_cliente' => 0);
         }
@@ -502,17 +502,36 @@ function resolver_inventario_producto_venta($link, $id_sucursal, $codigo, $canti
     ];
 }
 
+function existe_columna_limite_stock_producto_venta($link) {
+    static $existe = null;
+    if ($existe !== null) {
+        return $existe;
+    }
+
+    $res = mysqli_query($link, "SHOW COLUMNS FROM cc_productos LIKE 'limite_stock'");
+    $existe = $res && mysqli_num_rows($res) > 0;
+    if ($res) {
+        mysqli_free_result($res);
+    }
+    return $existe;
+}
+
 function get_stock_restante_producto_venta($link, $id_sucursal, $codigo, $cantidad) {
     $inventario = resolver_inventario_producto_venta($link, $id_sucursal, $codigo, $cantidad);
     $codigoInventario = (string) $inventario['codigo'];
     $codigoSql = mysqli_real_escape_string($link, $codigoInventario);
     $stockActual = null;
+    $limiteStock = 5.0;
+    $selectLimite = existe_columna_limite_stock_producto_venta($link) ? ", limite_stock" : "";
 
-    $res = mysqli_query($link, "SELECT almacen FROM cc_productos WHERE id_sucursal = $id_sucursal AND codigo = '$codigoSql' LIMIT 1");
+    $res = mysqli_query($link, "SELECT almacen$selectLimite FROM cc_productos WHERE id_sucursal = $id_sucursal AND codigo = '$codigoSql' LIMIT 1");
     if ($res) {
         $row = mysqli_fetch_assoc($res);
         if ($row) {
             $stockActual = (float) $row['almacen'];
+            if (isset($row['limite_stock'])) {
+                $limiteStock = (float) $row['limite_stock'];
+            }
         }
         mysqli_free_result($res);
     }
@@ -521,6 +540,7 @@ function get_stock_restante_producto_venta($link, $id_sucursal, $codigo, $cantid
         'codigo_inventario' => $codigoInventario,
         'stock_actual' => $stockActual,
         'stock_restante' => $stockActual === null ? null : round($stockActual - (float) $inventario['cantidad'], 3),
+        'limite_stock' => $limiteStock,
     ];
 }
 

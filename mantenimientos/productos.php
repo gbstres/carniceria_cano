@@ -18,6 +18,7 @@ $descripcion = "";
 $precio_compra = 0;
 $precio_venta = 0;
 $almacen = 0;
+$limite_stock = 5;
 $id_categoria = 0;
 $mayoreo = 0;
 $activo = 0;
@@ -29,7 +30,7 @@ $hora_act = date('H:i:s');
 $id_usuario_act = $_SESSION["id"];
 $body = "";
 $title = "";
-$codigo_e = $descripcion_e = $precio_compra_e = $precio_venta_e = $almacen_e = $id_categoria_e = "";
+$codigo_e = $descripcion_e = $precio_compra_e = $precio_venta_e = $almacen_e = $limite_stock_e = $id_categoria_e = "";
 $photoProductCode = '';
 $productsPerPage = 25;
 $currentPage = isset($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
@@ -49,6 +50,7 @@ if (isset($_POST['agregar'])) {
     $precio_compra_e = $precio_compra = trim($_POST["precio_compra"]);
     $precio_venta_e = $precio_venta = trim($_POST["precio_venta"]);
     $almacen_e = $almacen = trim($_POST["almacen"]);
+    $limite_stock_e = $limite_stock = trim($_POST["limite_stock"]);
     $id_categoria_e = $id_categoria = trim($_POST["id_categoria"]);
     $mayoreo = isset($_POST['mayoreo']) ? 1 : 0;
     $centralizar_almacen = trim($_POST["centralizar_almacen"]);
@@ -59,10 +61,10 @@ if (isset($_POST['agregar'])) {
         $body = 'Producto ' . $descripcion . ' no se puede agregar, ya existe el código ' . $codigo_e . '.';
     } else {
 
-        $sql = "INSERT INTO cc_productos (codigo, id_sucursal, descripcion, precio_compra, precio_venta, almacen, id_categoria, mayoreo, centralizar_almacen, activo, id_usuario, fecha_ingreso, hora_ingreso, id_usuario_act, fecha_act, hora_act) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        $sql = "INSERT INTO cc_productos (codigo, id_sucursal, descripcion, precio_compra, precio_venta, almacen, limite_stock, id_categoria, mayoreo, centralizar_almacen, activo, id_usuario, fecha_ingreso, hora_ingreso, id_usuario_act, fecha_act, hora_act) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
         if ($stmt = mysqli_prepare($link, $sql)) {
             // Bind variables to the prepared statement as parameters
-            mysqli_stmt_bind_param($stmt, "iisdddiiiiississ", $codigo, $id_sucursal, $descripcion, $precio_compra, $precio_venta, $almacen, $id_categoria, $mayoreo, $centralizar_almacen, $activo, $id_usuario, $fecha_ingreso, $hora_ingreso, $id_usuario_act, $fecha_act, $hora_act);
+            mysqli_stmt_bind_param($stmt, "iisddddiiiiississ", $codigo, $id_sucursal, $descripcion, $precio_compra, $precio_venta, $almacen, $limite_stock, $id_categoria, $mayoreo, $centralizar_almacen, $activo, $id_usuario, $fecha_ingreso, $hora_ingreso, $id_usuario_act, $fecha_act, $hora_act);
 
             if (mysqli_stmt_execute($stmt)) {
                 cc_sync_enqueue($link, $id_sucursal, 'producto', 'upsert', [
@@ -79,6 +81,7 @@ if (isset($_POST['agregar'])) {
                 $precio_compra_e = $precio_compra = "";
                 $precio_venta_e = $precio_venta = "";
                 $almacen_e = $almacen = "";
+                $limite_stock_e = $limite_stock = "";
                 $id_categoria_e = $id_categoria = "";
             } else {
                 $title = 'No Agregado';
@@ -93,6 +96,7 @@ if (isset($_POST['editar'])) {
     $precio_compra = trim($_POST["precio_compra_e"]);
     $precio_venta = trim($_POST["precio_venta_e"]);
     $almacen = trim($_POST["almacen_e"]);
+    $limite_stock = trim($_POST["limite_stock_e"]);
     $id_categoria = trim($_POST["id_categoria_e"]);
     $mayoreo = isset($_POST['mayoreo_e']) ? 1 : 0;
     $centralizar_almacen = trim($_POST["centralizar_almacen_e"]);
@@ -101,7 +105,7 @@ if (isset($_POST['editar'])) {
     $fecha_act = date('Y-m-d');
     $hora_act = date('H:i:s');
     $update1 = mysqli_query($link, "UPDATE cc_productos SET "
-                    . "descripcion='$descripcion', precio_compra='$precio_compra', precio_venta='$precio_venta', almacen='$almacen', id_categoria='$id_categoria', mayoreo='$mayoreo', centralizar_almacen = '$centralizar_almacen', activo='$activo', "
+                    . "descripcion='$descripcion', precio_compra='$precio_compra', precio_venta='$precio_venta', almacen='$almacen', limite_stock='$limite_stock', id_categoria='$id_categoria', mayoreo='$mayoreo', centralizar_almacen = '$centralizar_almacen', activo='$activo', "
                     . "fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act='$id_usuario_act' "
                     . "WHERE codigo='$codigo' and id_sucursal='$id_sucursal'")
             or die(mysqli_error());
@@ -305,6 +309,17 @@ $sqlproductos = mysqli_query($link, "
                                     </div>
                                 </div>
                                 <div class="col-6">
+                                    <label for="limite_stock" class="form-label">Límite stock</label>
+                                    <div class="input-group has-validation">
+                                        <input type="number" step="0.001" class="form-control" id="limite_stock" name="limite_stock" placeholder="límite de stock" autocomplete="off" required value="<?php echo $limite_stock_e !== '' ? $limite_stock_e : 5 ?>">
+                                        <div class="invalid-feedback">
+                                            Ingresar límite de stock.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="row g-3">
+                                <div class="col-6">
                                     <label for="inputState" class="form-label">Categoría</label>
                                     <div class="input-group has-validation">
                                         <select id="id_categoria" name="id_categoria" class="form-select" required>
@@ -326,6 +341,7 @@ $sqlproductos = mysqli_query($link, "
                                         </div>
                                     </div>
                                 </div>
+                                <div class="col-6"></div>
                             </div>
                             <div class="row g-3">
                                 <div class="col-6">
@@ -378,6 +394,7 @@ $sqlproductos = mysqli_query($link, "
                                         <th class="precio_compra">Precio compra</th>
                                         <th class="precio_venta">Precio venta</th>
                                         <th>Stock</th>
+                                        <th>Límite</th>
                                         <th>Categoría</th>
                                         <th>May.</th>
                                         <th>CA</th>
@@ -396,6 +413,7 @@ $sqlproductos = mysqli_query($link, "
                                         <td>' . $rowp['precio_compra'] . '</td>
                                         <td>' . $rowp['precio_venta'] . '</td>
                                         <td>' . $rowp['almacen'] . '</td>
+                                        <td>' . ($rowp['limite_stock'] ?? 5) . '</td>
                                         <td class="' . $rowp['id_categoria'] . '">' . $rowp['desc_categoria'] . '</td>
                                         <td class="' . $producto_mayoreo . '"><input type="checkbox" class="form-check-input" disabled ';
                                     if ($producto_mayoreo == "1") {
@@ -492,6 +510,15 @@ $sqlproductos = mysqli_query($link, "
                                     <input type="number" step="0.001" class="form-control" id="almacen_e" name="almacen_e" placeholder="kg en almacén" autocomplete="off" required>
                                     <div class="invalid-feedback">
                                         Ingresar stock.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="limite_stock_e" class="form-label">Límite stock</label>
+                                <div class="input-group has-validation">
+                                    <input type="number" step="0.001" class="form-control" id="limite_stock_e" name="limite_stock_e" placeholder="límite de stock" autocomplete="off" required>
+                                    <div class="invalid-feedback">
+                                        Ingresar límite de stock.
                                     </div>
                                 </div>
                             </div>
@@ -629,7 +656,14 @@ $sqlproductos = mysqli_query($link, "
                             tooltip: 'Click para editar Stock',
                             cssclass: 'required',
                             sColumnName: 'almacen'
-                        }, null, null, null, null, null
+                        },
+                        {
+                            type: 'number',
+                            indicator: 'Saving platforms...',
+                            tooltip: 'Click para editar límite de stock',
+                            cssclass: 'required',
+                            sColumnName: 'limite_stock'
+                        }, null, null, null, null, null, null
                     ]
                 });
 
@@ -661,16 +695,18 @@ $sqlproductos = mysqli_query($link, "
                 var precio_compra = $(icono).parents("tr").find("td").eq(2).text();
                 var precio_venta = $(icono).parents("tr").find("td").eq(3).text();
                 var almacen = $(icono).parents("tr").find("td").eq(4).text();
-                var categoria = $(icono).parents("tr").find("td").eq(5).attr('class');
-                var mayoreo = $(icono).parents("tr").find("td").eq(6).attr('class');
-                var centralizar_almacen = $(icono).parents("tr").find("td").eq(7).attr('class');
-                var activo = $(icono).parents("tr").find("td").eq(8).attr('class');
+                var limite_stock = $(icono).parents("tr").find("td").eq(5).text();
+                var categoria = $(icono).parents("tr").find("td").eq(6).attr('class');
+                var mayoreo = $(icono).parents("tr").find("td").eq(7).attr('class');
+                var centralizar_almacen = $(icono).parents("tr").find("td").eq(8).attr('class');
+                var activo = $(icono).parents("tr").find("td").eq(9).attr('class');
                 $("#ModalLabelTitle").html("Editar el código: " + codigo);
                 $("#codigo_e").val(codigo);
                 $("#descripcion_e").val(descripcion);
                 $("#precio_compra_e").val(precio_compra);
                 $("#precio_venta_e").val(precio_venta);
                 $("#almacen_e").val(almacen);
+                $("#limite_stock_e").val(limite_stock);
                 $("#id_categoria_e").val(categoria);
                 $("#centralizar_almacen_e").val(centralizar_almacen);
                 $("#edit_fotos_link").attr("href", "producto_fotos.php?codigo=" + encodeURIComponent(codigo));

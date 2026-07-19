@@ -23,8 +23,14 @@ function render_stock_bajo_cierre($link, $id_sucursal) {
     if ($resEquivalencias) {
         mysqli_free_result($resEquivalencias);
     }
+    $resLimiteStock = mysqli_query($link, "SHOW COLUMNS FROM cc_productos LIKE 'limite_stock'");
+    $tieneLimiteStock = $resLimiteStock && mysqli_num_rows($resLimiteStock) > 0;
+    if ($resLimiteStock) {
+        mysqli_free_result($resLimiteStock);
+    }
 
     if ($tieneEquivalencias) {
+        $limiteStockSelect = $tieneLimiteStock ? "COALESCE(pd.limite_stock, p.limite_stock, 5)" : "5";
         $sqlProductos = mysqli_query($link, "
             SELECT
                 p.codigo AS codigo,
@@ -34,7 +40,8 @@ function render_stock_bajo_cierre($link, $id_sucursal) {
                     WHEN e.codigo_destino IS NULL THEN ''
                     ELSE CONCAT(e.codigo_destino, ' - ', COALESCE(pd.descripcion, ''))
                 END AS destino,
-                COALESCE(pd.almacen, p.almacen) AS almacen
+                COALESCE(pd.almacen, p.almacen) AS almacen,
+                $limiteStockSelect AS limite_stock
             FROM cc_productos p
             LEFT JOIN cc_categorias c
                 ON c.id_sucursal = p.id_sucursal
@@ -48,23 +55,25 @@ function render_stock_bajo_cierre($link, $id_sucursal) {
                AND pd.codigo = e.codigo_destino
             WHERE p.id_sucursal = $id_sucursal
               AND p.centralizar_almacen = 1
-              AND COALESCE(pd.almacen, p.almacen) < 5
+              AND COALESCE(pd.almacen, p.almacen) < $limiteStockSelect
         ");
     } else {
+        $limiteStockSelect = $tieneLimiteStock ? "COALESCE(p.limite_stock, 5)" : "5";
         $sqlProductos = mysqli_query($link, "
             SELECT
                 p.codigo AS codigo,
                 p.descripcion AS descripcion,
                 COALESCE(c.desc_categoria, '') AS categoria,
                 '' AS destino,
-                p.almacen AS almacen
+                p.almacen AS almacen,
+                $limiteStockSelect AS limite_stock
             FROM cc_productos p
             LEFT JOIN cc_categorias c
                 ON c.id_sucursal = p.id_sucursal
                AND c.id_categoria = p.id_categoria
             WHERE p.id_sucursal = $id_sucursal
               AND p.centralizar_almacen = 1
-              AND p.almacen < 5
+              AND p.almacen < $limiteStockSelect
         ");
     }
 
@@ -79,7 +88,8 @@ function render_stock_bajo_cierre($link, $id_sucursal) {
             desc_categoria AS descripcion,
             '' AS categoria,
             '' AS destino,
-            almacen
+            almacen,
+            5 AS limite_stock
         FROM cc_categorias
         WHERE id_sucursal = $id_sucursal
           AND id_categoria IN (1, 2)
@@ -117,6 +127,7 @@ function render_stock_bajo_cierre($link, $id_sucursal) {
                     <th>Descripción</th>
                     <th>Categoría</th>
                     <th>Destino</th>
+                    <th>Límite</th>
                     <th>Stock</th>
                 </tr>
             </thead>
@@ -131,12 +142,13 @@ function render_stock_bajo_cierre($link, $id_sucursal) {
             <td>' . htmlspecialchars($row['descripcion'], ENT_QUOTES, 'UTF-8') . '</td>
             <td>' . htmlspecialchars($row['categoria'], ENT_QUOTES, 'UTF-8') . '</td>
             <td>' . htmlspecialchars($row['destino'], ENT_QUOTES, 'UTF-8') . '</td>
+            <td class="text-end">' . number_format((float) $row['limite_stock'], 3) . '</td>
             <td class="text-end">' . number_format((float) $row['almacen'], 3) . '</td>
         </tr>';
     }
 
     if ($totalFilas === 0) {
-        $html .= '<tr><td colspan="6" class="text-center">Sin productos ni categorías con stock menor a 5</td></tr>';
+        $html .= '<tr><td colspan="7" class="text-center">Sin productos ni categorías con stock bajo</td></tr>';
     }
 
     $html .= '</tbody></table></div>';
