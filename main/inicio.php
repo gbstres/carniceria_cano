@@ -1136,7 +1136,7 @@ if (isset($_GET['id_venta'])) {
                                         if (stockRestante <= 0) {
                                             return 'stock-agotado';
                                         }
-                                        if (stockRestante <= 1) {
+                                        if (stockRestante < 5) {
                                             return 'stock-alerta';
                                         }
                                         return '';
@@ -1152,7 +1152,7 @@ if (isset($_GET['id_venta'])) {
                                         }
                                         if (stockRestante <= 0) {
                                             $(rowNode).find('td').eq(1).attr('data-stock-label', 'Sin stock');
-                                        } else if (stockRestante <= 1) {
+                                        } else if (stockRestante < 5) {
                                             $(rowNode).find('td').eq(1).attr('data-stock-label', 'Stock bajo: ' + stockRestante.toFixed(3));
                                         }
                                     }
