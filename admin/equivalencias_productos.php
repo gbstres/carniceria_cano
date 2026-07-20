@@ -101,19 +101,15 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && $title === "") {
 
 if (isset($_GET["accion"], $_GET["codigo_origen"]) && $_GET["accion"] === "delete" && $title === "") {
     $codigoOrigenEsc = mysqli_real_escape_string($link, (string) $_GET["codigo_origen"]);
-    $sql = "UPDATE cc_equivalencias_productos
-        SET activo = 0,
-            id_usuario_act = $id_usuario,
-            fecha_act = '$fecha',
-            hora_act = '$hora'
+    $sql = "DELETE FROM cc_equivalencias_productos
         WHERE id_sucursal = $id_sucursal
           AND codigo_origen = '$codigoOrigenEsc'";
 
     if (mysqli_query($link, $sql)) {
-        $title = "Desactivado";
-        $body = "Equivalencia desactivada correctamente.";
+        $title = "Eliminado";
+        $body = "Equivalencia eliminada correctamente.";
     } else {
-        $title = "No desactivado";
+        $title = "No eliminado";
         $body = mysqli_error($link);
     }
 }
@@ -238,7 +234,7 @@ $rsEquivalencias = mysqli_query($link, "
                                         </td>
                                         <td align="center">
                                             <a href="#" title="Editar equivalencia" data-bs-toggle="modal" data-bs-target="#editModal"><img class="imga" src="../img/icons/pencil-square.svg"></a>
-                                            <a href="?accion=delete&codigo_origen=<?php echo urlencode($row["codigo_origen"]); ?>" title="Desactivar" onclick="return confirm('¿Desactivar esta equivalencia?')"><img class="imga" src="../img/icons/trash.svg"></a>
+                                            <a href="?accion=delete&codigo_origen=<?php echo urlencode($row["codigo_origen"]); ?>" title="Eliminar" onclick="return confirm('¿Eliminar esta equivalencia?')"><img class="imga" src="../img/icons/trash.svg"></a>
                                         </td>
                                     </tr>
                                 <?php } ?>

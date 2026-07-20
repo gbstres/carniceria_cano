@@ -44,6 +44,116 @@ function buildProductosPageUrl($page)
     }
     return '?' . http_build_query($query);
 }
+
+function getProductosSucursal(mysqli $link, int $idSucursal)
+{
+    return mysqli_query($link, "
+        SELECT
+            p.codigo,
+            p.descripcion,
+            p.precio_compra,
+            p.precio_venta,
+            p.almacen,
+            COALESCE(p.limite_stock, 5) AS limite_stock,
+            p.mayoreo,
+            p.activo,
+            u.username,
+            c.desc_categoria,
+            ca.descripcion_corta AS centraliza
+        FROM cc_productos p
+        LEFT JOIN cc_users u
+            ON u.id = p.id_usuario
+        LEFT JOIN cc_categorias c
+            ON c.id_sucursal = p.id_sucursal
+            AND c.id_categoria = p.id_categoria
+        LEFT JOIN cc_claves ca
+            ON ca.nombre_clave = 'CENTRALIZAR_ALMACEN'
+            AND ca.clave = p.centralizar_almacen
+        WHERE p.id_sucursal = $idSucursal
+        ORDER BY p.id_categoria ASC, p.descripcion ASC
+    ");
+}
+
+function productoSiNo($valor)
+{
+    return ((int) $valor === 1) ? 'Si' : 'No';
+}
+
+if (isset($_GET['accion']) && $_GET['accion'] === 'excel') {
+    header('Content-Type: text/csv; charset=UTF-8');
+    header('Content-Disposition: attachment; filename="productos_sucursal_' . $id_sucursal . '.csv"');
+    echo "\xEF\xBB\xBF";
+
+    $out = fopen('php://output', 'w');
+    fputcsv($out, ['Código', 'Descripción', 'Precio compra', 'Precio venta', 'Stock', 'Límite', 'Categoría', 'Mayoreo', 'CA', 'Activo', 'Usuario']);
+    $rsExport = getProductosSucursal($link, (int) $id_sucursal);
+    while ($rsExport && $row = mysqli_fetch_assoc($rsExport)) {
+        fputcsv($out, [
+            $row['codigo'],
+            $row['descripcion'],
+            $row['precio_compra'],
+            $row['precio_venta'],
+            $row['almacen'],
+            $row['limite_stock'],
+            $row['desc_categoria'],
+            productoSiNo($row['mayoreo']),
+            $row['centraliza'],
+            productoSiNo($row['activo']),
+            $row['username'],
+        ]);
+    }
+    fclose($out);
+    exit;
+}
+
+if (isset($_GET['accion']) && $_GET['accion'] === 'imprimir') {
+    $rsExport = getProductosSucursal($link, (int) $id_sucursal);
+    ?>
+    <!doctype html>
+    <html lang="es">
+        <head>
+            <meta charset="utf-8">
+            <title>Productos sucursal <?php echo (int) $id_sucursal; ?></title>
+            <style>
+                body { font-family: Arial, sans-serif; font-size: 12px; }
+                h2 { text-align: center; margin-bottom: 14px; }
+                table { width: 100%; border-collapse: collapse; }
+                th, td { border: 1px solid #333; padding: 4px 6px; }
+                th { background: #eee; }
+                .num { text-align: right; }
+            </style>
+        </head>
+        <body>
+            <h2>Productos sucursal <?php echo htmlspecialchars($_SESSION["desc_sucursal"] ?? $id_sucursal, ENT_QUOTES, "UTF-8"); ?></h2>
+            <table>
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Descripción</th>
+                        <th>Precio compra</th>
+                        <th>Precio venta</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php while ($rsExport && $row = mysqli_fetch_assoc($rsExport)) { ?>
+                        <tr>
+                            <td><?php echo htmlspecialchars($row['codigo'], ENT_QUOTES, 'UTF-8'); ?></td>
+                            <td><?php echo htmlspecialchars($row['descripcion'], ENT_QUOTES, 'UTF-8'); ?></td>
+                            <td class="num"><?php echo number_format((float) $row['precio_compra'], 2); ?></td>
+                            <td class="num"><?php echo number_format((float) $row['precio_venta'], 2); ?></td>
+                        </tr>
+                    <?php } ?>
+                </tbody>
+            </table>
+            <script>
+                window.print();
+            </script>
+        </body>
+    </html>
+    <?php
+    exit;
+}
+
 if (isset($_POST['agregar'])) {
     $codigo_e = $codigo = trim($_POST["codigo"]);
     $descripcion_e = $descripcion = mb_strtoupper(trim($_POST["descripcion"]));
@@ -375,7 +485,7 @@ $sqlproductos = mysqli_query($link, "
                         <br>
                         <br>
                         <form method="get" class="row g-3 mb-3">
-                            <div class="col-md-8">
+                            <div class="col-md-6">
                                 <input type="text" class="form-control" name="buscar" placeholder="Buscar por codigo, descripcion o categoria" value="<?php echo htmlspecialchars($searchTerm, ENT_QUOTES, 'UTF-8'); ?>">
                             </div>
                             <div class="col-md-2 d-grid">
@@ -383,6 +493,12 @@ $sqlproductos = mysqli_query($link, "
                             </div>
                             <div class="col-md-2 d-grid">
                                 <a href="productos.php" class="btn btn-outline-secondary">Limpiar</a>
+                            </div>
+                            <div class="col-md-1 d-grid">
+                                <a href="productos.php?accion=imprimir" target="_blank" class="btn btn-outline-primary">Imprimir</a>
+                            </div>
+                            <div class="col-md-1 d-grid">
+                                <a href="productos.php?accion=excel" class="btn btn-outline-success">Excel</a>
                             </div>
                         </form>
                         <div class="table-responsive">
@@ -622,6 +738,7 @@ $sqlproductos = mysqli_query($link, "
                             },
                             "paging": false,
                             "info": false,
+                            "searching": false,
 
                         }
                 ).makeEditable({
