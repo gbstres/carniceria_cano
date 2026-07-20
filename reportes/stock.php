@@ -57,6 +57,16 @@ $sqlCategorias = mysqli_query($link, "
         <script src="../js/jquery.dataTables.min.js"></script>
         <style>
             @import "../css/bootstrap.css";
+            .editable-stock {
+                cursor: pointer;
+            }
+            .editable-stock:hover {
+                background-color: #fff3cd;
+            }
+            .stock-input {
+                max-width: 110px;
+                text-align: right;
+            }
         </style>
         <link href="../css/navbar.css" rel="stylesheet">
         <link href="../css/jquery.dataTables.min.css" rel="stylesheet">
@@ -97,7 +107,7 @@ $sqlCategorias = mysqli_query($link, "
                                         <td>' . htmlspecialchars($row["descripcion"], ENT_QUOTES, "UTF-8") . '</td>
                                         <td>' . htmlspecialchars(($row["desc_categoria"] ?? ""), ENT_QUOTES, "UTF-8") . '</td>
                                         <td>' . htmlspecialchars(($row["centraliza"] ?? ""), ENT_QUOTES, "UTF-8") . '</td>
-                                        <td class="text-end">' . number_format((float) $row["almacen"], 3) . '</td>
+                                        <td class="text-end editable-stock" data-id="' . htmlspecialchars($row["codigo"], ENT_QUOTES, "UTF-8") . '" data-url="../functions/actualizaproductos.php">' . number_format((float) $row["almacen"], 3) . '</td>
                                     </tr>';
                                 }
                                 ?>
@@ -133,7 +143,7 @@ $sqlCategorias = mysqli_query($link, "
                                     echo '<tr>
                                         <td>' . htmlspecialchars($row["id_categoria"], ENT_QUOTES, "UTF-8") . '</td>
                                         <td>' . htmlspecialchars($row["desc_categoria"], ENT_QUOTES, "UTF-8") . '</td>
-                                        <td class="text-end">' . number_format((float) $row["almacen"], 3) . '</td>
+                                        <td class="text-end editable-stock" data-id="' . htmlspecialchars($row["id_categoria"], ENT_QUOTES, "UTF-8") . '" data-url="../functions/actualizacategorias.php">' . number_format((float) $row["almacen"], 3) . '</td>
                                     </tr>';
                                 }
                                 ?>
@@ -176,6 +186,71 @@ $sqlCategorias = mysqli_query($link, "
                     language: language,
                     pageLength: 25,
                     order: [[1, 'asc']]
+                });
+
+                $(document).on('dblclick', '.editable-stock', function () {
+                    const $cell = $(this);
+                    if ($cell.find('input').length > 0) {
+                        return;
+                    }
+
+                    const originalText = $cell.text().trim();
+                    const originalValue = originalText.replace(/,/g, '');
+                    const $input = $('<input type="number" step="0.001" class="form-control form-control-sm stock-input">').val(originalValue);
+
+                    $cell.empty().append($input);
+                    $input.trigger('focus').select();
+                    let cerrado = false;
+
+                    function cancelar() {
+                        if (cerrado) {
+                            return;
+                        }
+                        cerrado = true;
+                        $cell.text(originalText);
+                    }
+
+                    function guardar() {
+                        if (cerrado) {
+                            return;
+                        }
+                        const nuevoValor = $input.val();
+                        if (nuevoValor === '' || isNaN(parseFloat(nuevoValor))) {
+                            cancelar();
+                            return;
+                        }
+                        cerrado = true;
+
+                        $.ajax({
+                            url: $cell.data('url'),
+                            type: 'POST',
+                            data: {
+                                id: $cell.data('id'),
+                                value: nuevoValor,
+                                columnName: 'almacen'
+                            },
+                            success: function () {
+                                $cell.text(parseFloat(nuevoValor).toFixed(3));
+                            },
+                            error: function () {
+                                alert('No se pudo actualizar el stock.');
+                                cancelar();
+                            }
+                        });
+                    }
+
+                    $input.on('keydown', function (event) {
+                        if (event.key === 'Enter') {
+                            event.preventDefault();
+                            guardar();
+                        }
+                        if (event.key === 'Escape') {
+                            event.preventDefault();
+                            cancelar();
+                        }
+                    });
+
+                    $input.on('blur', guardar);
                 });
             });
         </script>
