@@ -43,8 +43,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } else {
         $tablasSeleccionadas = isset($_POST['check']) && is_array($_POST['check']) ? $_POST['check'] : [];
 
+        $tablasCatalogo = ['cc_categorias', 'cc_productos', 'cc_derivados', 'cc_equivalencias_productos'];
+
         if ($forzarCatalogo) {
-            $rsCatalogo = mysqli_query($link, "SELECT id FROM cc_tablas_respaldo WHERE nombre_tabla IN ('cc_categorias', 'cc_productos')");
+            $tablasCatalogoSql = "'" . implode("','", array_map(fn($t) => mysqli_real_escape_string($link, $t), $tablasCatalogo)) . "'";
+            $rsCatalogo = mysqli_query($link, "SELECT id FROM cc_tablas_respaldo WHERE nombre_tabla IN ($tablasCatalogoSql)");
             while ($rowCatalogo = mysqli_fetch_assoc($rsCatalogo)) {
                 $tablasSeleccionadas[(int) $rowCatalogo['id']] = 1;
             }
@@ -80,7 +83,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             // valida nombre de tabla
             if (!preg_match('/^[a-zA-Z0-9_]+$/', $tabla)) continue;
 
-            $forzarTablaCatalogo = $forzarCatalogo && in_array($tabla, ['cc_categorias', 'cc_productos'], true);
+            $forzarTablaCatalogo = $forzarCatalogo && in_array($tabla, $tablasCatalogo, true);
 
             // columnas y PK
             $columnas = [];
@@ -241,7 +244,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                     <div class="form-check">
                                         <input class="form-check-input" type="checkbox" value="1" id="forzar_catalogo" name="forzar_catalogo">
                                         <label class="form-check-label" for="forzar_catalogo">
-                                            Forzar actualización completa de categorías y productos sin filtrar por fecha
+                                            Forzar actualización completa de categorías, productos, derivados y equivalencias sin filtrar por fecha
                                         </label>
                                     </div>
                                 </div>
@@ -320,7 +323,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
             $('form').on('submit', function (event) {
                 if ($('#forzar_catalogo').is(':checked')) {
-                    var mensaje = 'Advertencia: se actualizará la información completa desde GCP para cc_categorias y cc_productos, sin filtrar por fecha. ¿Desea continuar?';
+                    var mensaje = 'Advertencia: se actualizará la información completa desde GCP para categorías, productos, derivados y equivalencias, sin filtrar por fecha. ¿Desea continuar?';
                     if (!confirm(mensaje)) {
                         event.preventDefault();
                         event.stopPropagation();
