@@ -16,6 +16,10 @@ $idUsuario = (int) ($_SESSION["id"] ?? 0);
 if ($idSucursalLocal <= 0)
     die("Sucursal inválida.");
 
+function getFolioPrefixMatriz(int $idSucursalMatriz): string {
+    return 'M' . $idSucursalMatriz . 'V';
+}
+
 $fecha = $_POST['fecha'] ?? date('Y-m-d');
 if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha))
     $fecha = date('Y-m-d');
@@ -56,6 +60,46 @@ function asegurarEsquemaImportacionMatriz(mysqli $link): void {
         KEY idx_equivalencias_destino (id_sucursal, codigo_destino),
         KEY idx_equivalencias_activo (activo)
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci");
+
+    $fecha = date('Y-m-d');
+    $hora = date('H:i:s');
+    $rsClave = mysqli_query($link, "SELECT 1 FROM cc_claves WHERE nombre_clave = 'MATRIZ_ID_SUCURSAL' LIMIT 1");
+    if (!$rsClave) {
+        throw new Exception("No se pudo revisar cc_claves: " . mysqli_error($link));
+    }
+    $existeClave = mysqli_num_rows($rsClave) > 0;
+    mysqli_free_result($rsClave);
+
+    if (!$existeClave) {
+        qOrFail($link, "
+            INSERT INTO cc_claves
+                (nombre_clave, clave, descripcion, descripcion_corta, orden, id_usuario, fecha_ingreso, hora_ingreso, id_usuario_act, fecha_act, hora_act)
+            VALUES
+                ('MATRIZ_ID_SUCURSAL', 3, 'Sucursal origen matriz para importar ventas', '3', 1, 0, '$fecha', '$hora', 0, '$fecha', '$hora')
+        ");
+    }
+}
+
+function getMatrizIdSucursal(mysqli $link): int {
+    $rs = mysqli_query($link, "
+        SELECT clave
+        FROM cc_claves
+        WHERE nombre_clave = 'MATRIZ_ID_SUCURSAL'
+        ORDER BY orden ASC, clave ASC
+        LIMIT 1
+    ");
+    if (!$rs) {
+        throw new Exception("No se pudo leer la clave MATRIZ_ID_SUCURSAL: " . mysqli_error($link));
+    }
+    $row = mysqli_fetch_assoc($rs);
+    mysqli_free_result($rs);
+
+    $idSucursalMatriz = (int) ($row['clave'] ?? 0);
+    if ($idSucursalMatriz <= 0) {
+        throw new Exception("La clave MATRIZ_ID_SUCURSAL no tiene una sucursal válida.");
+    }
+
+    return $idSucursalMatriz;
 }
 
 /**
@@ -101,11 +145,12 @@ function getProveedorMatrizLocal($link, int $idSucursalLocal): array {
 }
 
 /**
- * Preview de ventas en MATRIZ (GCP id_sucursal=6) que corresponden a esta sucursal,
+ * Preview de ventas en MATRIZ (GCP) que corresponden a esta sucursal,
  * usando match: matriz.cc_clientes.clave_proveedor = local.cc_proveedores.clave_cliente
  */
-function getVentasMatrizPreview($link2, string $fecha, string $claveClienteLocal): array {
+function getVentasMatrizPreview($link2, string $fecha, string $claveClienteLocal, int $idSucursalMatriz): array {
 
+    $folioPrefix = getFolioPrefixMatriz($idSucursalMatriz);
     $fechaEsc = mysqli_real_escape_string($link2, $fecha);
     $claveEsc = mysqli_real_escape_string($link2, $claveClienteLocal);
 
@@ -113,7 +158,7 @@ function getVentasMatrizPreview($link2, string $fecha, string $claveClienteLocal
     $rsCli = mysqli_query($link2, "
         SELECT id_cliente, nombre, apellido_paterno, apellido_materno
         FROM cc_clientes
-        WHERE id_sucursal = 6
+        WHERE id_sucursal = $idSucursalMatriz
           AND clave_proveedor = '$claveEsc'
           AND activo = 1
     ");
@@ -148,7 +193,7 @@ function getVentasMatrizPreview($link2, string $fecha, string $claveClienteLocal
             dv.fecha_act,
             dv.hora_act
         FROM cc_det_ventas dv
-        WHERE dv.id_sucursal = 6
+        WHERE dv.id_sucursal = $idSucursalMatriz
           AND dv.id_cliente IN ($in)
           AND (dv.fecha_ingreso = '$fechaEsc' OR dv.fecha_act = '$fechaEsc')
         ORDER BY dv.id_venta ASC
@@ -166,7 +211,7 @@ function getVentasMatrizPreview($link2, string $fecha, string $claveClienteLocal
               SUM(precio_venta * cantidad) AS total,
               SUM(cantidad) AS piezas
             FROM cc_ventas
-            WHERE id_sucursal = 6
+            WHERE id_sucursal = $idSucursalMatriz
               AND id_venta = $idVenta
               AND estatus = 0
         ");
@@ -177,7 +222,7 @@ function getVentasMatrizPreview($link2, string $fecha, string $claveClienteLocal
 
         $ventas[] = [
             'id_venta' => $idVenta,
-            'clave_externa' => "M6V" . $idVenta,
+            'clave_externa' => $folioPrefix . $idVenta,
             'cliente' => $clienteLabel,
             'tipo_pago' => (int) $dv['tipo_pago'],
             'pagado' => (int) $dv['pagado'],
@@ -206,9 +251,9 @@ function yaImportadaLocal($link, int $idSucursalLocal, string $folioExterno): bo
     return (bool) $row;
 }
 
-function importarVenta($link, $link2, int $idSucursalLocal, int $idUsuario, int $idProveedorLocal, int $idVentaMat): void {
+function importarVenta($link, $link2, int $idSucursalLocal, int $idUsuario, int $idProveedorLocal, int $idVentaMat, int $idSucursalMatriz): void {
 
-    $folioExterno = "M6V" . $idVentaMat;
+    $folioExterno = getFolioPrefixMatriz($idSucursalMatriz) . $idVentaMat;
     $folioEsc = mysqli_real_escape_string($link, $folioExterno);
 
 // ✅ ya importada (AHORA se valida en el encabezado cc_det_compras)
@@ -235,7 +280,7 @@ function importarVenta($link, $link2, int $idSucursalLocal, int $idUsuario, int 
     // tipo_pago desde matriz
     $rsDV = mysqli_query($link2, "SELECT tipo_pago
                                  FROM cc_det_ventas
-                                 WHERE id_sucursal = 6 AND id_venta = $idVentaMat
+                                 WHERE id_sucursal = $idSucursalMatriz AND id_venta = $idVentaMat
                                  LIMIT 1");
     if (!$rsDV)
         throw new Exception("GCP tipo_pago: " . mysqli_error($link2));
@@ -247,7 +292,7 @@ function importarVenta($link, $link2, int $idSucursalLocal, int $idUsuario, int 
     $rsPart = mysqli_query($link2, "
         SELECT codigo, cantidad, precio_venta
         FROM cc_ventas
-        WHERE id_sucursal = 6
+        WHERE id_sucursal = $idSucursalMatriz
           AND id_venta = $idVentaMat
           AND estatus = 0
         ORDER BY id_consecutivo ASC
@@ -582,13 +627,15 @@ $msg = "";
 $error = "";
 $ventasPreview = [];
 $provMatriz = null;
+$idSucursalMatriz = 0;
 
 try {
     asegurarEsquemaImportacionMatriz($link);
+    $idSucursalMatriz = getMatrizIdSucursal($link);
     $provMatriz = getProveedorMatrizLocal($link, $idSucursalLocal);
 
     if (isset($_POST['accion']) && $_POST['accion'] === 'preview') {
-        $ventasPreview = getVentasMatrizPreview($link2, $fecha, $provMatriz['clave_cliente']);
+        $ventasPreview = getVentasMatrizPreview($link2, $fecha, $provMatriz['clave_cliente'], $idSucursalMatriz);
     }
 
     if (isset($_POST['accion']) && $_POST['accion'] === 'importar') {
@@ -606,7 +653,7 @@ try {
                 if ($idVenta <= 0)
                     continue;
 
-                importarVenta($link, $link2, $idSucursalLocal, $idUsuario, (int) $provMatriz['id_proveedor'], $idVenta);
+                importarVenta($link, $link2, $idSucursalLocal, $idUsuario, (int) $provMatriz['id_proveedor'], $idVenta, $idSucursalMatriz);
                 $count++;
             }
             mysqli_commit($link);
@@ -616,7 +663,7 @@ try {
             throw $e;
         }
 
-        $ventasPreview = getVentasMatrizPreview($link2, $fecha, $provMatriz['clave_cliente']);
+        $ventasPreview = getVentasMatrizPreview($link2, $fecha, $provMatriz['clave_cliente'], $idSucursalMatriz);
     }
 } catch (Throwable $e) {
     $error = $e->getMessage();
@@ -672,7 +719,7 @@ try {
 
                     <div class="alert alert-secondary">
                         <b>Sucursal:</b> <?= (int) $idSucursalLocal ?> |
-                        <b>Matriz (origen):</b> id_sucursal=6 |
+                        <b>Matriz (origen):</b> id_sucursal=<?= (int) $idSucursalMatriz ?> |
                         <b>Proveedor local (Matriz):</b> <?= htmlspecialchars($provMatriz['nombre'] ?? 'N/A', ENT_QUOTES, 'UTF-8') ?> |
                         <b>Clave cliente (match):</b> <?= htmlspecialchars($provMatriz['clave_cliente'] ?? 'N/A', ENT_QUOTES, 'UTF-8') ?>
                     </div>
