@@ -148,7 +148,7 @@ function getProveedorMatrizLocal($link, int $idSucursalLocal): array {
  * Preview de ventas en MATRIZ (GCP) que corresponden a esta sucursal,
  * usando match: matriz.cc_clientes.clave_proveedor = local.cc_proveedores.clave_cliente
  */
-function getVentasMatrizPreview($link2, string $fecha, string $claveClienteLocal, int $idSucursalMatriz): array {
+function getVentasMatrizPreview($link, $link2, string $fecha, string $claveClienteLocal, int $idSucursalLocal, int $idSucursalMatriz): array {
 
     $folioPrefix = getFolioPrefixMatriz($idSucursalMatriz);
     $fechaEsc = mysqli_real_escape_string($link2, $fecha);
@@ -205,20 +205,53 @@ function getVentasMatrizPreview($link2, string $fecha, string $claveClienteLocal
     while ($dv = mysqli_fetch_assoc($rsV)) {
         $idVenta = (int) $dv['id_venta'];
 
-        // total y piezas
-        $rsT = mysqli_query($link2, "
+        $rsPart = mysqli_query($link2, "
             SELECT
-              SUM(precio_venta * cantidad) AS total,
-              SUM(cantidad) AS piezas
+                codigo,
+                cantidad,
+                precio_venta
             FROM cc_ventas
             WHERE id_sucursal = $idSucursalMatriz
               AND id_venta = $idVenta
               AND estatus = 0
+            ORDER BY id_consecutivo ASC
         ");
-        if (!$rsT)
-            throw new Exception("GCP total venta: " . mysqli_error($link2));
-        $tot = mysqli_fetch_assoc($rsT);
-        mysqli_free_result($rsT);
+        if (!$rsPart)
+            throw new Exception("GCP detalle venta: " . mysqli_error($link2));
+
+        $partidasOriginales = [];
+        while ($p = mysqli_fetch_assoc($rsPart)) {
+            $partidasOriginales[] = [
+                'codigo' => (string) $p['codigo'],
+                'cantidad' => (float) $p['cantidad'],
+                'precio_compra' => (float) $p['precio_venta'],
+            ];
+        }
+        mysqli_free_result($rsPart);
+
+        $partidasImportar = aplicarEquivalenciasProductos(
+            $link,
+            $idSucursalLocal,
+            expandirPartidasConDerivados($link, $idSucursalLocal, $partidasOriginales)
+        );
+
+        $detalle = [];
+        $total = 0.0;
+        $piezas = 0.0;
+        foreach ($partidasImportar as $p) {
+            $codigo = (string) $p['codigo'];
+            $cantidad = (float) $p['cantidad'];
+            $precioCompra = (float) $p['precio_compra'];
+            $producto = getProductoLocal($link, $idSucursalLocal, $codigo);
+            $detalle[] = [
+                'codigo' => $codigo,
+                'descripcion' => (string) ($producto['descripcion'] ?? 'No existe en sucursal'),
+                'cantidad' => $cantidad,
+                'precio_compra' => $precioCompra,
+            ];
+            $piezas += $cantidad;
+            $total += $precioCompra * $cantidad;
+        }
 
         $ventas[] = [
             'id_venta' => $idVenta,
@@ -229,8 +262,9 @@ function getVentasMatrizPreview($link2, string $fecha, string $claveClienteLocal
             'estatus' => (int) $dv['estatus'],
             'fecha' => (string) ($dv['fecha_act'] ?: $dv['fecha_ingreso']),
             'hora' => (string) ($dv['hora_act'] ?: $dv['hora_ingreso']),
-            'piezas' => (float) ($tot['piezas'] ?? 0),
-            'total' => (float) ($tot['total'] ?? 0),
+            'piezas' => $piezas,
+            'total' => $total,
+            'detalle' => $detalle,
         ];
     }
     mysqli_free_result($rsV);
@@ -391,7 +425,7 @@ function importarVenta($link, $link2, int $idSucursalLocal, int $idUsuario, int 
  */
 function getProductoLocal(mysqli $link, int $idSucursalLocal, string $codigo): ?array {
     $st = mysqli_prepare($link, "
-        SELECT codigo, centralizar_almacen, id_categoria
+        SELECT codigo, descripcion, centralizar_almacen, id_categoria
         FROM cc_productos
         WHERE id_sucursal = ?
           AND codigo = ?
@@ -635,7 +669,7 @@ try {
     $provMatriz = getProveedorMatrizLocal($link, $idSucursalLocal);
 
     if (isset($_POST['accion']) && $_POST['accion'] === 'preview') {
-        $ventasPreview = getVentasMatrizPreview($link2, $fecha, $provMatriz['clave_cliente'], $idSucursalMatriz);
+        $ventasPreview = getVentasMatrizPreview($link, $link2, $fecha, $provMatriz['clave_cliente'], $idSucursalLocal, $idSucursalMatriz);
     }
 
     if (isset($_POST['accion']) && $_POST['accion'] === 'importar') {
@@ -663,7 +697,7 @@ try {
             throw $e;
         }
 
-        $ventasPreview = getVentasMatrizPreview($link2, $fecha, $provMatriz['clave_cliente'], $idSucursalMatriz);
+        $ventasPreview = getVentasMatrizPreview($link, $link2, $fecha, $provMatriz['clave_cliente'], $idSucursalLocal, $idSucursalMatriz);
     }
 } catch (Throwable $e) {
     $error = $e->getMessage();
@@ -693,6 +727,21 @@ try {
             }
             .btn-space {
                 margin-right: 10px;
+            }
+            .detalle-importacion {
+                min-width: 260px;
+                max-width: 420px;
+                font-size: 12px;
+                line-height: 1.25;
+            }
+            .detalle-importacion div {
+                margin-bottom: 4px;
+            }
+            .detalle-importacion .codigo {
+                font-weight: 600;
+            }
+            .detalle-importacion .sin-producto {
+                color: #b02a37;
             }
         </style>
         <link href="../css/navbar.css" rel="stylesheet">
@@ -756,6 +805,7 @@ try {
                                         <th>Cliente (en matriz)</th>
                                         <th>Fecha</th>
                                         <th>Hora</th>
+                                        <th>Detalle a importar</th>
                                         <th>Piezas</th>
                                         <th>Total</th>
                                         <th>Tipo pago</th>
@@ -788,6 +838,26 @@ try {
                                                 <td><?= htmlspecialchars($v['cliente'], ENT_QUOTES, 'UTF-8') ?></td>
                                                 <td><?= htmlspecialchars($v['fecha'], ENT_QUOTES, 'UTF-8') ?></td>
                                                 <td><?= htmlspecialchars($v['hora'], ENT_QUOTES, 'UTF-8') ?></td>
+                                                <td>
+                                                    <div class="detalle-importacion">
+                                                        <?php if (!empty($v['detalle'])): ?>
+                                                            <?php foreach ($v['detalle'] as $d): ?>
+                                                                <?php $sinProducto = ($d['descripcion'] === 'No existe en sucursal'); ?>
+                                                                <div class="<?= $sinProducto ? 'sin-producto' : '' ?>">
+                                                                    <span class="codigo"><?= htmlspecialchars($d['codigo'], ENT_QUOTES, 'UTF-8') ?></span>
+                                                                    -
+                                                                    <?= htmlspecialchars($d['descripcion'], ENT_QUOTES, 'UTF-8') ?>
+                                                                    <br>
+                                                                    Cant: <?= number_format((float) $d['cantidad'], 3) ?>
+                                                                    |
+                                                                    Precio: <?= number_format((float) $d['precio_compra'], 2) ?>
+                                                                </div>
+                                                            <?php endforeach; ?>
+                                                        <?php else: ?>
+                                                            <span class="text-muted">Sin partidas</span>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                </td>
                                                 <td><?= number_format((float) $v['piezas'], 3) ?></td>
                                                 <td><?= number_format((float) $v['total'], 2) ?></td>
                                                 <td><?= (int) $v['tipo_pago'] ?></td>
