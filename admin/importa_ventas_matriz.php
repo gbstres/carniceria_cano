@@ -728,20 +728,14 @@ try {
             .btn-space {
                 margin-right: 10px;
             }
-            .detalle-importacion {
-                min-width: 260px;
-                max-width: 420px;
-                font-size: 12px;
-                line-height: 1.25;
-            }
-            .detalle-importacion div {
-                margin-bottom: 4px;
-            }
-            .detalle-importacion .codigo {
+            .detalle-importacion-lista .codigo {
                 font-weight: 600;
             }
-            .detalle-importacion .sin-producto {
+            .detalle-importacion-lista .sin-producto {
                 color: #b02a37;
+            }
+            .detalle-importacion-lista .list-group-item {
+                padding: 10px 12px;
             }
         </style>
         <link href="../css/navbar.css" rel="stylesheet">
@@ -838,25 +832,12 @@ try {
                                                 <td><?= htmlspecialchars($v['cliente'], ENT_QUOTES, 'UTF-8') ?></td>
                                                 <td><?= htmlspecialchars($v['fecha'], ENT_QUOTES, 'UTF-8') ?></td>
                                                 <td><?= htmlspecialchars($v['hora'], ENT_QUOTES, 'UTF-8') ?></td>
-                                                <td>
-                                                    <div class="detalle-importacion">
-                                                        <?php if (!empty($v['detalle'])): ?>
-                                                            <?php foreach ($v['detalle'] as $d): ?>
-                                                                <?php $sinProducto = ($d['descripcion'] === 'No existe en sucursal'); ?>
-                                                                <div class="<?= $sinProducto ? 'sin-producto' : '' ?>">
-                                                                    <span class="codigo"><?= htmlspecialchars($d['codigo'], ENT_QUOTES, 'UTF-8') ?></span>
-                                                                    -
-                                                                    <?= htmlspecialchars($d['descripcion'], ENT_QUOTES, 'UTF-8') ?>
-                                                                    <br>
-                                                                    Cant: <?= number_format((float) $d['cantidad'], 3) ?>
-                                                                    |
-                                                                    Precio: <?= number_format((float) $d['precio_compra'], 2) ?>
-                                                                </div>
-                                                            <?php endforeach; ?>
-                                                        <?php else: ?>
-                                                            <span class="text-muted">Sin partidas</span>
-                                                        <?php endif; ?>
-                                                    </div>
+                                                <td class="text-center">
+                                                    <button type="button" class="btn btn-sm btn-outline-primary"
+                                                            data-bs-toggle="modal"
+                                                            data-bs-target="#detalleImportacion<?= (int) $v['id_venta'] ?>">
+                                                        Ver detalle
+                                                    </button>
                                                 </td>
                                                 <td><?= number_format((float) $v['piezas'], 3) ?></td>
                                                 <td><?= number_format((float) $v['total'], 2) ?></td>
@@ -876,6 +857,56 @@ try {
                                 </tbody>
                             </table>
                         </div>
+
+                        <?php if (!empty($ventasPreview)): ?>
+                            <?php foreach ($ventasPreview as $v): ?>
+                                <div class="modal fade" id="detalleImportacion<?= (int) $v['id_venta'] ?>" tabindex="-1"
+                                     aria-labelledby="detalleImportacionLabel<?= (int) $v['id_venta'] ?>" aria-hidden="true">
+                                    <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                                        <div class="modal-content">
+                                            <div class="modal-header">
+                                                <h5 class="modal-title" id="detalleImportacionLabel<?= (int) $v['id_venta'] ?>">
+                                                    Detalle a importar - Venta <?= (int) $v['id_venta'] ?>
+                                                </h5>
+                                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                                            </div>
+                                            <div class="modal-body">
+                                                <div class="mb-3">
+                                                    <b>Clave externa:</b> <?= htmlspecialchars($v['clave_externa'], ENT_QUOTES, 'UTF-8') ?> |
+                                                    <b>Piezas:</b> <?= number_format((float) $v['piezas'], 3) ?> |
+                                                    <b>Total:</b> <?= number_format((float) $v['total'], 2) ?>
+                                                </div>
+
+                                                <?php if (!empty($v['detalle'])): ?>
+                                                    <ul class="list-group detalle-importacion-lista">
+                                                        <?php foreach ($v['detalle'] as $d): ?>
+                                                            <?php $sinProducto = ($d['descripcion'] === 'No existe en sucursal'); ?>
+                                                            <li class="list-group-item <?= $sinProducto ? 'sin-producto' : '' ?>">
+                                                                <div>
+                                                                    <span class="codigo"><?= htmlspecialchars($d['codigo'], ENT_QUOTES, 'UTF-8') ?></span>
+                                                                    -
+                                                                    <?= htmlspecialchars($d['descripcion'], ENT_QUOTES, 'UTF-8') ?>
+                                                                </div>
+                                                                <div>
+                                                                    Cantidad: <?= number_format((float) $d['cantidad'], 3) ?>
+                                                                    |
+                                                                    Precio: <?= number_format((float) $d['precio_compra'], 2) ?>
+                                                                </div>
+                                                            </li>
+                                                        <?php endforeach; ?>
+                                                    </ul>
+                                                <?php else: ?>
+                                                    <div class="alert alert-warning mb-0">Sin partidas.</div>
+                                                <?php endif; ?>
+                                            </div>
+                                            <div class="modal-footer">
+                                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        <?php endif; ?>
 
                         <div class="mt-3">
                             <button class="btn btn-success" type="submit">

@@ -10,50 +10,75 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 require_once "../functions/config.php";
 require_once "../functions/sync_queue.php";
 
-$cadena = $_POST['id'];
-$value = mb_strtoupper($_POST['value']);
-$columnName = $_POST['columnName'];
+$cadena = $_POST['id'] ?? '';
+$value = mb_strtoupper($_POST['value'] ?? '');
+$columnName = $_POST['columnName'] ?? '';
 
 $separada = explode(',', $cadena);
-$id_compra = $separada[0];
-$id_consecutivo = $separada[1];
-$id_proveedor = $separada[2];
-$precio = $separada[3];
-$cantidad = $separada[4];
+$id_compra = (int) ($separada[0] ?? 0);
+$id_consecutivo = (int) ($separada[1] ?? 0);
 
 date_default_timezone_set("America/Mexico_City");
 if ($_SERVER["REQUEST_METHOD"] == "POST") {
     // Set parameters
-    $id_sucursal = $_SESSION["id_sucursal"];
-    $id_usuario_act = $_SESSION['id'];
+    $id_sucursal = (int) $_SESSION["id_sucursal"];
+    $id_usuario_act = (int) $_SESSION['id'];
     $fecha_act = date('y-m-d');
     $hora_act = date('H:i:s');
-    $update_compra = mysqli_query($link, "UPDATE cc_compras SET "
-                    . "$columnName = '$value', fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act='$id_usuario_act' "
-                    . "WHERE id_sucursal='$id_sucursal' and id_compra='$id_compra' and id_consecutivo = '$id_consecutivo'")
-            or die(mysqli_error());
-    if ($update_compra) {
-        if ($columnName == 'Precio') {
-            
-        }
 
+    if ($id_compra <= 0 || $id_consecutivo <= 0 || !in_array($columnName, ['precio_compra', 'cantidad'], true)) {
+        http_response_code(400);
+        echo 'Datos inválidos';
+        exit;
+    }
+
+    $rowCompra = mysqli_fetch_assoc(mysqli_query($link, "
+        SELECT c.precio_compra, c.cantidad, COALESCE(d.id_proveedor, 0) AS id_proveedor
+        FROM cc_compras c
+        LEFT JOIN cc_det_compras d
+            ON d.id_sucursal = c.id_sucursal
+            AND d.id_compra = c.id_compra
+        WHERE c.id_sucursal = $id_sucursal
+          AND c.id_compra = $id_compra
+          AND c.id_consecutivo = $id_consecutivo
+        LIMIT 1
+    "));
+
+    if (!$rowCompra) {
+        http_response_code(404);
+        echo 'Compra no encontrada';
+        exit;
+    }
+
+    $id_proveedor = (int) $rowCompra['id_proveedor'];
+    $precio = (float) $rowCompra['precio_compra'];
+    $cantidad = (float) $rowCompra['cantidad'];
+    $valueSql = (float) $value;
+
+    $update_compra = mysqli_query($link, "UPDATE cc_compras SET "
+                    . "$columnName = $valueSql, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act='$id_usuario_act' "
+                    . "WHERE id_sucursal=$id_sucursal and id_compra=$id_compra and id_consecutivo = $id_consecutivo")
+            or die(mysqli_error($link));
+    if ($update_compra) {
         if ($id_proveedor > 0) {
             $importe_inicial = $precio * $cantidad;
-            if ($columnName == 'importe') {
-                $importe_final = $value * $cantidad;
+            if ($columnName == 'precio_compra') {
+                $importe_final = $valueSql * $cantidad;
             } else if ($columnName == 'cantidad') {
-                $importe_final = $value * $precio;
+                $importe_final = $valueSql * $precio;
+            } else {
+                $importe_final = $importe_inicial;
             }
 
             $abono = $importe_final - $importe_inicial;
-            recalcula($link, $id_sucursal, $abono, $id_proveedor, $hora_act, $fecha_act, $id_usuario_act);
+            recalcula($link, $id_sucursal, $abono, $id_proveedor, $fecha_act, $hora_act, $id_usuario_act);
         }
 
         if ($columnName == 'cantidad') {
-            $cantidad = round($value - $cantidad,3);
-            recalcula_almacen_compra($link, $id_sucursal, $id_compra, $id_consecutivo, $cantidad, $fecha_act, $hora_act, $id_usuario_act);
+            $diferenciaCantidad = round($valueSql - $cantidad, 3);
+            recalcula_almacen_compra($link, $id_sucursal, $id_compra, $id_consecutivo, $diferenciaCantidad, $fecha_act, $hora_act, $id_usuario_act);
         }
-        echo $value;
+        echo $valueSql;
     } else {
         echo 'Error, no se pudo actualizar ';
     }
