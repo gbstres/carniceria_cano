@@ -67,6 +67,11 @@ $sqlCategorias = mysqli_query($link, "
                 max-width: 110px;
                 text-align: right;
             }
+            #stock_productos tr.category-group td {
+                background-color: #e9ecef;
+                font-weight: 600;
+                color: #495057;
+            }
         </style>
         <link href="../css/navbar.css" rel="stylesheet">
         <link href="../css/jquery.dataTables.min.css" rel="stylesheet">
@@ -179,7 +184,29 @@ $sqlCategorias = mysqli_query($link, "
                 $('#stock_productos').DataTable({
                     language: language,
                     pageLength: 50,
-                    order: [[2, 'asc'], [1, 'asc']]
+                    orderFixed: [[2, 'asc']],
+                    order: [[1, 'asc']],
+                    columnDefs: [
+                        {targets: 2, visible: false}
+                    ],
+                    drawCallback: function () {
+                        const api = this.api();
+                        const rows = api.rows({page: 'current'}).nodes();
+                        let ultimaCategoria = null;
+
+                        api.column(2, {page: 'current'}).data().each(function (categoria, indice) {
+                            const nombreCategoria = categoria || 'Sin categoría';
+
+                            if (nombreCategoria !== ultimaCategoria) {
+                                $(rows).eq(indice).before(
+                                    '<tr class="category-group"><td colspan="4">' +
+                                    $('<div>').text(nombreCategoria).html() +
+                                    '</td></tr>'
+                                );
+                                ultimaCategoria = nombreCategoria;
+                            }
+                        });
+                    }
                 });
 
                 $('#stock_categorias').DataTable({
