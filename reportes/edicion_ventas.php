@@ -79,14 +79,14 @@ WHERE a.id_sucursal = $id_sucursal AND a.id_venta = $id_venta AND a.id_consecuti
     while ($rowv = mysqli_fetch_assoc($sqlventas)) {
         if ($rowv['codigo_p'] == null) {
             if ($rowv['contador'] == 1) {
-                if ($rowv['centralizar_almacen'] == 1) {
+                if ($rowv['centralizar_almacen'] == 1 || get_equivalencia_producto_edicion_ventas($link, $id_sucursal, $rowv['codigo']) !== null) {
                     recalcula_almacen_producto($link, $id_sucursal, $rowv['codigo'], $rowv['cantidad'], $fecha_act, $hora_act, $id_usuario_act);
                 } else if ($rowv['centralizar_almacen'] == 2) {
                     recalcula_almacen_categoria($link, $id_sucursal, $rowv['id_categoria'], $rowv['cantidad'], $fecha_act, $hora_act, $id_usuario_act);
                 }
             }
         } else {
-            if ($rowv['centralizar_almacen_d'] == 1) {
+            if ($rowv['centralizar_almacen_d'] == 1 || get_equivalencia_producto_edicion_ventas($link, $id_sucursal, $rowv['codigo_d']) !== null) {
                 recalcula_almacen_producto($link, $id_sucursal, $rowv['codigo_d'], $rowv['cantidad'], $fecha_act, $hora_act, $id_usuario_act);
             } else if ($rowv['centralizar_almacen'] == 2) {
                 $cantidad = round($rowv['cantidad'] * $rowv['porcentaje'] / 100, 3);
@@ -96,8 +96,52 @@ WHERE a.id_sucursal = $id_sucursal AND a.id_venta = $id_venta AND a.id_consecuti
     }
 }
 
+function get_equivalencia_producto_edicion_ventas($link, $id_sucursal, $codigo) {
+    $st = mysqli_prepare($link, "
+        SELECT codigo_destino, factor
+        FROM cc_equivalencias_productos
+        WHERE id_sucursal = ?
+          AND codigo_origen = ?
+          AND activo = 1
+        LIMIT 1
+    ");
+    if (!$st) {
+        return null;
+    }
+
+    $codigo = (string) $codigo;
+    mysqli_stmt_bind_param($st, "is", $id_sucursal, $codigo);
+    mysqli_stmt_execute($st);
+    $res = mysqli_stmt_get_result($st);
+    $equivalencia = mysqli_fetch_assoc($res) ?: null;
+    mysqli_free_result($res);
+    mysqli_stmt_close($st);
+
+    return $equivalencia;
+}
+
+function resolver_inventario_producto_edicion_ventas($link, $id_sucursal, $codigo, $cantidad) {
+    $codigoInventario = (string) $codigo;
+    $cantidadInventario = (float) $cantidad;
+    $equivalencia = get_equivalencia_producto_edicion_ventas($link, $id_sucursal, $codigoInventario);
+
+    if ($equivalencia !== null) {
+        $codigoInventario = (string) $equivalencia['codigo_destino'];
+        $cantidadInventario = round($cantidadInventario * (float) $equivalencia['factor'], 3);
+    }
+
+    return [
+        'codigo' => $codigoInventario,
+        'cantidad' => $cantidadInventario,
+    ];
+}
+
 function recalcula_almacen_producto($link, $id_sucursal, $codigo, $cantidad, $fecha_act, $hora_act, $id_usuario_act) {
-    mysqli_query($link, "UPDATE cc_productos SET almacen = almacen - $cantidad, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act= $id_usuario_act WHERE id_sucursal= $id_sucursal and codigo = $codigo");
+    $inventario = resolver_inventario_producto_edicion_ventas($link, $id_sucursal, $codigo, $cantidad);
+    $codigoInventario = mysqli_real_escape_string($link, $inventario['codigo']);
+    $cantidadInventario = (float) $inventario['cantidad'];
+
+    mysqli_query($link, "UPDATE cc_productos SET almacen = almacen - $cantidadInventario, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act= $id_usuario_act WHERE id_sucursal= $id_sucursal and codigo = '$codigoInventario'");
 }
 
 function recalcula_almacen_categoria($link, $id_sucursal, $id_categoria, $cantidad, $fecha_act, $hora_act, $id_usuario_act) {

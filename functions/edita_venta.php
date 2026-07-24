@@ -348,14 +348,14 @@ WHERE a.id_sucursal = $id_sucursal AND a.id_venta = $id_venta ;");
     while ($rowv = mysqli_fetch_assoc($sqlventas)) {
         if ($rowv['codigo_p'] == null) {
             if ($rowv['contador'] == 1) {
-                if ($rowv['centralizar_almacen'] == 1) {
+                if ($rowv['centralizar_almacen'] == 1 || get_equivalencia_producto_venta($link, $id_sucursal, $rowv['codigo']) !== null) {
                     recalcula_almacen_producto($link, $id_sucursal, $rowv['codigo'], $rowv['cantidad'], $fecha_act, $hora_act, $id_usuario_act);
                 } else if ($rowv['centralizar_almacen'] == 2) {
                     recalcula_almacen_categoria($link, $id_sucursal, $rowv['id_categoria'], $rowv['cantidad'], $fecha_act, $hora_act, $id_usuario_act);
                 }
             }
         } else {
-            if ($rowv['centralizar_almacen_d'] == 1) {
+            if ($rowv['centralizar_almacen_d'] == 1 || get_equivalencia_producto_venta($link, $id_sucursal, $rowv['codigo_d']) !== null) {
                 recalcula_almacen_producto($link, $id_sucursal, $rowv['codigo_d'], $rowv['cantidad'], $fecha_act, $hora_act, $id_usuario_act);
             } else if ($rowv['centralizar_almacen'] == 2) {
                 $cantidad = round($rowv['cantidad'] * $rowv['porcentaje'] / 100, 3);
@@ -389,14 +389,14 @@ WHERE a.id_sucursal = $id_sucursal AND a.id_venta = $id_venta AND a.id_consecuti
     while ($rowv = mysqli_fetch_assoc($sqlventas)) {
         if ($rowv['codigo_p'] == null) {
             if ($rowv['contador'] == 1) {
-                if ($rowv['centralizar_almacen'] == 1) {
+                if ($rowv['centralizar_almacen'] == 1 || get_equivalencia_producto_venta($link, $id_sucursal, $rowv['codigo']) !== null) {
                     recalcula_almacen_producto($link, $id_sucursal, $rowv['codigo'], $rowv['cantidad'], $fecha_act, $hora_act, $id_usuario_act);
                 } else if ($rowv['centralizar_almacen'] == 2) {
                     recalcula_almacen_categoria($link, $id_sucursal, $rowv['id_categoria'], $rowv['cantidad'], $fecha_act, $hora_act, $id_usuario_act);
                 }
             }
         } else {
-            if ($rowv['centralizar_almacen_d'] == 1) {
+            if ($rowv['centralizar_almacen_d'] == 1 || get_equivalencia_producto_venta($link, $id_sucursal, $rowv['codigo_d']) !== null) {
                 recalcula_almacen_producto($link, $id_sucursal, $rowv['codigo_d'], $rowv['cantidad'], $fecha_act, $hora_act, $id_usuario_act);
             } else if ($rowv['centralizar_almacen'] == 2) {
                 $cantidad = round($rowv['cantidad'] * $rowv['porcentaje'] / 100, 3);
@@ -427,14 +427,14 @@ WHERE a.id_sucursal = $id_sucursal AND a.id_venta = $id_venta  and a.estatus in 
     while ($rowv = mysqli_fetch_assoc($sqlventas)) {
         if ($rowv['codigo_p'] == null) {
             if ($rowv['contador'] == 1) {
-                if ($rowv['centralizar_almacen'] == 1) {
+                if ($rowv['centralizar_almacen'] == 1 || get_equivalencia_producto_venta($link, $id_sucursal, $rowv['codigo']) !== null) {
                     recalcula_almacen_producto($link, $id_sucursal, $rowv['codigo'], $rowv['cantidad'], $fecha_act, $hora_act, $id_usuario_act);
                 } else if ($rowv['centralizar_almacen'] == 2) {
                     recalcula_almacen_categoria($link, $id_sucursal, $rowv['id_categoria'], $rowv['cantidad'], $fecha_act, $hora_act, $id_usuario_act);
                 }
             }
         } else {
-            if ($rowv['centralizar_almacen_d'] == 1) {
+            if ($rowv['centralizar_almacen_d'] == 1 || get_equivalencia_producto_venta($link, $id_sucursal, $rowv['codigo_d']) !== null) {
                 recalcula_almacen_producto($link, $id_sucursal, $rowv['codigo_d'], $rowv['cantidad'], $fecha_act, $hora_act, $id_usuario_act);
             } else if ($rowv['centralizar_almacen'] == 2) {
                 $cantidad = round($rowv['cantidad'] * $rowv['porcentaje'] / 100, 3);
