@@ -247,7 +247,7 @@ function recalcula($link, $id_sucursal, $importe, $id_cliente, $fecha_act, $hora
                                     //$sqlcatalogo = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM cc_catalogos where nombre_clave = 'ROL' and id_clave =" . $rowp['rol']));
                                     $producto = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM cc_productos where id_sucursal = $id_sucursal and codigo =" . $rowc['codigo']));
 
-                                    $total_id = mysqli_fetch_assoc(mysqli_query($link, "SELECT sum(round(cantidad * precio_venta,2)) total_id FROM cc_ventas WHERE id_sucursal = $id_sucursal  and id_venta = " . $rowc['id_venta'] . " and id_consecutivo = " . $rowc['id_consecutivo'] . " and estatus not in (2)"));
+                                    $total_id = mysqli_fetch_assoc(mysqli_query($link, "SELECT sum(round(cantidad * precio_venta,2)) total_id FROM cc_ventas WHERE id_sucursal = $id_sucursal and id_venta = " . $rowc['id_venta'] . " and estatus not in (2)"));
                                     if ($rowc['estatus'] == 2) {
                                         $estatus = "C";
                                         $importe = 0;
