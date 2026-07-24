@@ -16,7 +16,7 @@ if (isset($_POST['movimiento'])) {
     $id_venta = $_POST['id_venta'];
     $id_consecutivo = $_POST['id_consecutivo'];
     $id_usuario_act = $_SESSION["id"];
-    $fecha_act = date('y-m-d');
+    $fecha_act = date('Y-m-d');
     $hora_act = date('H:i:s');
 
     $update1 = mysqli_query($link, "UPDATE cc_ventas SET "
@@ -33,7 +33,7 @@ if (isset($_POST['movimiento'])) {
         if ($movimiento == 2) {
             $abono = $abono * -1;
         }
-        $efectivo = recalcula($link, $id_sucursal, $abono, $id_cliente, $hora_act, $fecha_act, $id_usuario_act);
+        $efectivo = recalcula($link, $id_sucursal, $abono, $id_cliente, $fecha_act, $hora_act, $id_usuario_act);
         recalcula_almacen_venta($link, $id_sucursal, $id_venta, $id_consecutivo, $fecha_act, $hora_act, $id_usuario_act);
     } else {
         echo '<div class="alert alert-danger alert-dismissable"><button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>Error, no se pudo guardar el producto.</div>';
