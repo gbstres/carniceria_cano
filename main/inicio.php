@@ -358,21 +358,24 @@ $qr_precio = file_exists(__DIR__ . '/../img/qr_precios_sucursal_' . $id_sucursal
                                 .ticket_qr {
                                     text-align: center;
                                     margin-top: 10px;
+                                    flex: 1 1 0;
+                                    min-width: 0;
                                 }
                                 .ticket_qr p {
                                     margin: 3px 0;
-                                    font-size: 12px;
+                                    font-size: 10px;
                                 }
                                 .ticket_qr img {
-                                    width: 120px;
-                                    height: 120px;
+                                    width: 90px;
+                                    height: 90px;
                                 }
                                 .ticket_qr_grid {
                                     display: flex;
                                     justify-content: center;
-                                    gap: 14px;
+                                    gap: 8px;
                                     align-items: flex-start;
-                                    flex-wrap: wrap;
+                                    flex-wrap: nowrap;
+                                    width: 100%;
                                 }
                             </style>
                             <div style="text-align: center">
