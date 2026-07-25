@@ -271,7 +271,7 @@ function storefront_fetch_price_products(mysqli $link, $idSucursal)
             AND c.id_categoria = p.id_categoria
         WHERE p.id_sucursal = " . $idSucursal . "
             AND p.activo = 1
-            AND COALESCE(p.mayoreo, 0) = 0
+            AND p.mayoreo = 0
         ORDER BY p.id_categoria ASC, categoria ASC, p.descripcion ASC
     ";
 
