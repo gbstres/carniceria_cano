@@ -8,6 +8,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
     exit;
 }
 require_once "../functions/config.php";
+require_once "../functions/sync_queue.php";
 date_default_timezone_set("America/Mexico_City");
 $id_sucursal = $_SESSION["id_sucursal"];
 if (isset($_POST['movimiento'])) {
@@ -25,6 +26,13 @@ if (isset($_POST['movimiento'])) {
                     . "WHERE id_sucursal='$id_sucursal' and id_venta = '$id_venta' and id_consecutivo = '$id_consecutivo'")
             or die(mysqli_error());
     if ($update1) {
+        cc_sync_enqueue($link, (int) $id_sucursal, 'venta', $movimiento == 2 ? 'cancel' : 'upsert', [
+            'id_venta' => (int) $id_venta,
+            'id_consecutivo' => (int) $id_consecutivo,
+        ], [
+            'tabla' => 'cc_ventas',
+            'motivo' => $movimiento == 2 ? 'edicion_ventas_cancelacion' : 'edicion_ventas_reactivacion',
+        ]);
         //header("Location: " . $_GET["regresar"]);
         $row_importe = mysqli_fetch_assoc(mysqli_query($link, "SELECT precio_venta * cantidad as 'importe' FROM cc_ventas WHERE id_sucursal='$id_sucursal' and id_venta = '$id_venta' and id_consecutivo = '$id_consecutivo'"));
         $row_cliente = mysqli_fetch_assoc(mysqli_query($link, "SELECT id_cliente FROM cc_det_ventas WHERE id_sucursal='$id_sucursal' and id_venta = '$id_venta'"));
@@ -49,7 +57,15 @@ if (isset($_GET['id_venta'])) {
 
 //recalcula saldo cliente
 function recalcula($link, $id_sucursal, $abono, $id_cliente, $fecha_act, $hora_act, $id_usuario_act) {
-    mysqli_query($link, "UPDATE cc_saldos_clientes SET efectivo_hoy = efectivo_hoy + $abono, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act= $id_usuario_act WHERE id_sucursal= $id_sucursal and id_cliente = $id_cliente");
+    $actualizado = mysqli_query($link, "UPDATE cc_saldos_clientes SET efectivo_hoy = efectivo_hoy + $abono, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act= $id_usuario_act WHERE id_sucursal= $id_sucursal and id_cliente = $id_cliente");
+    if ($actualizado && $id_cliente > 0) {
+        cc_sync_enqueue($link, (int) $id_sucursal, 'saldo_cliente', 'upsert', [
+            'id_cliente' => (int) $id_cliente,
+        ], [
+            'tabla' => 'cc_saldos_clientes',
+            'motivo' => 'edicion_ventas_cancelacion_reactivacion',
+        ]);
+    }
     $row_efectivo = mysqli_fetch_assoc(mysqli_query($link, "select sum(efectivo_hoy) as 'efectivo_hoy' from cc_saldos_clientes where id_sucursal = $id_sucursal and id_cliente =" . $id_cliente));
     $efectivo = $row_efectivo['efectivo_hoy'];
     return round($efectivo, 2);
@@ -141,11 +157,27 @@ function recalcula_almacen_producto($link, $id_sucursal, $codigo, $cantidad, $fe
     $codigoInventario = mysqli_real_escape_string($link, $inventario['codigo']);
     $cantidadInventario = (float) $inventario['cantidad'];
 
-    mysqli_query($link, "UPDATE cc_productos SET almacen = almacen - $cantidadInventario, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act= $id_usuario_act WHERE id_sucursal= $id_sucursal and codigo = '$codigoInventario'");
+    $actualizado = mysqli_query($link, "UPDATE cc_productos SET almacen = almacen - $cantidadInventario, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act= $id_usuario_act WHERE id_sucursal= $id_sucursal and codigo = '$codigoInventario'");
+    if ($actualizado) {
+        cc_sync_enqueue($link, (int) $id_sucursal, 'producto', 'upsert', [
+            'codigo' => (string) $inventario['codigo'],
+        ], [
+            'tabla' => 'cc_productos',
+            'motivo' => 'edicion_ventas_cancelacion_reactivacion',
+        ]);
+    }
 }
 
 function recalcula_almacen_categoria($link, $id_sucursal, $id_categoria, $cantidad, $fecha_act, $hora_act, $id_usuario_act) {
-    mysqli_query($link, "UPDATE cc_categorias SET almacen = almacen - $cantidad, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act= $id_usuario_act WHERE id_sucursal= $id_sucursal and id_categoria = $id_categoria");
+    $actualizado = mysqli_query($link, "UPDATE cc_categorias SET almacen = almacen - $cantidad, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act= $id_usuario_act WHERE id_sucursal= $id_sucursal and id_categoria = $id_categoria");
+    if ($actualizado) {
+        cc_sync_enqueue($link, (int) $id_sucursal, 'categoria', 'upsert', [
+            'id_categoria' => (int) $id_categoria,
+        ], [
+            'tabla' => 'cc_categorias',
+            'motivo' => 'edicion_ventas_cancelacion_reactivacion',
+        ]);
+    }
 }
 ?>
 

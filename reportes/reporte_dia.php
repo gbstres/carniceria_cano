@@ -9,6 +9,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 }
 
 require_once "../functions/config.php";
+require_once "../functions/sync_queue.php";
 date_default_timezone_set("America/Mexico_City");
 // Define variables and initialize with empty values
 $id_sucursal = $_SESSION["id_sucursal"];
@@ -39,6 +40,13 @@ if (isset($_POST['movimiento']) && (isset($_SESSION['form_token']) && $_POST['to
                     . "WHERE id_sucursal='$id_sucursal' and id_venta = '$id_venta' and id_consecutivo = '$id_consecutivo'")
             or die(mysqli_error());
     if ($update1) {
+        cc_sync_enqueue($link, (int) $id_sucursal, 'venta', $movimiento == 2 ? 'cancel' : 'upsert', [
+            'id_venta' => (int) $id_venta,
+            'id_consecutivo' => (int) $id_consecutivo,
+        ], [
+            'tabla' => 'cc_ventas',
+            'motivo' => $movimiento == 2 ? 'reporte_dia_cancelacion' : 'reporte_dia_reactivacion',
+        ]);
         if ($id_cliente != 0) {
             $row_importe = mysqli_fetch_assoc(mysqli_query($link, "SELECT sum(cantidad * precio_venta) as 'importe' FROM `cc_ventas` WHERE id_sucursal = '$id_sucursal' and id_venta = $id_venta and id_consecutivo = '$id_consecutivo'"));
             $importe = $row_importe['importe'];
@@ -57,7 +65,15 @@ if (isset($_POST['movimiento']) && (isset($_SESSION['form_token']) && $_POST['to
 }
 
 function recalcula($link, $id_sucursal, $importe, $id_cliente, $fecha_act, $hora_act, $id_usuario_act) {
-    mysqli_query($link, "UPDATE cc_saldos_clientes SET efectivo_hoy = efectivo_hoy + $importe, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act= $id_usuario_act WHERE id_sucursal= $id_sucursal and id_cliente = $id_cliente");
+    $actualizado = mysqli_query($link, "UPDATE cc_saldos_clientes SET efectivo_hoy = efectivo_hoy + $importe, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act= $id_usuario_act WHERE id_sucursal= $id_sucursal and id_cliente = $id_cliente");
+    if ($actualizado) {
+        cc_sync_enqueue($link, (int) $id_sucursal, 'saldo_cliente', 'upsert', [
+            'id_cliente' => (int) $id_cliente,
+        ], [
+            'tabla' => 'cc_saldos_clientes',
+            'motivo' => 'reporte_dia_cancelacion_reactivacion',
+        ]);
+    }
 }
 
 function recalcula_almacen_venta($link, $id_sucursal, $id_venta, $id_consecutivo, $fecha_act, $hora_act, $id_usuario_act) {
@@ -146,11 +162,27 @@ function recalcula_almacen_producto($link, $id_sucursal, $codigo, $cantidad, $fe
     $codigoInventario = mysqli_real_escape_string($link, $inventario['codigo']);
     $cantidadInventario = (float) $inventario['cantidad'];
 
-    mysqli_query($link, "UPDATE cc_productos SET almacen = almacen - $cantidadInventario, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act= $id_usuario_act WHERE id_sucursal= $id_sucursal and codigo = '$codigoInventario'");
+    $actualizado = mysqli_query($link, "UPDATE cc_productos SET almacen = almacen - $cantidadInventario, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act= $id_usuario_act WHERE id_sucursal= $id_sucursal and codigo = '$codigoInventario'");
+    if ($actualizado) {
+        cc_sync_enqueue($link, (int) $id_sucursal, 'producto', 'upsert', [
+            'codigo' => (string) $inventario['codigo'],
+        ], [
+            'tabla' => 'cc_productos',
+            'motivo' => 'reporte_dia_cancelacion_reactivacion',
+        ]);
+    }
 }
 
 function recalcula_almacen_categoria($link, $id_sucursal, $id_categoria, $cantidad, $fecha_act, $hora_act, $id_usuario_act) {
-    mysqli_query($link, "UPDATE cc_categorias SET almacen = almacen - $cantidad, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act= $id_usuario_act WHERE id_sucursal= $id_sucursal and id_categoria = $id_categoria");
+    $actualizado = mysqli_query($link, "UPDATE cc_categorias SET almacen = almacen - $cantidad, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act= $id_usuario_act WHERE id_sucursal= $id_sucursal and id_categoria = $id_categoria");
+    if ($actualizado) {
+        cc_sync_enqueue($link, (int) $id_sucursal, 'categoria', 'upsert', [
+            'id_categoria' => (int) $id_categoria,
+        ], [
+            'tabla' => 'cc_categorias',
+            'motivo' => 'reporte_dia_cancelacion_reactivacion',
+        ]);
+    }
 }
 
 // Para el formulario

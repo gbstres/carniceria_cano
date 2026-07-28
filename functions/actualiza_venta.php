@@ -51,13 +51,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     . "WHERE id_sucursal='$id_sucursal' and id_venta='$id_venta' and id_consecutivo = '$id_consecutivo'")
             or die(mysqli_error());
     if ($update_venta) {
-        if ($columnName == 'Precio') {
-            
-        }
+        cc_sync_enqueue($link, (int) $id_sucursal, 'venta', 'upsert', [
+            'id_venta' => (int) $id_venta,
+            'id_consecutivo' => (int) $id_consecutivo,
+        ], [
+            'tabla' => 'cc_ventas',
+            'motivo' => $columnName == 'cantidad' ? 'edicion_cantidad' : 'edicion_precio',
+        ]);
 
         if ($id_cliente > 0) {
             $importe_inicial = $precio * $cantidad;
-            if ($columnName == 'importe') {
+            if ($columnName == 'precio_venta') {
                 $importe_final = $value * $cantidad;
             } else if ($columnName == 'cantidad') {
                 $importe_final = $value * $precio;
@@ -79,7 +83,15 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
 //recalcula saldo cliente
 function recalcula($link, $id_sucursal, $abono, $id_cliente, $fecha_act, $hora_act, $id_usuario_act) {
-    mysqli_query($link, "UPDATE cc_saldos_clientes SET efectivo_hoy = efectivo_hoy + $abono, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act= $id_usuario_act WHERE id_sucursal= $id_sucursal and id_cliente = $id_cliente");
+    $actualizado = mysqli_query($link, "UPDATE cc_saldos_clientes SET efectivo_hoy = efectivo_hoy + $abono, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act= $id_usuario_act WHERE id_sucursal= $id_sucursal and id_cliente = $id_cliente");
+    if ($actualizado) {
+        cc_sync_enqueue($link, (int) $id_sucursal, 'saldo_cliente', 'upsert', [
+            'id_cliente' => (int) $id_cliente,
+        ], [
+            'tabla' => 'cc_saldos_clientes',
+            'motivo' => 'edicion_precio_cantidad_venta',
+        ]);
+    }
     //$row_efectivo = mysqli_fetch_assoc(mysqli_query($link, "select sum(efectivo_hoy) as 'efectivo_hoy' from cc_saldos_clientes where id_sucursal = $id_sucursal and id_cliente =" . $id_cliente));
     //$efectivo = $row_efectivo['efectivo_hoy'];
     //return round($efectivo, 2);
