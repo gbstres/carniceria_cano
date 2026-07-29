@@ -1,7 +1,13 @@
 <?php
 // Initialize the session
 session_start();
-$redirectAfterLogin = "../main/inicio.php";
+require_once "../functions/auth_redirect.php";
+
+$returnTo = $_GET['return_to'] ?? ($_SESSION['redirect_after_login'] ?? '');
+$redirectAfterLogin = ccSafeInternalRedirect($returnTo);
+if ($redirectAfterLogin !== '../main/inicio.php') {
+    $_SESSION['redirect_after_login'] = $redirectAfterLogin;
+}
 
 // Check if the user is already logged in, if yes then redirect him to welcome page
 if (isset($_SESSION["loggedin"]) && $_SESSION["loggedin"] === true) {
@@ -50,6 +56,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         $_SESSION["nombre"] = $nombre;
                         $_SESSION["username"] = $username;
                         $_SESSION["rol"] = $rol;
+                        if ($redirectAfterLogin !== '../main/inicio.php') {
+                            $_SESSION['redirect_after_login'] = $redirectAfterLogin;
+                        }
                         $sqlsucursal = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM cc_sucursales where id_sucursal = '$sucursal'"));
                         if ($sqlsucursal && !empty($sqlsucursal['id_sucursal'])) {
                             $_SESSION["id_sucursal"] = (int) $sqlsucursal['id_sucursal'];
@@ -64,6 +73,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         mysqli_query($link, "UPDATE cc_users SET fecha_acceso='$fecha_acceso', hora_acceso='$hora_acceso' WHERE id=$id");
 
                         if ((int) $_SESSION["id_sucursal"] > 0) {
+                            unset($_SESSION['redirect_after_login']);
                             header("location: " . $redirectAfterLogin);
                         } else {
                             header("location: ../login/cambio_sucursal.php");
