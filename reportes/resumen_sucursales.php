@@ -2,7 +2,8 @@
 session_start();
 
 if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
-    header("location: ../login/login.php");
+    $returnTo = $_SERVER['REQUEST_URI'] ?? '/reportes/resumen_sucursales.php';
+    header("location: ../login/login.php?return_to=" . rawurlencode($returnTo));
     exit;
 }
 
@@ -29,6 +30,8 @@ $sucursales = [];
 $rsSucursales = mysqli_query($link, "
     SELECT id_sucursal, desc_sucursal, activo
     FROM cc_sucursales
+    WHERE activo = 1
+      AND UPPER(desc_sucursal) NOT LIKE '%PRUEBAS%'
     ORDER BY activo DESC, desc_sucursal
 ");
 while ($rsSucursales && $row = mysqli_fetch_assoc($rsSucursales)) {
