@@ -35,12 +35,32 @@ $photoProductCode = '';
 $productsPerPage = 25;
 $currentPage = isset($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
 $searchTerm = isset($_GET['buscar']) ? trim($_GET['buscar']) : '';
+$categoryFilter = isset($_GET['categoria']) ? max(0, (int) $_GET['categoria']) : 0;
+$showAllProducts = isset($_GET['mostrar']) && $_GET['mostrar'] === 'todo';
 
 function buildProductosPageUrl($page)
 {
     $query = ['page' => max(1, (int) $page)];
     if ($GLOBALS['searchTerm'] !== '') {
         $query['buscar'] = $GLOBALS['searchTerm'];
+    }
+    if ($GLOBALS['categoryFilter'] > 0) {
+        $query['categoria'] = $GLOBALS['categoryFilter'];
+    }
+    return '?' . http_build_query($query);
+}
+
+function buildProductosShowUrl($showAll)
+{
+    $query = [];
+    if ($GLOBALS['searchTerm'] !== '') {
+        $query['buscar'] = $GLOBALS['searchTerm'];
+    }
+    if ($GLOBALS['categoryFilter'] > 0) {
+        $query['categoria'] = $GLOBALS['categoryFilter'];
+    }
+    if ($showAll) {
+        $query['mostrar'] = 'todo';
     }
     return '?' . http_build_query($query);
 }
@@ -269,9 +289,16 @@ if ($searchTerm !== '') {
     $searchSql = " AND (
         p.codigo LIKE '%$safeSearchTerm%'
         OR p.descripcion LIKE '%$safeSearchTerm%'
-        OR c.desc_categoria LIKE '%$safeSearchTerm%'
     )";
 }
+
+$categorySql = $categoryFilter > 0 ? " AND p.id_categoria = $categoryFilter" : '';
+$categoriasFiltro = mysqli_query($link, "
+    SELECT id_categoria, desc_categoria
+    FROM cc_categorias
+    WHERE id_sucursal = '$id_sucursal'
+    ORDER BY desc_categoria
+");
 
 $countResult = mysqli_query($link, "
     SELECT COUNT(*) AS total
@@ -279,7 +306,7 @@ $countResult = mysqli_query($link, "
     LEFT JOIN cc_categorias c
         ON c.id_sucursal = p.id_sucursal
         AND c.id_categoria = p.id_categoria
-    WHERE p.id_sucursal = '$id_sucursal' $searchSql
+    WHERE p.id_sucursal = '$id_sucursal' $searchSql $categorySql
 ");
 $countRow = $countResult ? mysqli_fetch_assoc($countResult) : ['total' => 0];
 $totalProducts = (int) $countRow['total'];
@@ -289,9 +316,10 @@ if ($currentPage > $totalPages) {
     $currentPage = $totalPages;
 }
 
-$offset = ($currentPage - 1) * $productsPerPage;
+$offset = $showAllProducts ? 0 : ($currentPage - 1) * $productsPerPage;
 $startProduct = $totalProducts > 0 ? $offset + 1 : 0;
-$endProduct = min($offset + $productsPerPage, $totalProducts);
+$endProduct = $showAllProducts ? $totalProducts : min($offset + $productsPerPage, $totalProducts);
+$limitSql = $showAllProducts ? '' : "LIMIT $offset, $productsPerPage";
 
 $sqlproductos = mysqli_query($link, "
     SELECT
@@ -310,8 +338,9 @@ $sqlproductos = mysqli_query($link, "
         AND ca.clave = p.centralizar_almacen
     WHERE p.id_sucursal = '$id_sucursal'
         $searchSql
+        $categorySql
     ORDER BY p.id_categoria ASC, p.descripcion ASC
-    LIMIT $offset, $productsPerPage
+    $limitSql
 ");
 ?>
 
@@ -485,8 +514,18 @@ $sqlproductos = mysqli_query($link, "
                         <br>
                         <br>
                         <form method="get" class="row g-3 mb-3">
-                            <div class="col-md-6">
-                                <input type="text" class="form-control" name="buscar" placeholder="Buscar por codigo, descripcion o categoria" value="<?php echo htmlspecialchars($searchTerm, ENT_QUOTES, 'UTF-8'); ?>">
+                            <div class="col-md-4">
+                                <input type="text" class="form-control" name="buscar" placeholder="Buscar por código o descripción" value="<?php echo htmlspecialchars($searchTerm, ENT_QUOTES, 'UTF-8'); ?>">
+                            </div>
+                            <div class="col-md-2">
+                                <select class="form-select" name="categoria" aria-label="Filtrar por categoría">
+                                    <option value="0">Todas las categorías</option>
+                                    <?php while ($categoriaFiltro = mysqli_fetch_assoc($categoriasFiltro)): ?>
+                                        <option value="<?php echo (int) $categoriaFiltro['id_categoria']; ?>" <?php echo $categoryFilter === (int) $categoriaFiltro['id_categoria'] ? 'selected' : ''; ?>>
+                                            <?php echo htmlspecialchars($categoriaFiltro['desc_categoria'], ENT_QUOTES, 'UTF-8'); ?>
+                                        </option>
+                                    <?php endwhile; ?>
+                                </select>
                             </div>
                             <div class="col-md-2 d-grid">
                                 <button type="submit" class="btn btn-primary">Buscar</button>
@@ -561,7 +600,13 @@ $sqlproductos = mysqli_query($link, "
                                     echo ' para "' . htmlspecialchars($searchTerm, ENT_QUOTES, 'UTF-8') . '"';
                                 }
                                 ?>
+                                <?php if ($showAllProducts): ?>
+                                    · <a href="<?php echo buildProductosShowUrl(false); ?>">Mostrar paginado</a>
+                                <?php else: ?>
+                                    · <a href="<?php echo buildProductosShowUrl(true); ?>">Mostrar todo</a>
+                                <?php endif; ?>
                             </div>
+                            <?php if (!$showAllProducts && $totalPages > 1): ?>
                             <nav aria-label="Paginacion de productos">
                                 <ul class="pagination mb-0">
                                     <li class="page-item <?php echo $currentPage <= 1 ? 'disabled' : ''; ?>">
@@ -577,6 +622,7 @@ $sqlproductos = mysqli_query($link, "
                                     </li>
                                 </ul>
                             </nav>
+                            <?php endif; ?>
                         </div>
                     </div>
                 </div>
