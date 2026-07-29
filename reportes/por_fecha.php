@@ -140,6 +140,7 @@ if (isset($_POST['id_categoria'])) {
                                         <th>Cantidad</th>
                                         <th>Imp C</th>
                                         <th>Imp V</th>
+                                        <th>T. V.</th>
                                         <th>Ganancia</th>
                                     </tr>
                                 </thead>
@@ -156,6 +157,7 @@ if (isset($_POST['id_categoria'])) {
                                     //$sqlcatalogo = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM cc_catalogos where nombre_clave = 'ROL' and id_clave =" . $rowp['rol']));
                                     $producto = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM cc_productos where id_sucursal = '$id_sucursal' and codigo =" . $rowc['codigo']));
                                     $cliente = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM cc_clientes where id_sucursal = '$id_sucursal' and id_cliente =" . $rowc['id_cliente']));
+                                    $total_id = mysqli_fetch_assoc(mysqli_query($link, "SELECT sum(round(cantidad * precio_venta,2)) total_id FROM cc_ventas WHERE id_sucursal = $id_sucursal and id_venta = " . $rowc['id_venta'] . " and estatus not in (2)"));
                                     $desc_pago = mysqli_fetch_assoc(mysqli_query($link, "SELECT descripcion_corta FROM cc_claves where nombre_clave = 'TIPO_PAGO' and clave = " . (int) $rowc['tipo_pago']));
                                     $tipo_pago = empty($desc_pago) ? '' : $desc_pago['descripcion_corta'];
                                     if ($id_categoria == '0' or ($producto['id_categoria'] == $id_categoria)) {
@@ -192,6 +194,7 @@ if (isset($_POST['id_categoria'])) {
                                         <td>' . $rowc['cantidad'] . '</td>
                                         <td>' . $importeC . '</td>
                                         <td>' . $importeV . '</td>
+                                        <td>' . $total_id['total_id'] . '</td>
                                         <td>' . $ganancia . '</td>
                                     </tr>
                                         ';
@@ -205,6 +208,7 @@ if (isset($_POST['id_categoria'])) {
                                         <th></th>
                                         <th></th>
                                         <th id="totales"></th>
+                                        <th></th>
                                         <th></th>
                                         <th></th>
                                         <th></th>
@@ -263,7 +267,7 @@ if (isset($_POST['id_categoria'])) {
                                                 },
                                                 footerCallback: function () {
                                                     var api = this.api();
-                                                    var columnasASumar = [9, 10, 11, 12]; // Columnas que quieres sumar
+                                                    var columnasASumar = [9, 10, 11, 13]; // Columnas que quieres sumar
 
                                                     function calcularTotales(columnas) {
                                                         var totals = columnas.map(() => 0); // Inicializar en 0
@@ -292,10 +296,10 @@ if (isset($_POST['id_categoria'])) {
 if (tienePermiso('ver')) {
     echo '
                                                     $(api.column(4).footer()).html(\'Total de venta\');
-                                                   $(api.column(9).footer()).html(resultados[0].toFixed(2));
+                                                    $(api.column(9).footer()).html(resultados[0].toFixed(2));
                                                     $(api.column(10).footer()).html(resultados[1].toFixed(2));
                                                     $(api.column(11).footer()).html(resultados[2].toFixed(2));
-                                                    $(api.column(12).footer()).html(resultados[3].toFixed(2));
+                                                     $(api.column(13).footer()).html(resultados[3].toFixed(2));
                                                         ';
 }
 ?>

@@ -19,7 +19,8 @@ $sqlProductos = mysqli_query($link, "
         p.id_categoria,
         c.desc_categoria,
         p.centralizar_almacen,
-        ca.descripcion_corta AS centraliza
+        ca.descripcion_corta AS centraliza,
+        COALESCE(eq.precio_compra_origen, p.precio_compra, 0) AS precio_compra
     FROM cc_productos p
     LEFT JOIN cc_categorias c
         ON c.id_sucursal = p.id_sucursal
@@ -27,6 +28,20 @@ $sqlProductos = mysqli_query($link, "
     LEFT JOIN cc_claves ca
         ON ca.nombre_clave = 'CENTRALIZAR_ALMACEN'
        AND ca.clave = p.centralizar_almacen
+    LEFT JOIN (
+        SELECT
+            e.id_sucursal,
+            e.codigo_destino,
+            AVG(po.precio_compra) AS precio_compra_origen
+        FROM cc_equivalencias_productos e
+        INNER JOIN cc_productos po
+            ON po.id_sucursal = e.id_sucursal
+           AND po.codigo = e.codigo_origen
+        WHERE e.activo = 1
+        GROUP BY e.id_sucursal, e.codigo_destino
+    ) eq
+        ON eq.id_sucursal = p.id_sucursal
+       AND eq.codigo_destino = p.codigo
     WHERE p.id_sucursal = $id_sucursal
       AND p.almacen <> 0
     ORDER BY c.desc_categoria, p.descripcion
@@ -34,13 +49,19 @@ $sqlProductos = mysqli_query($link, "
 
 $sqlCategorias = mysqli_query($link, "
     SELECT
-        id_categoria,
-        desc_categoria,
-        almacen
-    FROM cc_categorias
-    WHERE id_sucursal = $id_sucursal
-      AND almacen <> 0
-    ORDER BY desc_categoria
+        c.id_categoria,
+        c.desc_categoria,
+        c.almacen,
+        COALESCE(AVG(p.precio_compra), 0) AS precio_compra
+    FROM cc_categorias c
+    LEFT JOIN cc_productos p
+        ON p.id_sucursal = c.id_sucursal
+       AND p.id_categoria = c.id_categoria
+       AND p.centralizar_almacen = 2
+    WHERE c.id_sucursal = $id_sucursal
+      AND c.almacen <> 0
+    GROUP BY c.id_categoria, c.desc_categoria, c.almacen
+    ORDER BY c.desc_categoria
 ");
 ?>
 <!doctype html>
@@ -100,19 +121,28 @@ $sqlCategorias = mysqli_query($link, "
                                     <th>Categoría</th>
                                     <th>Centraliza</th>
                                     <th>Stock</th>
+                                    <th>Precio compra</th>
+                                    <th>Total</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php
                                 $totalProductos = 0;
+                                $importeProductos = 0;
                                 while ($row = mysqli_fetch_assoc($sqlProductos)) {
-                                    $totalProductos += (float) $row["almacen"];
+                                    $stock = (float) $row["almacen"];
+                                    $precioCompra = (float) $row["precio_compra"];
+                                    $totalProducto = $stock < 0 ? 0 : round($stock * $precioCompra, 2);
+                                    $totalProductos += $stock;
+                                    $importeProductos += $totalProducto;
                                     echo '<tr>
                                         <td>' . htmlspecialchars($row["codigo"], ENT_QUOTES, "UTF-8") . '</td>
                                         <td>' . htmlspecialchars($row["descripcion"], ENT_QUOTES, "UTF-8") . '</td>
                                         <td>' . htmlspecialchars(($row["desc_categoria"] ?? ""), ENT_QUOTES, "UTF-8") . '</td>
                                         <td>' . htmlspecialchars(($row["centraliza"] ?? ""), ENT_QUOTES, "UTF-8") . '</td>
-                                        <td class="text-end editable-stock" data-id="' . htmlspecialchars($row["codigo"], ENT_QUOTES, "UTF-8") . '" data-url="../functions/actualizaproductos.php">' . number_format((float) $row["almacen"], 3) . '</td>
+                                        <td class="text-end editable-stock" data-id="' . htmlspecialchars($row["codigo"], ENT_QUOTES, "UTF-8") . '" data-url="../functions/actualizaproductos.php">' . number_format($stock, 3) . '</td>
+                                        <td class="text-end">' . number_format($precioCompra, 2) . '</td>
+                                        <td class="text-end">' . number_format($totalProducto, 2) . '</td>
                                     </tr>';
                                 }
                                 ?>
@@ -121,6 +151,8 @@ $sqlCategorias = mysqli_query($link, "
                                 <tr>
                                     <th colspan="4" class="text-end">Total</th>
                                     <th class="text-end"><?php echo number_format($totalProductos, 3); ?></th>
+                                    <th></th>
+                                    <th class="text-end"><?php echo number_format($importeProductos, 2); ?></th>
                                 </tr>
                             </tfoot>
                         </table>
@@ -138,17 +170,26 @@ $sqlCategorias = mysqli_query($link, "
                                     <th>ID</th>
                                     <th>Categoría</th>
                                     <th>Stock</th>
+                                    <th>Precio compra promedio</th>
+                                    <th>Total</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <?php
                                 $totalCategorias = 0;
+                                $importeCategorias = 0;
                                 while ($row = mysqli_fetch_assoc($sqlCategorias)) {
-                                    $totalCategorias += (float) $row["almacen"];
+                                    $stock = (float) $row["almacen"];
+                                    $precioCompra = (float) $row["precio_compra"];
+                                    $totalCategoria = $stock < 0 ? 0 : round($stock * $precioCompra, 2);
+                                    $totalCategorias += $stock;
+                                    $importeCategorias += $totalCategoria;
                                     echo '<tr>
                                         <td>' . htmlspecialchars($row["id_categoria"], ENT_QUOTES, "UTF-8") . '</td>
                                         <td>' . htmlspecialchars($row["desc_categoria"], ENT_QUOTES, "UTF-8") . '</td>
-                                        <td class="text-end editable-stock" data-id="' . htmlspecialchars($row["id_categoria"], ENT_QUOTES, "UTF-8") . '" data-url="../functions/actualizacategorias.php">' . number_format((float) $row["almacen"], 3) . '</td>
+                                        <td class="text-end editable-stock" data-id="' . htmlspecialchars($row["id_categoria"], ENT_QUOTES, "UTF-8") . '" data-url="../functions/actualizacategorias.php">' . number_format($stock, 3) . '</td>
+                                        <td class="text-end">' . number_format($precioCompra, 2) . '</td>
+                                        <td class="text-end">' . number_format($totalCategoria, 2) . '</td>
                                     </tr>';
                                 }
                                 ?>
@@ -157,6 +198,8 @@ $sqlCategorias = mysqli_query($link, "
                                 <tr>
                                     <th colspan="2" class="text-end">Total</th>
                                     <th class="text-end"><?php echo number_format($totalCategorias, 3); ?></th>
+                                    <th></th>
+                                    <th class="text-end"><?php echo number_format($importeCategorias, 2); ?></th>
                                 </tr>
                             </tfoot>
                         </table>
@@ -199,7 +242,7 @@ $sqlCategorias = mysqli_query($link, "
 
                             if (nombreCategoria !== ultimaCategoria) {
                                 $(rows).eq(indice).before(
-                                    '<tr class="category-group"><td colspan="4">' +
+                                    '<tr class="category-group"><td colspan="6">' +
                                     $('<div>').text(nombreCategoria).html() +
                                     '</td></tr>'
                                 );
