@@ -83,15 +83,21 @@ if (in_array($ccHost, ['localhost', '127.0.0.1', '::1'], true)) {
                     </ul>
                 </li>
                 <?php
-                if (tienePermiso('ver')) {
+                $esAdministrador = tienePermiso('ver');
+                $esCajero = (int) ($_SESSION['rol'] ?? 0) === 3;
+                if ($esAdministrador || $esCajero) {
                     echo ' 
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown" aria-expanded="false">Admin y sistemas</a>
-                    <ul class="dropdown-menu">
+                    <ul class="dropdown-menu">';
+                    if ($esAdministrador) {
+                        echo '
                         <li><a class="dropdown-item" href="../admin/derivados.php">Derivados</a></li>
                         <li><a class="dropdown-item" href="../admin/equivalencias_productos.php">Equivalencias productos</a></li>
                         <li><a class="dropdown-item" href="../admin/act_sistema.php">Actualizar sistema</a></li>
-                        <li><a class="dropdown-item" href="../admin/actualiza_info.php">Actualiza inf. del servidor</a></li>
+                        <li><a class="dropdown-item" href="../admin/actualiza_info.php">Actualiza inf. del servidor</a></li>';
+                    }
+                    echo '
                         <li><a class="dropdown-item" href="../admin/importa_ventas_matriz.php">Importar Ventas</a></li>
                     </ul>
                 </li>';
