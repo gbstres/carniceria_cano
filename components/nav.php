@@ -70,7 +70,7 @@ if (in_array($ccHost, ['localhost', '127.0.0.1', '::1'], true)) {
                     <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown" aria-expanded="false">Control</a>
                     <ul class="dropdown-menu">
                         <?php
-                        if (tienePermiso('ver')) {
+                        if (tienePermiso('ver') || (int) ($_SESSION['rol'] ?? 0) === 3) {
                             echo '
                         <li><a class="dropdown-item" href="../control/compras.php">Compras</a></li>';
                         }
