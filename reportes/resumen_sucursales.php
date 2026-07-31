@@ -157,6 +157,8 @@ try {
                 'valor_categorias' => 0,
                 'ventas_sucursal' => 0,
                 'ventas_sucursal_compra' => 0,
+                'cantidad_sucursal' => 0,
+                'ganancia_sucursal' => 0,
                 'compras' => 0,
             ];
         }
@@ -207,6 +209,8 @@ try {
             'valor_categorias' => 0,
             'ventas_sucursal' => 0,
             'ventas_sucursal_compra' => 0,
+            'cantidad_sucursal' => 0,
+            'ganancia_sucursal' => 0,
             'compras' => 0,
         ];
     }
@@ -272,7 +276,9 @@ try {
             SELECT
                 dv.id_sucursal,
                 COALESCE(SUM(ROUND(v.cantidad * v.precio_venta, 2)), 0) AS ventas_sucursal,
-                COALESCE(SUM(ROUND(v.cantidad * v.precio_compra, 2)), 0) AS ventas_sucursal_compra
+                COALESCE(SUM(ROUND(v.cantidad * v.precio_compra, 2)), 0) AS ventas_sucursal_compra,
+                COALESCE(SUM(v.cantidad), 0) AS cantidad_sucursal,
+                COALESCE(SUM(ROUND((v.precio_venta - v.precio_compra) * v.cantidad, 2)), 0) AS ganancia_sucursal
             FROM cc_det_ventas dv
             INNER JOIN cc_ventas v
                 ON v.id_sucursal = dv.id_sucursal
@@ -282,7 +288,7 @@ try {
               AND dv.estatus IN (1, 3)
               AND v.estatus <> 2
             GROUP BY dv.id_sucursal
-        ", $datosSucursales, ['ventas_sucursal', 'ventas_sucursal_compra']);
+        ", $datosSucursales, ['ventas_sucursal', 'ventas_sucursal_compra', 'cantidad_sucursal', 'ganancia_sucursal']);
 
         reporteMatrizCargarPorSucursal($link, "
             SELECT
@@ -337,14 +343,15 @@ try {
                 vm.ventas,
                 ventas_sucursal.ventas AS ventas_sucursal,
                 ventas_sucursal.ventas_compra AS ventas_sucursal_compra,
+                ventas_sucursal.cantidad AS cantidad_sucursal,
+                ventas_sucursal.ganancia AS ganancia_sucursal,
                 compras.compras
             FROM (
                 SELECT
                     dv.id_cliente,
                     pm.id_categoria,
                     cm.desc_categoria,
-                    SUM(ROUND(v.cantidad * v.precio_venta, 2)) AS ventas,
-                    SUM(ROUND(v.cantidad * v.precio_compra, 2)) AS ventas_compra
+                    SUM(ROUND(v.cantidad * v.precio_venta, 2)) AS ventas
                 FROM cc_det_ventas dv
                 INNER JOIN cc_ventas v
                     ON v.id_sucursal = dv.id_sucursal
@@ -389,7 +396,10 @@ try {
                 SELECT
                     dv.id_sucursal,
                     ps.id_categoria,
-                    SUM(ROUND(v.cantidad * v.precio_venta, 2)) AS ventas
+                    SUM(ROUND(v.cantidad * v.precio_venta, 2)) AS ventas,
+                    SUM(ROUND(v.cantidad * v.precio_compra, 2)) AS ventas_compra,
+                    SUM(v.cantidad) AS cantidad,
+                    SUM(ROUND((v.precio_venta - v.precio_compra) * v.cantidad, 2)) AS ganancia
                 FROM cc_det_ventas dv
                 INNER JOIN cc_ventas v
                     ON v.id_sucursal = dv.id_sucursal
@@ -448,6 +458,8 @@ try {
                 vm.ventas,
                 ventas_sucursal.ventas AS ventas_sucursal,
                 ventas_sucursal.ventas_compra AS ventas_sucursal_compra,
+                ventas_sucursal.cantidad AS cantidad_sucursal,
+                ventas_sucursal.ganancia AS ganancia_sucursal,
                 compras.compras
             FROM (
                 SELECT
@@ -455,8 +467,7 @@ try {
                     v.codigo,
                     pm.descripcion,
                     cm.desc_categoria,
-                    SUM(ROUND(v.cantidad * v.precio_venta, 2)) AS ventas,
-                    SUM(ROUND(v.cantidad * v.precio_compra, 2)) AS ventas_compra
+                    SUM(ROUND(v.cantidad * v.precio_venta, 2)) AS ventas
                 FROM cc_det_ventas dv
                 INNER JOIN cc_ventas v
                     ON v.id_sucursal = dv.id_sucursal
@@ -507,7 +518,10 @@ try {
                 SELECT
                     dv.id_sucursal,
                     v.codigo,
-                    SUM(ROUND(v.cantidad * v.precio_venta, 2)) AS ventas
+                    SUM(ROUND(v.cantidad * v.precio_venta, 2)) AS ventas,
+                    SUM(ROUND(v.cantidad * v.precio_compra, 2)) AS ventas_compra,
+                    SUM(v.cantidad) AS cantidad,
+                    SUM(ROUND((v.precio_venta - v.precio_compra) * v.cantidad, 2)) AS ganancia
                 FROM cc_det_ventas dv
                 INNER JOIN cc_ventas v
                     ON v.id_sucursal = dv.id_sucursal
@@ -553,13 +567,15 @@ $totales = [
     'ventas' => 0,
     'ventas_sucursal' => 0,
     'ventas_sucursal_compra' => 0,
+    'cantidad_sucursal' => 0,
+    'ganancia_sucursal' => 0,
     'compras' => 0,
 ];
 foreach ($clientes as $cliente) {
     $totales['ventas'] += $cliente['ventas'];
 }
 foreach ($datosSucursales as $datos) {
-    foreach (['stock_productos', 'valor_productos', 'stock_categorias', 'valor_categorias', 'ventas_sucursal', 'ventas_sucursal_compra', 'compras'] as $campo) {
+    foreach (['stock_productos', 'valor_productos', 'stock_categorias', 'valor_categorias', 'ventas_sucursal', 'ventas_sucursal_compra', 'cantidad_sucursal', 'ganancia_sucursal', 'compras'] as $campo) {
         $totales[$campo] += $datos[$campo];
     }
 }
@@ -583,6 +599,12 @@ function reporteMatrizNumeroNullable($value, $decimales)
             @import "../css/bootstrap.css";
             .metric-card {
                 border-left: 4px solid #0d6efd;
+            }
+            #informacion_sucursales .encabezado-sucursal,
+            #informacion_sucursales thead tr:nth-child(2) th:nth-child(3),
+            #informacion_sucursales tbody td:nth-child(3),
+            #informacion_sucursales tfoot th:nth-child(3) {
+                box-shadow: inset 3px 0 0 #6c757d;
             }
         </style>
         <link href="../css/navbar.css" rel="stylesheet">
@@ -674,16 +696,22 @@ function reporteMatrizNumeroNullable($value, $decimales)
                             <table id="informacion_sucursales" class="display" style="width:100%">
                                 <thead>
                                     <tr>
+                                        <th colspan="2" class="text-center">Matriz</th>
+                                        <th colspan="11" class="text-center encabezado-sucursal">Sucursal</th>
+                                    </tr>
+                                    <tr>
                                         <th>Cliente en matriz</th>
-                                        <th>Sucursal relacionada</th>
                                         <th>Ventas matriz</th>
+                                        <th>Sucursal relacionada</th>
                                         <th>Stock productos</th>
                                         <th>Valor productos</th>
                                         <th>Stock categorías</th>
                                         <th>Valor categorías</th>
                                         <th>Valor stock</th>
+                                        <th>Cantidad</th>
                                         <th>Venta (imp. V)</th>
                                         <th>Venta (imp. C)</th>
+                                        <th>Ganancia</th>
                                         <th>Compras sucursal</th>
                                     </tr>
                                 </thead>
@@ -692,15 +720,17 @@ function reporteMatrizNumeroNullable($value, $decimales)
                                         <?php $datos = $cliente['id_sucursal'] !== null ? ($datosSucursales[(int) $cliente['id_sucursal']] ?? null) : null; ?>
                                         <tr>
                                             <td><?php echo htmlspecialchars($cliente['nombre'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td><?php echo htmlspecialchars($cliente['desc_sucursal'] ?: '—', ENT_QUOTES, 'UTF-8'); ?></td>
                                             <td class="text-end"><?php echo number_format($cliente['ventas'], 2); ?></td>
+                                            <td><?php echo htmlspecialchars($cliente['desc_sucursal'] ?: '—', ENT_QUOTES, 'UTF-8'); ?></td>
                                             <td class="text-end"><?php echo $datos === null ? '—' : number_format($datos['stock_productos'], 3); ?></td>
                                             <td class="text-end"><?php echo $datos === null ? '—' : number_format($datos['valor_productos'], 2); ?></td>
                                             <td class="text-end"><?php echo $datos === null ? '—' : number_format($datos['stock_categorias'], 3); ?></td>
                                             <td class="text-end"><?php echo $datos === null ? '—' : number_format($datos['valor_categorias'], 2); ?></td>
                                             <td class="text-end"><?php echo $datos === null ? '—' : number_format($datos['valor_productos'] + $datos['valor_categorias'], 2); ?></td>
+                                            <td class="text-end"><?php echo $datos === null ? '—' : number_format($datos['cantidad_sucursal'], 3); ?></td>
                                             <td class="text-end"><?php echo $datos === null ? '—' : number_format($datos['ventas_sucursal'], 2); ?></td>
                                             <td class="text-end"><?php echo $datos === null ? '—' : number_format($datos['ventas_sucursal_compra'], 2); ?></td>
+                                            <td class="text-end"><?php echo $datos === null ? '—' : number_format($datos['ganancia_sucursal'], 2); ?></td>
                                             <td class="text-end"><?php echo $datos === null ? '—' : number_format($datos['compras'], 2); ?></td>
                                         </tr>
                                     <?php endforeach; ?>
@@ -708,15 +738,17 @@ function reporteMatrizNumeroNullable($value, $decimales)
                                 <tfoot>
                                     <tr>
                                         <th>Total</th>
-                                        <th></th>
                                         <th class="text-end"><?php echo number_format($totales['ventas'], 2); ?></th>
+                                        <th></th>
                                         <th class="text-end"><?php echo number_format($totales['stock_productos'], 3); ?></th>
                                         <th class="text-end"><?php echo number_format($totales['valor_productos'], 2); ?></th>
                                         <th class="text-end"><?php echo number_format($totales['stock_categorias'], 3); ?></th>
                                         <th class="text-end"><?php echo number_format($totales['valor_categorias'], 2); ?></th>
                                         <th class="text-end"><?php echo number_format($totales['valor_productos'] + $totales['valor_categorias'], 2); ?></th>
+                                        <th class="text-end"><?php echo number_format($totales['cantidad_sucursal'], 3); ?></th>
                                         <th class="text-end"><?php echo number_format($totales['ventas_sucursal'], 2); ?></th>
                                         <th class="text-end"><?php echo number_format($totales['ventas_sucursal_compra'], 2); ?></th>
+                                        <th class="text-end"><?php echo number_format($totales['ganancia_sucursal'], 2); ?></th>
                                         <th class="text-end"><?php echo number_format($totales['compras'], 2); ?></th>
                                     </tr>
                                 </tfoot>
@@ -741,8 +773,10 @@ function reporteMatrizNumeroNullable($value, $decimales)
                                                 <th>Precio promedio</th>
                                                 <th>Valor stock</th>
                                                 <th>Ventas matriz</th>
+                                                <th>Cantidad sucursal</th>
                                                 <th>Venta (imp. V)</th>
                                                 <th>Venta (imp. C)</th>
+                                                <th>Ganancia</th>
                                                 <th>Compras sucursal</th>
                                             </tr>
                                         <?php else: ?>
@@ -756,8 +790,10 @@ function reporteMatrizNumeroNullable($value, $decimales)
                                                 <th>Precio compra</th>
                                                 <th>Valor stock</th>
                                                 <th>Ventas matriz</th>
+                                                <th>Cantidad sucursal</th>
                                                 <th>Venta (imp. V)</th>
                                                 <th>Venta (imp. C)</th>
+                                                <th>Ganancia</th>
                                                 <th>Compras sucursal</th>
                                             </tr>
                                         <?php endif; ?>
@@ -773,8 +809,10 @@ function reporteMatrizNumeroNullable($value, $decimales)
                                                     <td class="text-end"><?php echo reporteMatrizNumeroNullable($detalle['precio_compra'], 2); ?></td>
                                                     <td class="text-end"><?php echo reporteMatrizNumeroNullable($detalle['valor_stock'], 2); ?></td>
                                                     <td class="text-end"><?php echo number_format((float) $detalle['ventas'], 2); ?></td>
+                                                    <td class="text-end"><?php echo reporteMatrizNumeroNullable($detalle['cantidad_sucursal'], 3); ?></td>
                                                     <td class="text-end"><?php echo reporteMatrizNumeroNullable($detalle['ventas_sucursal'], 2); ?></td>
                                                     <td class="text-end"><?php echo reporteMatrizNumeroNullable($detalle['ventas_sucursal_compra'], 2); ?></td>
+                                                    <td class="text-end"><?php echo reporteMatrizNumeroNullable($detalle['ganancia_sucursal'], 2); ?></td>
                                                     <td class="text-end"><?php echo reporteMatrizNumeroNullable($detalle['compras'], 2); ?></td>
                                                 </tr>
                                             <?php else: ?>
@@ -788,8 +826,10 @@ function reporteMatrizNumeroNullable($value, $decimales)
                                                     <td class="text-end"><?php echo reporteMatrizNumeroNullable($detalle['precio_compra'], 2); ?></td>
                                                     <td class="text-end"><?php echo reporteMatrizNumeroNullable($detalle['valor_stock'], 2); ?></td>
                                                     <td class="text-end"><?php echo number_format((float) $detalle['ventas'], 2); ?></td>
+                                                    <td class="text-end"><?php echo reporteMatrizNumeroNullable($detalle['cantidad_sucursal'], 3); ?></td>
                                                     <td class="text-end"><?php echo reporteMatrizNumeroNullable($detalle['ventas_sucursal'], 2); ?></td>
                                                     <td class="text-end"><?php echo reporteMatrizNumeroNullable($detalle['ventas_sucursal_compra'], 2); ?></td>
+                                                    <td class="text-end"><?php echo reporteMatrizNumeroNullable($detalle['ganancia_sucursal'], 2); ?></td>
                                                     <td class="text-end"><?php echo reporteMatrizNumeroNullable($detalle['compras'], 2); ?></td>
                                                 </tr>
                                             <?php endif; ?>
