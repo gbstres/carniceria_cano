@@ -183,6 +183,27 @@ try {
         }
     }
 
+    $clientes = array_filter($clientes, function ($cliente) {
+        return abs((float) $cliente['ventas']) > 0.00001;
+    });
+
+    $sucursalesVinculadas = [];
+    $datosSucursales = [];
+    foreach ($clientes as $cliente) {
+        if ($cliente['id_sucursal'] === null) {
+            continue;
+        }
+        $idSucursal = (int) $cliente['id_sucursal'];
+        $sucursalesVinculadas[$idSucursal] = $idSucursal;
+        $datosSucursales[$idSucursal] = [
+            'stock_productos' => 0,
+            'valor_productos' => 0,
+            'stock_categorias' => 0,
+            'valor_categorias' => 0,
+            'compras' => 0,
+        ];
+    }
+
     if (!empty($sucursalesVinculadas)) {
         $listaSucursales = implode(',', array_map('intval', $sucursalesVinculadas));
 
@@ -538,7 +559,7 @@ function reporteMatrizNumeroNullable($value, $decimales)
                     <?php if ($errorReporte !== ''): ?>
                         <div class="alert alert-danger"><?php echo htmlspecialchars($errorReporte, ENT_QUOTES, 'UTF-8'); ?></div>
                     <?php elseif (empty($clientes)): ?>
-                        <div class="alert alert-warning">No se encontraron clientes activos en MATRIZ.</div>
+                        <div class="alert alert-warning">No se encontraron clientes con ventas en el rango seleccionado.</div>
                     <?php else: ?>
                         <div class="row g-3 mb-4">
                             <div class="col-md-4">
