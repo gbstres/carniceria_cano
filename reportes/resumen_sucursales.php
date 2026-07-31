@@ -188,6 +188,19 @@ try {
     ");
     while ($row = mysqli_fetch_assoc($resultadoVentas)) {
         $idCliente = (int) $row['id_cliente'];
+        if ($idCliente === 0 && !isset($clientes[0])) {
+            $clientes[0] = [
+                'id_cliente' => 0,
+                'nombre' => 'OTROS CLIENTES',
+                'clave_proveedor' => '',
+                'id_sucursal' => null,
+                'desc_sucursal' => null,
+                'ventas' => 0,
+                'ventas_compra' => 0,
+                'ganancia_ventas' => 0,
+                'cantidad_ventas' => 0,
+            ];
+        }
         if (isset($clientes[$idCliente])) {
             $clientes[$idCliente]['ventas'] = (float) $row['ventas'];
             $clientes[$idCliente]['ventas_compra'] = (float) $row['ventas_compra'];
