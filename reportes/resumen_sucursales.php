@@ -188,7 +188,8 @@ try {
     ");
     while ($row = mysqli_fetch_assoc($resultadoVentas)) {
         $idCliente = (int) $row['id_cliente'];
-        if ($idCliente === 0 && !isset($clientes[0])) {
+        $idClienteDestino = isset($clientes[$idCliente]) && $idCliente !== 0 ? $idCliente : 0;
+        if ($idClienteDestino === 0 && !isset($clientes[0])) {
             $clientes[0] = [
                 'id_cliente' => 0,
                 'nombre' => 'OTROS CLIENTES',
@@ -201,12 +202,36 @@ try {
                 'cantidad_ventas' => 0,
             ];
         }
-        if (isset($clientes[$idCliente])) {
-            $clientes[$idCliente]['ventas'] = (float) $row['ventas'];
-            $clientes[$idCliente]['ventas_compra'] = (float) $row['ventas_compra'];
-            $clientes[$idCliente]['ganancia_ventas'] = (float) $row['ventas'] - (float) $row['ventas_compra'];
-            $clientes[$idCliente]['cantidad_ventas'] = (float) $row['cantidad_ventas'];
+        $clientes[$idClienteDestino]['ventas'] += (float) $row['ventas'];
+        $clientes[$idClienteDestino]['ventas_compra'] += (float) $row['ventas_compra'];
+        $clientes[$idClienteDestino]['ganancia_ventas'] += (float) $row['ventas'] - (float) $row['ventas_compra'];
+        $clientes[$idClienteDestino]['cantidad_ventas'] += (float) $row['cantidad_ventas'];
+    }
+
+    $otrosClientes = $clientes[0] ?? [
+        'id_cliente' => 0,
+        'nombre' => 'OTROS CLIENTES',
+        'clave_proveedor' => '',
+        'id_sucursal' => null,
+        'desc_sucursal' => null,
+        'ventas' => 0,
+        'ventas_compra' => 0,
+        'ganancia_ventas' => 0,
+        'cantidad_ventas' => 0,
+    ];
+    unset($clientes[0]);
+    foreach ($clientes as $idCliente => $cliente) {
+        if ($cliente['id_sucursal'] !== null) {
+            continue;
         }
+        $otrosClientes['ventas'] += $cliente['ventas'];
+        $otrosClientes['ventas_compra'] += $cliente['ventas_compra'];
+        $otrosClientes['ganancia_ventas'] += $cliente['ganancia_ventas'];
+        $otrosClientes['cantidad_ventas'] += $cliente['cantidad_ventas'];
+        unset($clientes[$idCliente]);
+    }
+    if (abs((float) $otrosClientes['ventas']) > 0.00001) {
+        $clientes[0] = $otrosClientes;
     }
 
     $clientes = array_filter($clientes, function ($cliente) {
@@ -462,7 +487,27 @@ try {
                AND compras.id_categoria = vm.id_categoria
             ORDER BY cli.nombre_cliente, vm.desc_categoria
         ");
+        $otrosPorCategoria = [];
         while ($row = mysqli_fetch_assoc($resultadoDetalle)) {
+            if ($row['id_sucursal'] !== null) {
+                $detalleRows[] = $row;
+                continue;
+            }
+            $claveCategoria = (string) ($row['id_categoria'] ?? '');
+            if (!isset($otrosPorCategoria[$claveCategoria])) {
+                $otrosPorCategoria[$claveCategoria] = $row;
+                $otrosPorCategoria[$claveCategoria]['id_cliente'] = 0;
+                $otrosPorCategoria[$claveCategoria]['nombre_cliente'] = 'OTROS CLIENTES';
+                $otrosPorCategoria[$claveCategoria]['ventas'] = 0;
+                $otrosPorCategoria[$claveCategoria]['ventas_compra'] = 0;
+                $otrosPorCategoria[$claveCategoria]['cantidad_matriz'] = 0;
+                $otrosPorCategoria[$claveCategoria]['ganancia_matriz'] = 0;
+            }
+            foreach (['ventas', 'ventas_compra', 'cantidad_matriz', 'ganancia_matriz'] as $campo) {
+                $otrosPorCategoria[$claveCategoria][$campo] += (float) $row[$campo];
+            }
+        }
+        foreach ($otrosPorCategoria as $row) {
             $detalleRows[] = $row;
         }
     } elseif ($detalleTipo === 'productos') {
@@ -584,7 +629,27 @@ try {
                AND compras.codigo = vm.codigo
             ORDER BY cli.nombre_cliente, vm.desc_categoria, vm.descripcion
         ");
+        $otrosPorProducto = [];
         while ($row = mysqli_fetch_assoc($resultadoDetalle)) {
+            if ($row['id_sucursal'] !== null) {
+                $detalleRows[] = $row;
+                continue;
+            }
+            $claveProducto = (string) ($row['codigo'] ?? '');
+            if (!isset($otrosPorProducto[$claveProducto])) {
+                $otrosPorProducto[$claveProducto] = $row;
+                $otrosPorProducto[$claveProducto]['id_cliente'] = 0;
+                $otrosPorProducto[$claveProducto]['nombre_cliente'] = 'OTROS CLIENTES';
+                $otrosPorProducto[$claveProducto]['ventas'] = 0;
+                $otrosPorProducto[$claveProducto]['ventas_compra'] = 0;
+                $otrosPorProducto[$claveProducto]['cantidad_matriz'] = 0;
+                $otrosPorProducto[$claveProducto]['ganancia_matriz'] = 0;
+            }
+            foreach (['ventas', 'ventas_compra', 'cantidad_matriz', 'ganancia_matriz'] as $campo) {
+                $otrosPorProducto[$claveProducto][$campo] += (float) $row[$campo];
+            }
+        }
+        foreach ($otrosPorProducto as $row) {
             $detalleRows[] = $row;
         }
     }
