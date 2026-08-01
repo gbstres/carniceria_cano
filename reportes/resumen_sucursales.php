@@ -724,7 +724,7 @@ function reporteMatrizNumeroNullable($value, $decimales)
                                 <thead>
                                     <tr>
                                         <th colspan="5" class="text-center">Matriz</th>
-                                        <th colspan="11" class="text-center encabezado-sucursal">Sucursal</th>
+                                        <th colspan="7" class="text-center encabezado-sucursal">Sucursal</th>
                                     </tr>
                                     <tr>
                                         <th>Cliente en matriz</th>
@@ -733,10 +733,6 @@ function reporteMatrizNumeroNullable($value, $decimales)
                                         <th>Ventas (imp. C)</th>
                                         <th>Ganancia</th>
                                         <th>Sucursal relacionada</th>
-                                        <th>Stock productos</th>
-                                        <th>Valor productos</th>
-                                        <th>Stock categorías</th>
-                                        <th>Valor categorías</th>
                                         <th>Valor stock</th>
                                         <th>Cantidad</th>
                                         <th>Venta (imp. V)</th>
@@ -755,10 +751,6 @@ function reporteMatrizNumeroNullable($value, $decimales)
                                             <td class="text-end"><?php echo number_format($cliente['ventas_compra'], 2); ?></td>
                                             <td class="text-end"><?php echo number_format($cliente['ganancia_ventas'], 2); ?></td>
                                             <td><?php echo htmlspecialchars($cliente['desc_sucursal'] ?: '—', ENT_QUOTES, 'UTF-8'); ?></td>
-                                            <td class="text-end"><?php echo $datos === null ? '—' : number_format($datos['stock_productos'], 3); ?></td>
-                                            <td class="text-end"><?php echo $datos === null ? '—' : number_format($datos['valor_productos'], 2); ?></td>
-                                            <td class="text-end"><?php echo $datos === null ? '—' : number_format($datos['stock_categorias'], 3); ?></td>
-                                            <td class="text-end"><?php echo $datos === null ? '—' : number_format($datos['valor_categorias'], 2); ?></td>
                                             <td class="text-end"><?php echo $datos === null ? '—' : number_format($datos['valor_productos'] + $datos['valor_categorias'], 2); ?></td>
                                             <td class="text-end"><?php echo $datos === null ? '—' : number_format($datos['cantidad_sucursal'], 3); ?></td>
                                             <td class="text-end"><?php echo $datos === null ? '—' : number_format($datos['ventas_sucursal'], 2); ?></td>
@@ -776,10 +768,6 @@ function reporteMatrizNumeroNullable($value, $decimales)
                                         <th class="text-end"><?php echo number_format($totales['ventas_compra'], 2); ?></th>
                                         <th class="text-end"><?php echo number_format($totales['ganancia_ventas'], 2); ?></th>
                                         <th></th>
-                                        <th class="text-end"><?php echo number_format($totales['stock_productos'], 3); ?></th>
-                                        <th class="text-end"><?php echo number_format($totales['valor_productos'], 2); ?></th>
-                                        <th class="text-end"><?php echo number_format($totales['stock_categorias'], 3); ?></th>
-                                        <th class="text-end"><?php echo number_format($totales['valor_categorias'], 2); ?></th>
                                         <th class="text-end"><?php echo number_format($totales['valor_productos'] + $totales['valor_categorias'], 2); ?></th>
                                         <th class="text-end"><?php echo number_format($totales['cantidad_sucursal'], 3); ?></th>
                                         <th class="text-end"><?php echo number_format($totales['ventas_sucursal'], 2); ?></th>
