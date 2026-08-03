@@ -11,6 +11,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 
 require_once "../functions/config.php";
 require_once "../functions/sync_queue.php";
+require_once "../functions/inventario_equivalencias.php";
 date_default_timezone_set("America/Mexico_City");
 // Define variables and initialize with empty values
 $codigo = 0;
@@ -348,14 +349,14 @@ WHERE a.id_sucursal = $id_sucursal AND a.id_compra = $id_compra ;");
     while ($rowc = mysqli_fetch_assoc($sqlcompras)) {
         if ($rowc['codigo_p'] == null) {
             if ($rowc['contador'] == 1) {
-                if ($rowc['centralizar_almacen'] == 1) {
+                if ($rowc['centralizar_almacen'] == 1 || cc_codigo_inventario($link, (int) $id_sucursal, (string) $rowc['codigo']) !== (string) $rowc['codigo']) {
                     recalcula_almacen_producto($link, $id_sucursal, $rowc['codigo'], $rowc['cantidad'], $fecha_act, $hora_act, $id_usuario_act);
                 } else if ($rowc['centralizar_almacen'] == 2) {
                     recalcula_almacen_categoria($link, $id_sucursal, $rowc['id_categoria'], $rowc['cantidad'], $fecha_act, $hora_act, $id_usuario_act);
                 }
             }
         } else {
-            if ($rowc['centralizar_almacen_d'] == 1) {
+            if ($rowc['centralizar_almacen_d'] == 1 || cc_codigo_inventario($link, (int) $id_sucursal, (string) $rowc['codigo_d']) !== (string) $rowc['codigo_d']) {
                 recalcula_almacen_producto($link, $id_sucursal, $rowc['codigo_d'], $rowc['cantidad'], $fecha_act, $hora_act, $id_usuario_act);
             } else if ($rowc['centralizar_almacen'] == 2) {
                 $cantidad = round($rowc['cantidad'] * $rowc['porcentaje'] / 100, 3);
@@ -386,14 +387,14 @@ WHERE a.id_sucursal = $id_sucursal AND a.id_compra = $id_compra  and a.estatus i
     while ($rowv = mysqli_fetch_assoc($sqlcompras)) {
         if ($rowv['codigo_p'] == null) {
             if ($rowv['contador'] == 1) {
-                if ($rowv['centralizar_almacen'] == 1) {
+                if ($rowv['centralizar_almacen'] == 1 || cc_codigo_inventario($link, (int) $id_sucursal, (string) $rowv['codigo']) !== (string) $rowv['codigo']) {
                     recalcula_almacen_producto($link, $id_sucursal, $rowv['codigo'], $rowv['cantidad'], $fecha_act, $hora_act, $id_usuario_act);
                 } else if ($rowv['centralizar_almacen'] == 2) {
                     recalcula_almacen_categoria($link, $id_sucursal, $rowv['id_categoria'], $rowv['cantidad'], $fecha_act, $hora_act, $id_usuario_act);
                 }
             }
         } else {
-            if ($rowv['centralizar_almacen_d'] == 1) {
+            if ($rowv['centralizar_almacen_d'] == 1 || cc_codigo_inventario($link, (int) $id_sucursal, (string) $rowv['codigo_d']) !== (string) $rowv['codigo_d']) {
                 recalcula_almacen_producto($link, $id_sucursal, $rowv['codigo_d'], $rowv['cantidad'], $fecha_act, $hora_act, $id_usuario_act);
             } else if ($rowv['centralizar_almacen'] == 2) {
                 $cantidad = round($rowv['cantidad'] * $rowv['porcentaje'] / 100, 3);
@@ -427,14 +428,14 @@ WHERE a.id_sucursal = $id_sucursal AND a.id_compra = $id_compra AND a.id_consecu
     while ($rowv = mysqli_fetch_assoc($sqlcompras)) {
         if ($rowv['codigo_p'] == null) {
             if ($rowv['contador'] == 1) {
-                if ($rowv['centralizar_almacen'] == 1) {
+                if ($rowv['centralizar_almacen'] == 1 || cc_codigo_inventario($link, (int) $id_sucursal, (string) $rowv['codigo']) !== (string) $rowv['codigo']) {
                     recalcula_almacen_producto($link, $id_sucursal, $rowv['codigo'], $rowv['cantidad'], $fecha_act, $hora_act, $id_usuario_act);
                 } else if ($rowv['centralizar_almacen'] == 2) {
                     recalcula_almacen_categoria($link, $id_sucursal, $rowv['id_categoria'], $rowv['cantidad'], $fecha_act, $hora_act, $id_usuario_act);
                 }
             }
         } else {
-            if ($rowv['centralizar_almacen_d'] == 1) {
+            if ($rowv['centralizar_almacen_d'] == 1 || cc_codigo_inventario($link, (int) $id_sucursal, (string) $rowv['codigo_d']) !== (string) $rowv['codigo_d']) {
                 recalcula_almacen_producto($link, $id_sucursal, $rowv['codigo_d'], $rowv['cantidad'], $fecha_act, $hora_act, $id_usuario_act);
             } else if ($rowv['centralizar_almacen'] == 2) {
                 $cantidad = round($rowv['cantidad'] * $rowv['porcentaje'] / 100, 3);
@@ -445,9 +446,11 @@ WHERE a.id_sucursal = $id_sucursal AND a.id_compra = $id_compra AND a.id_consecu
 }
 
 function recalcula_almacen_producto($link, $id_sucursal, $codigo, $cantidad, $fecha_act, $hora_act, $id_usuario_act) {
-    mysqli_query($link, "UPDATE cc_productos SET almacen = almacen + $cantidad, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act= $id_usuario_act WHERE id_sucursal= $id_sucursal and codigo = $codigo");
+    $codigoInventario = cc_codigo_inventario($link, (int) $id_sucursal, (string) $codigo);
+    $codigoSql = mysqli_real_escape_string($link, $codigoInventario);
+    mysqli_query($link, "UPDATE cc_productos SET almacen = almacen + $cantidad, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act= $id_usuario_act WHERE id_sucursal= $id_sucursal and codigo = '$codigoSql'");
     cc_sync_enqueue($link, $id_sucursal, 'producto', 'upsert', [
-        'codigo' => (string) $codigo,
+        'codigo' => $codigoInventario,
     ], [
         'tabla' => 'cc_productos',
         'motivo' => 'movimiento_compra',

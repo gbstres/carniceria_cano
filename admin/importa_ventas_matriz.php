@@ -469,34 +469,24 @@ function aplicarEquivalenciasProductos(mysqli $link, int $idSucursalLocal, array
     foreach ($partidas as $p) {
         $codigoOrigen = (string) $p['codigo'];
         $codigoInventario = $codigoOrigen;
-        $cantidadInventario = (float) $p['cantidad'];
         $equivalencia = getEquivalenciaProducto($link, $idSucursalLocal, $codigoOrigen);
 
         if ($equivalencia !== null) {
             $codigoInventario = (string) $equivalencia['codigo_destino'];
-            $cantidadInventario *= (float) $equivalencia['factor'];
         }
 
+        // La equivalencia homologa únicamente el código local. La cantidad y el
+        // precio se conservan exactamente como vienen de la venta de matriz.
         $out[] = [
             'codigo' => $codigoInventario,
-            'cantidad' => $cantidadInventario,
+            'cantidad' => (float) $p['cantidad'],
             'precio_compra' => (float) $p['precio_compra'],
             'origen' => $p['origen'] ?? $codigoOrigen,
             'codigo_operacion' => $codigoOrigen,
         ];
     }
 
-    $grp = [];
-    foreach ($out as $x) {
-        $k = $x['codigo'] . '|' . number_format((float) $x['precio_compra'], 2, '.', '');
-        if (!isset($grp[$k])) {
-            $grp[$k] = $x;
-        } else {
-            $grp[$k]['cantidad'] += (float) $x['cantidad'];
-        }
-    }
-
-    return array_values($grp);
+    return $out;
 }
 
 /**

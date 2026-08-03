@@ -8,6 +8,7 @@ if(!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true){
 
 require_once "../functions/config.php";
 require_once "../functions/sync_queue.php";
+require_once "../functions/inventario_equivalencias.php";
 $codigo = $_POST['id'];
 $value = mb_strtoupper($_POST['value']);
 $columnName = $_POST['columnName'];
@@ -18,13 +19,18 @@ date_default_timezone_set("America/Mexico_City");
                     $id_usuario_act = $_SESSION['id'];
                     $fecha_act= date('y-m-d');
                     $hora_act = date('H:i:s');
+                    $codigoActualizacion = (string) $codigo;
+                    if ($columnName === 'almacen') {
+                        $codigoActualizacion = cc_codigo_inventario($link, (int) $id_sucursal, $codigoActualizacion);
+                    }
+                    $codigoActualizacionSql = mysqli_real_escape_string($link, $codigoActualizacion);
                     $update_producto = mysqli_query($link, "UPDATE cc_productos SET "
                             . "$columnName = '$value', fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act='$id_usuario_act' "
-                            . "WHERE codigo='$codigo' and id_sucursal='$id_sucursal'") 
+                            . "WHERE codigo='$codigoActualizacionSql' and id_sucursal='$id_sucursal'")
                             or die(mysqli_error());
                     if($update_producto){
                         cc_sync_enqueue($link, $id_sucursal, 'producto', 'upsert', [
-                            'codigo' => (string) $codigo,
+                            'codigo' => $codigoActualizacion,
                         ], [
                             'tabla' => 'cc_productos',
                             'columna' => (string) $columnName,
