@@ -52,15 +52,10 @@ $sqlCategorias = mysqli_query($link, "
         c.id_categoria,
         c.desc_categoria,
         c.almacen,
-        COALESCE(AVG(p.precio_compra), 0) AS precio_compra
+        c.precio
     FROM cc_categorias c
-    LEFT JOIN cc_productos p
-        ON p.id_sucursal = c.id_sucursal
-       AND p.id_categoria = c.id_categoria
-       AND p.centralizar_almacen = 2
     WHERE c.id_sucursal = $id_sucursal
       AND c.almacen <> 0
-    GROUP BY c.id_categoria, c.desc_categoria, c.almacen
     ORDER BY c.desc_categoria
 ");
 ?>
@@ -170,7 +165,7 @@ $sqlCategorias = mysqli_query($link, "
                                     <th>ID</th>
                                     <th>Categoría</th>
                                     <th>Stock</th>
-                                    <th>Precio compra promedio</th>
+                                    <th>Precio categoría</th>
                                     <th>Total</th>
                                 </tr>
                             </thead>
@@ -180,15 +175,15 @@ $sqlCategorias = mysqli_query($link, "
                                 $importeCategorias = 0;
                                 while ($row = mysqli_fetch_assoc($sqlCategorias)) {
                                     $stock = (float) $row["almacen"];
-                                    $precioCompra = (float) $row["precio_compra"];
-                                    $totalCategoria = $stock < 0 ? 0 : round($stock * $precioCompra, 2);
+                                    $precioCategoria = (float) ($row["precio"] ?? 0);
+                                    $totalCategoria = $stock < 0 ? 0 : round($stock * $precioCategoria, 2);
                                     $totalCategorias += $stock;
                                     $importeCategorias += $totalCategoria;
                                     echo '<tr>
                                         <td>' . htmlspecialchars($row["id_categoria"], ENT_QUOTES, "UTF-8") . '</td>
                                         <td>' . htmlspecialchars($row["desc_categoria"], ENT_QUOTES, "UTF-8") . '</td>
                                         <td class="text-end editable-stock" data-id="' . htmlspecialchars($row["id_categoria"], ENT_QUOTES, "UTF-8") . '" data-url="../functions/actualizacategorias.php">' . number_format($stock, 3) . '</td>
-                                        <td class="text-end">' . number_format($precioCompra, 2) . '</td>
+                                        <td class="text-end">' . ($row["precio"] === null ? '—' : number_format($precioCategoria, 2)) . '</td>
                                         <td class="text-end">' . number_format($totalCategoria, 2) . '</td>
                                     </tr>';
                                 }

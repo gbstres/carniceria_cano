@@ -301,18 +301,10 @@ try {
                 COALESCE(SUM(
                     CASE
                         WHEN c.almacen < 0 THEN 0
-                        ELSE ROUND(c.almacen * COALESCE(pc.precio_compra, 0), 2)
+                        ELSE ROUND(c.almacen * COALESCE(c.precio, 0), 2)
                     END
                 ), 0) AS valor_categorias
             FROM cc_categorias c
-            LEFT JOIN (
-                SELECT id_sucursal, id_categoria, AVG(precio_compra) AS precio_compra
-                FROM cc_productos
-                WHERE centralizar_almacen = 2
-                GROUP BY id_sucursal, id_categoria
-            ) pc
-                ON pc.id_sucursal = c.id_sucursal
-               AND pc.id_categoria = c.id_categoria
             WHERE c.id_sucursal IN ($listaSucursales)
               AND c.almacen <> 0
             GROUP BY c.id_sucursal
@@ -380,11 +372,11 @@ try {
                 vm.id_categoria,
                 vm.desc_categoria,
                 cat.almacen AS stock,
-                pc.precio_compra,
+                cat.precio AS precio_categoria,
                 CASE
                     WHEN cat.almacen IS NULL THEN NULL
                     WHEN cat.almacen < 0 THEN 0
-                    ELSE ROUND(cat.almacen * COALESCE(pc.precio_compra, 0), 2)
+                    ELSE ROUND(cat.almacen * COALESCE(cat.precio, 0), 2)
                 END AS valor_stock,
                 vm.ventas,
                 vm.ventas_compra,
@@ -436,14 +428,6 @@ try {
             LEFT JOIN cc_categorias cat
                 ON cat.id_sucursal = rel.id_sucursal
                AND cat.id_categoria = vm.id_categoria
-            LEFT JOIN (
-                SELECT id_sucursal, id_categoria, AVG(precio_compra) AS precio_compra
-                FROM cc_productos
-                WHERE centralizar_almacen = 2
-                GROUP BY id_sucursal, id_categoria
-            ) pc
-                ON pc.id_sucursal = rel.id_sucursal
-               AND pc.id_categoria = vm.id_categoria
             LEFT JOIN (
                 SELECT
                     dv.id_sucursal,
