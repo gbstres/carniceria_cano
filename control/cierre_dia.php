@@ -30,50 +30,36 @@ function render_stock_bajo_cierre($link, $id_sucursal) {
     }
 
     if ($tieneEquivalencias) {
-        $limiteStockSelect = $tieneLimiteStock ? "COALESCE(pd.limite_stock, p.limite_stock, 5)" : "5";
+        $limiteStockSelect = $tieneLimiteStock ? "COALESCE(pd.limite_stock, 5)" : "5";
         $sqlProductos = mysqli_query($link, "
-            SELECT
-                p.codigo AS codigo,
-                p.descripcion AS descripcion,
+            SELECT DISTINCT
+                pd.codigo AS codigo,
+                pd.descripcion AS descripcion,
                 COALESCE(c.desc_categoria, '') AS categoria,
-                CASE
-                    WHEN e.codigo_destino IS NULL THEN ''
-                    ELSE CONCAT(e.codigo_destino, ' - ', COALESCE(pd.descripcion, ''))
-                END AS destino,
-                COALESCE(pd.almacen, p.almacen) AS almacen,
+                pd.almacen AS almacen,
                 $limiteStockSelect AS limite_stock
-            FROM cc_productos p
-            LEFT JOIN cc_categorias c
-                ON c.id_sucursal = p.id_sucursal
-               AND c.id_categoria = p.id_categoria
-            LEFT JOIN cc_equivalencias_productos e
-                ON e.id_sucursal = p.id_sucursal
-               AND e.codigo_origen = p.codigo
-               AND e.activo = 1
-            LEFT JOIN cc_productos pd
+            FROM cc_equivalencias_productos e
+            INNER JOIN cc_productos pd
                 ON pd.id_sucursal = e.id_sucursal
                AND pd.codigo = e.codigo_destino
-            WHERE p.id_sucursal = $id_sucursal
-              AND p.centralizar_almacen = 1
-              AND COALESCE(pd.almacen, p.almacen) < $limiteStockSelect
+            LEFT JOIN cc_categorias c
+                ON c.id_sucursal = pd.id_sucursal
+               AND c.id_categoria = pd.id_categoria
+            WHERE e.id_sucursal = $id_sucursal
+              AND e.activo = 1
+              AND pd.centralizar_almacen = 1
+              AND pd.almacen < $limiteStockSelect
         ");
     } else {
-        $limiteStockSelect = $tieneLimiteStock ? "COALESCE(p.limite_stock, 5)" : "5";
         $sqlProductos = mysqli_query($link, "
             SELECT
                 p.codigo AS codigo,
                 p.descripcion AS descripcion,
-                COALESCE(c.desc_categoria, '') AS categoria,
-                '' AS destino,
+                '' AS categoria,
                 p.almacen AS almacen,
-                $limiteStockSelect AS limite_stock
+                5 AS limite_stock
             FROM cc_productos p
-            LEFT JOIN cc_categorias c
-                ON c.id_sucursal = p.id_sucursal
-               AND c.id_categoria = p.id_categoria
-            WHERE p.id_sucursal = $id_sucursal
-              AND p.centralizar_almacen = 1
-              AND p.almacen < $limiteStockSelect
+            WHERE 1 = 0
         ");
     }
 
@@ -87,7 +73,6 @@ function render_stock_bajo_cierre($link, $id_sucursal) {
             CAST(id_categoria AS CHAR) AS codigo,
             desc_categoria AS descripcion,
             '' AS categoria,
-            '' AS destino,
             almacen,
             5 AS limite_stock
         FROM cc_categorias
@@ -126,7 +111,6 @@ function render_stock_bajo_cierre($link, $id_sucursal) {
                     <th>Código/ID</th>
                     <th>Descripción</th>
                     <th>Categoría</th>
-                    <th>Destino</th>
                     <th>Límite</th>
                     <th>Stock</th>
                 </tr>
@@ -141,14 +125,13 @@ function render_stock_bajo_cierre($link, $id_sucursal) {
             <td>' . htmlspecialchars($row['codigo'], ENT_QUOTES, 'UTF-8') . '</td>
             <td>' . htmlspecialchars($row['descripcion'], ENT_QUOTES, 'UTF-8') . '</td>
             <td>' . htmlspecialchars($row['categoria'], ENT_QUOTES, 'UTF-8') . '</td>
-            <td>' . htmlspecialchars($row['destino'], ENT_QUOTES, 'UTF-8') . '</td>
             <td class="text-end">' . number_format((float) $row['limite_stock'], 3) . '</td>
             <td class="text-end">' . number_format((float) $row['almacen'], 3) . '</td>
         </tr>';
     }
 
     if ($totalFilas === 0) {
-        $html .= '<tr><td colspan="7" class="text-center">Sin productos ni categorías con stock bajo</td></tr>';
+        $html .= '<tr><td colspan="6" class="text-center">Sin productos ni categorías con stock bajo</td></tr>';
     }
 
     $html .= '</tbody></table></div>';
