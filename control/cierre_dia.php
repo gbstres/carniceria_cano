@@ -19,7 +19,7 @@ function render_stock_bajo_cierre($link, $id_sucursal) {
     $html = '';
     $stockBajo = [];
     $resEquivalencias = mysqli_query($link, "SHOW TABLES LIKE 'cc_equivalencias_productos'");
-    $tieneEquivalencias = $resEquivalencias && mysqli_num_rows($resEquivalencias) > 0;
+    $existeTablaEquivalencias = $resEquivalencias && mysqli_num_rows($resEquivalencias) > 0;
     if ($resEquivalencias) {
         mysqli_free_result($resEquivalencias);
     }
@@ -29,37 +29,55 @@ function render_stock_bajo_cierre($link, $id_sucursal) {
         mysqli_free_result($resLimiteStock);
     }
 
-    if ($tieneEquivalencias) {
-        $limiteStockSelect = $tieneLimiteStock ? "COALESCE(pd.limite_stock, 5)" : "5";
-        $sqlProductos = mysqli_query($link, "
-            SELECT DISTINCT
-                pd.codigo AS codigo,
-                pd.descripcion AS descripcion,
-                COALESCE(c.desc_categoria, '') AS categoria,
-                pd.almacen AS almacen,
-                $limiteStockSelect AS limite_stock
-            FROM cc_equivalencias_productos e
-            INNER JOIN cc_productos pd
-                ON pd.id_sucursal = e.id_sucursal
-               AND pd.codigo = e.codigo_destino
-            LEFT JOIN cc_categorias c
-                ON c.id_sucursal = pd.id_sucursal
-               AND c.id_categoria = pd.id_categoria
-            WHERE e.id_sucursal = $id_sucursal
-              AND e.activo = 1
-              AND pd.centralizar_almacen = 1
-              AND pd.almacen < $limiteStockSelect
-        ");
-    } else {
+    if ($existeTablaEquivalencias) {
+        $limiteStockSelect = $tieneLimiteStock ? "COALESCE(p.limite_stock, 5)" : "5";
         $sqlProductos = mysqli_query($link, "
             SELECT
                 p.codigo AS codigo,
                 p.descripcion AS descripcion,
-                '' AS categoria,
+                COALESCE(c.desc_categoria, '') AS categoria,
                 p.almacen AS almacen,
-                5 AS limite_stock
+                $limiteStockSelect AS limite_stock
             FROM cc_productos p
-            WHERE 1 = 0
+            LEFT JOIN cc_categorias c
+                ON c.id_sucursal = p.id_sucursal
+               AND c.id_categoria = p.id_categoria
+            WHERE p.id_sucursal = $id_sucursal
+              AND p.centralizar_almacen = 1
+              AND p.almacen < $limiteStockSelect
+              AND (
+                    NOT EXISTS (
+                        SELECT 1
+                        FROM cc_equivalencias_productos eo
+                        WHERE eo.id_sucursal = p.id_sucursal
+                          AND eo.codigo_origen = p.codigo
+                          AND eo.activo = 1
+                    )
+                    OR EXISTS (
+                        SELECT 1
+                        FROM cc_equivalencias_productos ed
+                        WHERE ed.id_sucursal = p.id_sucursal
+                          AND ed.codigo_destino = p.codigo
+                          AND ed.activo = 1
+                    )
+              )
+        ");
+    } else {
+        $limiteStockSelect = $tieneLimiteStock ? "COALESCE(p.limite_stock, 5)" : "5";
+        $sqlProductos = mysqli_query($link, "
+            SELECT
+                p.codigo AS codigo,
+                p.descripcion AS descripcion,
+                COALESCE(c.desc_categoria, '') AS categoria,
+                p.almacen AS almacen,
+                $limiteStockSelect AS limite_stock
+            FROM cc_productos p
+            LEFT JOIN cc_categorias c
+                ON c.id_sucursal = p.id_sucursal
+               AND c.id_categoria = p.id_categoria
+            WHERE p.id_sucursal = $id_sucursal
+              AND p.centralizar_almacen = 1
+              AND p.almacen < $limiteStockSelect
         ");
     }
 
