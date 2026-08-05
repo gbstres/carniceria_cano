@@ -365,19 +365,15 @@ try {
     if ($detalleTipo === 'categorias') {
         $resultadoDetalle = reporteMatrizConsultar($link, "
             SELECT
-                vm.id_cliente,
+                universo.id_cliente,
                 COALESCE(cli.nombre_cliente, 'OTROS CLIENTES') AS nombre_cliente,
                 rel.id_sucursal,
                 suc.desc_sucursal,
-                vm.id_categoria,
-                vm.desc_categoria,
-                cat.almacen AS stock,
-                cat.precio AS precio_categoria,
-                CASE
-                    WHEN cat.almacen IS NULL THEN NULL
-                    WHEN cat.almacen < 0 THEN 0
-                    ELSE ROUND(cat.almacen * COALESCE(cat.precio, 0), 2)
-                END AS valor_stock,
+                universo.id_categoria_global AS id_categoria,
+                global_cat.nombre AS desc_categoria,
+                stock_sucursal.stock,
+                stock_sucursal.precio_categoria,
+                stock_sucursal.valor_stock,
                 vm.ventas,
                 vm.ventas_compra,
                 vm.cantidad AS cantidad_matriz,
@@ -390,8 +386,47 @@ try {
             FROM (
                 SELECT
                     dv.id_cliente,
-                    pm.id_categoria,
-                    cm.desc_categoria,
+                    hm.id_categoria_global
+                FROM cc_det_ventas dv
+                INNER JOIN cc_ventas v
+                    ON v.id_sucursal = dv.id_sucursal
+                   AND v.id_venta = dv.id_venta
+                INNER JOIN cc_productos pm
+                    ON pm.id_sucursal = v.id_sucursal
+                   AND pm.codigo = v.codigo
+                INNER JOIN cc_categorias_homologacion hm
+                    ON hm.id_sucursal = pm.id_sucursal
+                   AND hm.id_categoria = pm.id_categoria
+                WHERE dv.id_sucursal = $idSucursalMatriz
+                  AND dv.fecha_ingreso BETWEEN '$fecha1Sql' AND '$fecha2Sql'
+                  AND dv.estatus IN (1, 3)
+                  AND v.estatus <> 2
+                GROUP BY dv.id_cliente, hm.id_categoria_global
+
+                UNION
+
+                SELECT
+                    rel_universo.id_cliente,
+                    hs.id_categoria_global
+                FROM ($sqlRelacionCliente) rel_universo
+                INNER JOIN cc_categorias_homologacion hs
+                    ON hs.id_sucursal = rel_universo.id_sucursal
+                INNER JOIN cc_categorias categoria_sucursal
+                    ON categoria_sucursal.id_sucursal = hs.id_sucursal
+                   AND categoria_sucursal.id_categoria = hs.id_categoria
+                   AND categoria_sucursal.activo = 1
+                INNER JOIN cc_categorias_globales gg
+                    ON gg.id_categoria_global = hs.id_categoria_global
+                   AND gg.activo = 1
+                WHERE rel_universo.id_sucursal IS NOT NULL
+                GROUP BY rel_universo.id_cliente, hs.id_categoria_global
+            ) universo
+            INNER JOIN cc_categorias_globales global_cat
+                ON global_cat.id_categoria_global = universo.id_categoria_global
+            LEFT JOIN (
+                SELECT
+                    dv.id_cliente,
+                    hm.id_categoria_global,
                     SUM(ROUND(v.cantidad * v.precio_venta, 2)) AS ventas,
                     SUM(ROUND(v.cantidad * v.precio_compra, 2)) AS ventas_compra,
                     SUM(v.cantidad) AS cantidad,
@@ -403,15 +438,17 @@ try {
                 INNER JOIN cc_productos pm
                     ON pm.id_sucursal = v.id_sucursal
                    AND pm.codigo = v.codigo
-                LEFT JOIN cc_categorias cm
-                    ON cm.id_sucursal = pm.id_sucursal
-                   AND cm.id_categoria = pm.id_categoria
+                INNER JOIN cc_categorias_homologacion hm
+                    ON hm.id_sucursal = pm.id_sucursal
+                   AND hm.id_categoria = pm.id_categoria
                 WHERE dv.id_sucursal = $idSucursalMatriz
                   AND dv.fecha_ingreso BETWEEN '$fecha1Sql' AND '$fecha2Sql'
                   AND dv.estatus IN (1, 3)
                   AND v.estatus <> 2
-                GROUP BY dv.id_cliente, pm.id_categoria, cm.desc_categoria
+                GROUP BY dv.id_cliente, hm.id_categoria_global
             ) vm
+                ON vm.id_cliente = universo.id_cliente
+               AND vm.id_categoria_global = universo.id_categoria_global
             LEFT JOIN (
                 SELECT
                     id_cliente,
@@ -420,18 +457,33 @@ try {
                 WHERE id_sucursal = $idSucursalMatriz
                   AND activo = 1
             ) cli
-                ON cli.id_cliente = vm.id_cliente
+                ON cli.id_cliente = universo.id_cliente
             LEFT JOIN ($sqlRelacionCliente) rel
-                ON rel.id_cliente = vm.id_cliente
+                ON rel.id_cliente = universo.id_cliente
             LEFT JOIN cc_sucursales suc
                 ON suc.id_sucursal = rel.id_sucursal
-            LEFT JOIN cc_categorias cat
-                ON cat.id_sucursal = rel.id_sucursal
-               AND cat.id_categoria = vm.id_categoria
+            LEFT JOIN (
+                SELECT
+                    h.id_sucursal,
+                    h.id_categoria_global,
+                    SUM(c.almacen) AS stock,
+                    MAX(c.precio) AS precio_categoria,
+                    SUM(CASE
+                        WHEN c.almacen < 0 THEN 0
+                        ELSE ROUND(c.almacen * COALESCE(c.precio, 0), 2)
+                    END) AS valor_stock
+                FROM cc_categorias_homologacion h
+                INNER JOIN cc_categorias c
+                    ON c.id_sucursal = h.id_sucursal
+                   AND c.id_categoria = h.id_categoria
+                GROUP BY h.id_sucursal, h.id_categoria_global
+            ) stock_sucursal
+                ON stock_sucursal.id_sucursal = rel.id_sucursal
+               AND stock_sucursal.id_categoria_global = universo.id_categoria_global
             LEFT JOIN (
                 SELECT
                     dv.id_sucursal,
-                    ps.id_categoria,
+                    hs.id_categoria_global,
                     SUM(ROUND(v.cantidad * v.precio_venta, 2)) AS ventas,
                     SUM(ROUND(v.cantidad * v.precio_compra, 2)) AS ventas_compra,
                     SUM(v.cantidad) AS cantidad,
@@ -443,17 +495,20 @@ try {
                 INNER JOIN cc_productos ps
                     ON ps.id_sucursal = v.id_sucursal
                    AND ps.codigo = v.codigo
+                INNER JOIN cc_categorias_homologacion hs
+                    ON hs.id_sucursal = ps.id_sucursal
+                   AND hs.id_categoria = ps.id_categoria
                 WHERE dv.fecha_ingreso BETWEEN '$fecha1Sql' AND '$fecha2Sql'
                   AND dv.estatus IN (1, 3)
                   AND v.estatus <> 2
-                GROUP BY dv.id_sucursal, ps.id_categoria
+                GROUP BY dv.id_sucursal, hs.id_categoria_global
             ) ventas_sucursal
                 ON ventas_sucursal.id_sucursal = rel.id_sucursal
-               AND ventas_sucursal.id_categoria = vm.id_categoria
+               AND ventas_sucursal.id_categoria_global = universo.id_categoria_global
             LEFT JOIN (
                 SELECT
                     dc.id_sucursal,
-                    ps.id_categoria,
+                    hs.id_categoria_global,
                     SUM(ROUND(c.cantidad * c.precio_compra, 2)) AS compras
                 FROM cc_det_compras dc
                 INNER JOIN cc_compras c
@@ -462,14 +517,17 @@ try {
                 INNER JOIN cc_productos ps
                     ON ps.id_sucursal = c.id_sucursal
                    AND ps.codigo = c.codigo
+                INNER JOIN cc_categorias_homologacion hs
+                    ON hs.id_sucursal = ps.id_sucursal
+                   AND hs.id_categoria = ps.id_categoria
                 WHERE dc.fecha_ingreso BETWEEN '$fecha1Sql' AND '$fecha2Sql'
                   AND dc.estatus IN (1, 3)
                   AND c.estatus <> 2
-                GROUP BY dc.id_sucursal, ps.id_categoria
+                GROUP BY dc.id_sucursal, hs.id_categoria_global
             ) compras
                 ON compras.id_sucursal = rel.id_sucursal
-               AND compras.id_categoria = vm.id_categoria
-            ORDER BY cli.nombre_cliente, vm.desc_categoria
+               AND compras.id_categoria_global = universo.id_categoria_global
+            ORDER BY cli.nombre_cliente, global_cat.nombre
         ");
         $otrosPorCategoria = [];
         while ($row = mysqli_fetch_assoc($resultadoDetalle)) {
@@ -848,7 +906,8 @@ function reporteMatrizNumeroNullable($value, $decimales)
                             <hr class="my-4">
                             <h2 class="h4">Detalle por <?php echo $detalleTipo === 'categorias' ? 'categorías' : 'productos'; ?></h2>
                             <p class="text-muted">
-                                El detalle compara las ventas de MATRIZ con la información disponible de la sucursal relacionada.
+                                El detalle compara MATRIZ con la sucursal relacionada mediante las categorías globales homologadas.
+                                Las categorías que sólo existen en uno de los lados también se muestran.
                             </p>
                             <div class="table-responsive">
                                 <table id="detalle_sucursales" class="display" style="width:100%">
@@ -860,7 +919,7 @@ function reporteMatrizNumeroNullable($value, $decimales)
                                             </tr>
                                             <tr>
                                                 <th>Cliente</th>
-                                                <th>Categoría</th>
+                                                 <th>Categoría global</th>
                                                 <th>Cantidad</th>
                                                 <th>Ventas (imp. V)</th>
                                                 <th>Ventas (imp. C)</th>

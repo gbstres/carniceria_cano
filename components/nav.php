@@ -36,6 +36,7 @@ if (in_array($ccHost, ['localhost', '127.0.0.1', '::1'], true)) {
                         if (tienePermiso('ver')) {
                             echo '
                         <li><a class="dropdown-item" href="../mantenimientos/categorias.php">Categorías</a></li>
+                        <li><a class="dropdown-item" href="../mantenimientos/homologacion_categorias.php">Homologación de categorías</a></li>
                         <li><a class="dropdown-item" href="../mantenimientos/sucursales.php">Sucursales</a></li>';
                         }
                         ?>
