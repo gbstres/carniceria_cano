@@ -756,6 +756,45 @@ function reporteMatrizNumeroNullable($value, $decimales)
             #detalle_sucursales .detalle-separador {
                 box-shadow: inset 3px 0 0 #6c757d;
             }
+            #detalle_sucursales tbody tr.detalle-cantidad-alerta > td {
+                background-color: #f8d7da !important;
+                color: #842029;
+            }
+            @media print {
+                @page {
+                    size: landscape;
+                    margin: 8mm;
+                }
+                .no-print,
+                nav,
+                .dataTables_filter,
+                .dataTables_length,
+                .dataTables_info,
+                .dataTables_paginate {
+                    display: none !important;
+                }
+                body,
+                .bg-light {
+                    background: #fff !important;
+                }
+                .container {
+                    width: 100% !important;
+                    max-width: none !important;
+                    padding: 0 !important;
+                }
+                .table-responsive {
+                    overflow: visible !important;
+                }
+                table {
+                    font-size: 9px !important;
+                }
+                #detalle_sucursales tbody tr.detalle-cantidad-alerta > td {
+                    background-color: #f8d7da !important;
+                    color: #842029 !important;
+                    -webkit-print-color-adjust: exact;
+                    print-color-adjust: exact;
+                }
+            }
         </style>
         <link href="../css/navbar.css" rel="stylesheet">
         <link href="../css/jquery.dataTables.min.css" rel="stylesheet">
@@ -770,7 +809,7 @@ function reporteMatrizNumeroNullable($value, $decimales)
                         Matriz: <?php echo htmlspecialchars($nombreMatriz, ENT_QUOTES, 'UTF-8'); ?>
                     </p>
 
-                    <form method="get" class="card card-body mb-4">
+                    <form method="get" class="card card-body mb-3 no-print">
                         <div class="row g-3 align-items-end">
                             <div class="col-md-3">
                                 <label for="fecha1" class="form-label">Desde</label>
@@ -793,6 +832,12 @@ function reporteMatrizNumeroNullable($value, $decimales)
                             </div>
                         </div>
                     </form>
+
+                    <div class="text-end mb-4 no-print">
+                        <button type="button" class="btn btn-outline-secondary" id="imprimir_reporte">
+                            <i class="bi bi-printer"></i> Imprimir
+                        </button>
+                    </div>
 
                     <?php if ($errorReporte !== ''): ?>
                         <div class="alert alert-danger"><?php echo htmlspecialchars($errorReporte, ENT_QUOTES, 'UTF-8'); ?></div>
@@ -909,6 +954,10 @@ function reporteMatrizNumeroNullable($value, $decimales)
                                 El detalle compara MATRIZ con la sucursal relacionada mediante las categorías globales homologadas.
                                 Las categorías que sólo existen en uno de los lados también se muestran.
                             </p>
+                            <p class="small no-print">
+                                <span class="badge" style="background:#f8d7da;color:#842029;">Alerta</span>
+                                La cantidad vendida por MATRIZ es mayor que la cantidad vendida por la sucursal.
+                            </p>
                             <div class="table-responsive">
                                 <table id="detalle_sucursales" class="display" style="width:100%">
                                     <thead>
@@ -958,8 +1007,15 @@ function reporteMatrizNumeroNullable($value, $decimales)
                                     </thead>
                                     <tbody>
                                         <?php foreach ($detalleRows as $detalle): ?>
+                                            <?php
+                                            $cantidadMatrizDetalle = (float) ($detalle['cantidad_matriz'] ?? 0);
+                                            $cantidadSucursalDetalle = (float) ($detalle['cantidad_sucursal'] ?? 0);
+                                            $claseAlertaCantidad = $cantidadMatrizDetalle > $cantidadSucursalDetalle
+                                                ? 'detalle-cantidad-alerta'
+                                                : '';
+                                            ?>
                                             <?php if ($detalleTipo === 'categorias'): ?>
-                                                <tr>
+                                                <tr class="<?php echo $claseAlertaCantidad; ?>">
                                                     <td><?php echo htmlspecialchars($detalle['nombre_cliente'], ENT_QUOTES, 'UTF-8'); ?></td>
                                                     <td><?php echo htmlspecialchars($detalle['desc_categoria'] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
                                                     <td class="text-end"><?php echo number_format((float) $detalle['cantidad_matriz'], 3); ?></td>
@@ -975,7 +1031,7 @@ function reporteMatrizNumeroNullable($value, $decimales)
                                                     <td class="text-end"><?php echo reporteMatrizNumeroNullable($detalle['compras'], 2); ?></td>
                                                 </tr>
                                             <?php else: ?>
-                                                <tr>
+                                                <tr class="<?php echo $claseAlertaCantidad; ?>">
                                                     <td><?php echo htmlspecialchars($detalle['nombre_cliente'], ENT_QUOTES, 'UTF-8'); ?></td>
                                                     <td><?php echo htmlspecialchars($detalle['codigo'], ENT_QUOTES, 'UTF-8'); ?></td>
                                                     <td><?php echo htmlspecialchars($detalle['descripcion'] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
@@ -1016,7 +1072,7 @@ function reporteMatrizNumeroNullable($value, $decimales)
                         zeroRecords: 'Sin resultados'
                     }
                 });
-                $('#detalle_sucursales').DataTable({
+                var tablaDetalle = $('#detalle_sucursales').DataTable({
                     pageLength: 50,
                     lengthMenu: [[25, 50, 100, -1], [25, 50, 100, 'Mostrar todo']],
                     order: [[0, 'asc']],
@@ -1034,6 +1090,21 @@ function reporteMatrizNumeroNullable($value, $decimales)
                             next: 'Siguiente',
                             previous: 'Anterior'
                         }
+                    }
+                });
+
+                var longitudDetalleAntesImprimir = 50;
+                $('#imprimir_reporte').on('click', function () {
+                    if ($.fn.DataTable.isDataTable('#detalle_sucursales')) {
+                        longitudDetalleAntesImprimir = tablaDetalle.page.len();
+                        tablaDetalle.page.len(-1).draw(false);
+                    }
+                    window.print();
+                });
+
+                window.addEventListener('afterprint', function () {
+                    if ($.fn.DataTable.isDataTable('#detalle_sucursales')) {
+                        tablaDetalle.page.len(longitudDetalleAntesImprimir).draw(false);
                     }
                 });
             });
