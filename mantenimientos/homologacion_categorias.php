@@ -279,7 +279,7 @@ foreach ($globales as $global) {
 
 $filtroSucursal = (int) ($_GET['id_sucursal'] ?? 0);
 $soloPendientes = isset($_GET['pendientes']) && $_GET['pendientes'] === '1';
-$condiciones = ['s.activo = 1'];
+$condiciones = ["s.activo = 1", "UPPER(s.desc_sucursal) NOT LIKE '%PRUEBA%'"];
 if ($filtroSucursal > 0) {
     $condiciones[] = "c.id_sucursal = $filtroSucursal";
 }
@@ -290,7 +290,7 @@ $where = implode(' AND ', $condiciones);
 
 $sucursales = [];
 $rsSucursales = mysqli_query($link, "SELECT id_sucursal, desc_sucursal FROM cc_sucursales
-    WHERE activo = 1 AND UPPER(desc_sucursal) NOT LIKE '%PRUEBAS%' ORDER BY desc_sucursal");
+    WHERE activo = 1 AND UPPER(desc_sucursal) NOT LIKE '%PRUEBA%' ORDER BY desc_sucursal");
 while ($rsSucursales && $row = mysqli_fetch_assoc($rsSucursales)) {
     $sucursales[] = $row;
 }
@@ -331,7 +331,7 @@ $rsConteo = mysqli_query($link, "SELECT COUNT(*) AS total,
     INNER JOIN cc_sucursales s ON s.id_sucursal = c.id_sucursal AND s.activo = 1
     LEFT JOIN cc_categorias_homologacion h
         ON h.id_sucursal = c.id_sucursal AND h.id_categoria = c.id_categoria
-    WHERE c.activo = 1 AND UPPER(s.desc_sucursal) NOT LIKE '%PRUEBAS%'");
+    WHERE c.activo = 1 AND UPPER(s.desc_sucursal) NOT LIKE '%PRUEBA%'");
 if ($rsConteo && $row = mysqli_fetch_assoc($rsConteo)) {
     $totalLocales = (int) $row['total'];
     $totalPendientes = (int) $row['pendientes'];

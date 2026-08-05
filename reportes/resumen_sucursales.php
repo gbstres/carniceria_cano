@@ -124,7 +124,7 @@ try {
         LEFT JOIN cc_sucursales s
             ON s.id_sucursal = p.id_sucursal
            AND s.activo = 1
-           AND UPPER(s.desc_sucursal) NOT LIKE '%PRUEBAS%'
+           AND UPPER(s.desc_sucursal) NOT LIKE '%PRUEBA%'
         WHERE c.id_sucursal = $idSucursalMatriz
           AND c.activo = 1
         GROUP BY
@@ -356,7 +356,7 @@ try {
         LEFT JOIN cc_sucursales s
             ON s.id_sucursal = p.id_sucursal
            AND s.activo = 1
-           AND UPPER(s.desc_sucursal) NOT LIKE '%PRUEBAS%'
+           AND UPPER(s.desc_sucursal) NOT LIKE '%PRUEBA%'
         WHERE c.id_sucursal = $idSucursalMatriz
           AND c.activo = 1
         GROUP BY c.id_cliente
