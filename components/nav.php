@@ -62,7 +62,8 @@ if (in_array($ccHost, ['localhost', '127.0.0.1', '::1'], true)) {
                         if (tienePermiso('ver')) {
                             echo '
                         <li><a class="dropdown-item" href="../reportes/resumen_sucursales.php">Resumen sucursales</a></li>
-                        <li><a class="dropdown-item" href="../reportes/Ventas_categoria.php">Ventas x categoría</a></li>';
+                        <li><a class="dropdown-item" href="../reportes/Ventas_categoria.php">Ventas x categoría</a></li>
+                        <li><a class="dropdown-item" href="../reportes/inventario_bitacora.php">Inventario y bitácora</a></li>';
                         }
                         ?>
                     </ul>
