@@ -8,11 +8,20 @@ if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
 }
 
 require_once '../functions/config.php';
+require_once '../functions/sync_queue.php';
 date_default_timezone_set('America/Mexico_City');
 
-if (!tienePermiso('ver')) {
+$rolUsuario = (int) ($_SESSION['rol'] ?? 0);
+$esAdministrador = tienePermiso('ver');
+$esCajero = $rolUsuario === 3;
+$idSucursalSesion = (int) ($_SESSION['id_sucursal'] ?? 0);
+if (!$esAdministrador && !$esCajero) {
     http_response_code(403);
     exit('No tienes permiso para consultar este reporte.');
+}
+if ($idSucursalSesion <= 0) {
+    http_response_code(403);
+    exit('El usuario no tiene una sucursal asignada.');
 }
 
 function activosH($value)
@@ -57,7 +66,7 @@ $ahora = date('H:i');
 
 try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['agregar_activo'])) {
-        $idSucursal = (int) ($_POST['id_sucursal'] ?? 0);
+        $idSucursal = $idSucursalSesion;
         $tipo = mb_strtoupper(trim((string) ($_POST['tipo'] ?? '')));
         $nombre = mb_strtoupper(trim((string) ($_POST['nombre'] ?? '')));
         $identificador = mb_strtoupper(trim((string) ($_POST['identificador'] ?? '')));
@@ -67,7 +76,9 @@ try {
             throw new RuntimeException('Sucursal, tipo y nombre son obligatorios.');
         }
         $stmt = activosEjecutar($link, 'INSERT INTO cc_activos (id_sucursal,tipo,nombre,identificador,estado,observaciones,activo,id_usuario,fecha_ingreso,hora_ingreso) VALUES (?,?,?,?,?,?,1,?,?,?)', 'isssssiss', [$idSucursal, $tipo, $nombre, $identificador, $estado, $observaciones, $usuario, $hoy, date('H:i:s')]);
+        $idActivoNuevo = (int) mysqli_insert_id($link);
         mysqli_stmt_close($stmt);
+        cc_sync_enqueue($link, $idSucursal, 'activo', 'upsert', ['id_activo' => $idActivoNuevo], ['motivo' => 'alta_activo']);
         $mensaje = 'Activo registrado correctamente.';
     }
 
@@ -81,11 +92,20 @@ try {
         if ($idActivo <= 0 || $detalle === '') {
             throw new RuntimeException('Activo y detalle del evento son obligatorios.');
         }
-        $stmt = activosEjecutar($link, 'INSERT INTO cc_activos_bitacora (id_activo,tipo_evento,fecha_evento,hora_evento,detalle,estatus,id_usuario,fecha_ingreso,hora_ingreso) VALUES (?,?,?,?,?,?,?,?,?)', 'isssssiss', [$idActivo, $tipoEvento, $fechaEvento, $horaEvento, $detalle, $estatus, $usuario, $hoy, date('H:i:s')]);
+        $stmtAcceso = activosEjecutar($link, 'SELECT id_activo FROM cc_activos WHERE id_activo=? AND id_sucursal=? AND activo=1', 'ii', [$idActivo, $idSucursalSesion]);
+        if (!mysqli_stmt_get_result($stmtAcceso)->fetch_assoc()) {
+            mysqli_stmt_close($stmtAcceso);
+            throw new RuntimeException('El activo no pertenece a tu sucursal.');
+        }
+        mysqli_stmt_close($stmtAcceso);
+        $stmt = activosEjecutar($link, 'INSERT INTO cc_activos_bitacora (id_sucursal,id_activo,tipo_evento,fecha_evento,hora_evento,detalle,estatus,id_usuario,fecha_ingreso,hora_ingreso) VALUES (?,?,?,?,?,?,?,?,?,?)', 'iisssssiss', [$idSucursalSesion, $idActivo, $tipoEvento, $fechaEvento, $horaEvento, $detalle, $estatus, $usuario, $hoy, date('H:i:s')]);
+        $idBitacoraNuevo = (int) mysqli_insert_id($link);
         mysqli_stmt_close($stmt);
+        cc_sync_enqueue($link, $idSucursalSesion, 'activo_bitacora', 'upsert', ['id_bitacora' => $idBitacoraNuevo], ['motivo' => 'alta_evento']);
         if ($estatus !== 'RESUELTO' && in_array($tipoEvento, ['FALLA', 'MANTENIMIENTO'], true)) {
-            $stmt = activosEjecutar($link, "UPDATE cc_activos SET estado='REQUIERE ATENCION',id_usuario_act=?,fecha_act=?,hora_act=? WHERE id_activo=? AND estado<>'BAJA'", 'issi', [$usuario, $hoy, date('H:i:s'), $idActivo]);
+            $stmt = activosEjecutar($link, "UPDATE cc_activos SET estado='REQUIERE ATENCION',id_usuario_act=?,fecha_act=?,hora_act=? WHERE id_activo=? AND id_sucursal=? AND estado<>'BAJA'", 'issii', [$usuario, $hoy, date('H:i:s'), $idActivo, $idSucursalSesion]);
             mysqli_stmt_close($stmt);
+            cc_sync_enqueue($link, $idSucursalSesion, 'activo', 'upsert', ['id_activo' => $idActivo], ['motivo' => 'estado_por_evento']);
         }
         $mensaje = 'Evento agregado a la bitácora.';
     }
@@ -96,8 +116,15 @@ try {
         $solucion = trim((string) ($_POST['solucion'] ?? ''));
         $fechaResolucion = $estatus === 'RESUELTO' ? $hoy : null;
         $horaResolucion = $estatus === 'RESUELTO' ? date('H:i:s') : null;
-        $stmt = activosEjecutar($link, 'UPDATE cc_activos_bitacora SET estatus=?,solucion=?,fecha_resolucion=?,hora_resolucion=?,id_usuario_act=?,fecha_act=?,hora_act=? WHERE id_bitacora=?', 'ssssissi', [$estatus, $solucion, $fechaResolucion, $horaResolucion, $usuario, $hoy, date('H:i:s'), $idBitacora]);
+        $stmtAcceso = activosEjecutar($link, 'SELECT b.id_bitacora FROM cc_activos_bitacora b INNER JOIN cc_activos a ON a.id_activo=b.id_activo AND a.id_sucursal=b.id_sucursal WHERE b.id_bitacora=? AND b.id_sucursal=?', 'ii', [$idBitacora, $idSucursalSesion]);
+        if (!mysqli_stmt_get_result($stmtAcceso)->fetch_assoc()) {
+            mysqli_stmt_close($stmtAcceso);
+            throw new RuntimeException('El evento no pertenece a tu sucursal.');
+        }
+        mysqli_stmt_close($stmtAcceso);
+        $stmt = activosEjecutar($link, 'UPDATE cc_activos_bitacora SET estatus=?,solucion=?,fecha_resolucion=?,hora_resolucion=?,id_usuario_act=?,fecha_act=?,hora_act=? WHERE id_bitacora=? AND id_sucursal=?', 'ssssissii', [$estatus, $solucion, $fechaResolucion, $horaResolucion, $usuario, $hoy, date('H:i:s'), $idBitacora, $idSucursalSesion]);
         mysqli_stmt_close($stmt);
+        cc_sync_enqueue($link, $idSucursalSesion, 'activo_bitacora', 'upsert', ['id_bitacora' => $idBitacora], ['motivo' => 'actualizacion_evento']);
         $mensaje = 'Evento actualizado correctamente.';
     }
 } catch (Throwable $e) {
@@ -109,23 +136,25 @@ $fecha2 = activosFecha($_GET['fecha2'] ?? $hoy, $hoy);
 if ($fecha1 > $fecha2) {
     [$fecha1, $fecha2] = [$fecha2, $fecha1];
 }
-$filtroSucursal = (int) ($_GET['sucursal'] ?? 0);
+$filtroSucursal = $idSucursalSesion;
 $filtroEstatus = activosValor($_GET['estatus'] ?? '', array_merge([''], $estatusEvento), '');
 $sucursales = $activos = $eventos = [];
 
 try {
-    $result = mysqli_query($link, "SELECT id_sucursal,desc_sucursal FROM cc_sucursales WHERE activo=1 AND UPPER(desc_sucursal) NOT LIKE '%PRUEBA%' ORDER BY desc_sucursal");
+    $alcanceSucursal = ' AND id_sucursal=' . $idSucursalSesion;
+    $result = mysqli_query($link, "SELECT id_sucursal,desc_sucursal FROM cc_sucursales WHERE activo=1 AND UPPER(desc_sucursal) NOT LIKE '%PRUEBA%' $alcanceSucursal ORDER BY desc_sucursal");
     if (!$result) {
         throw new RuntimeException(mysqli_error($link));
     }
     while ($row = mysqli_fetch_assoc($result)) {
         $sucursales[(int) $row['id_sucursal']] = $row['desc_sucursal'];
     }
+    $alcanceActivos = ' AND a.id_sucursal=' . $idSucursalSesion;
     $result = mysqli_query($link, "SELECT a.id_activo,a.tipo,a.nombre,a.identificador,a.estado,a.observaciones,s.desc_sucursal,
-            (SELECT COUNT(*) FROM cc_activos_bitacora bp WHERE bp.id_activo=a.id_activo AND bp.estatus<>'RESUELTO') pendientes,
-            (SELECT MAX(CONCAT(bu.fecha_evento,' ',bu.hora_evento)) FROM cc_activos_bitacora bu WHERE bu.id_activo=a.id_activo) ultimo_evento
+            (SELECT COUNT(*) FROM cc_activos_bitacora bp WHERE bp.id_activo=a.id_activo AND bp.id_sucursal=a.id_sucursal AND bp.estatus<>'RESUELTO') pendientes,
+            (SELECT MAX(CONCAT(bu.fecha_evento,' ',bu.hora_evento)) FROM cc_activos_bitacora bu WHERE bu.id_activo=a.id_activo AND bu.id_sucursal=a.id_sucursal) ultimo_evento
         FROM cc_activos a INNER JOIN cc_sucursales s ON s.id_sucursal=a.id_sucursal
-        WHERE a.activo=1 AND s.activo=1 AND UPPER(s.desc_sucursal) NOT LIKE '%PRUEBA%'
+        WHERE a.activo=1 AND s.activo=1 AND UPPER(s.desc_sucursal) NOT LIKE '%PRUEBA%' $alcanceActivos
         ORDER BY a.tipo,a.nombre");
     if (!$result) {
         throw new RuntimeException('Falta ejecutar la migración de inventario y bitácora.');
@@ -146,7 +175,7 @@ try {
         $types .= 's';
         $params[] = $filtroEstatus;
     }
-    $stmt = activosEjecutar($link, 'SELECT b.*,a.tipo,a.nombre,a.identificador,a.estado estado_activo,s.desc_sucursal,u.nombre usuario FROM cc_activos_bitacora b INNER JOIN cc_activos a ON a.id_activo=b.id_activo INNER JOIN cc_sucursales s ON s.id_sucursal=a.id_sucursal LEFT JOIN cc_users u ON u.id=b.id_usuario WHERE ' . implode(' AND ', $where) . ' ORDER BY b.fecha_evento DESC,b.hora_evento DESC,b.id_bitacora DESC', $types, $params);
+    $stmt = activosEjecutar($link, 'SELECT b.*,a.tipo,a.nombre,a.identificador,a.estado estado_activo,s.desc_sucursal,u.nombre usuario FROM cc_activos_bitacora b INNER JOIN cc_activos a ON a.id_activo=b.id_activo AND a.id_sucursal=b.id_sucursal INNER JOIN cc_sucursales s ON s.id_sucursal=a.id_sucursal LEFT JOIN cc_users u ON u.id=b.id_usuario WHERE ' . implode(' AND ', $where) . ' ORDER BY b.fecha_evento DESC,b.hora_evento DESC,b.id_bitacora DESC', $types, $params);
     $result = mysqli_stmt_get_result($stmt);
     while ($row = mysqli_fetch_assoc($result)) {
         $eventos[] = $row;
@@ -168,7 +197,7 @@ try {
 
 <div class="row g-4 mt-1">
 <section class="col-lg-6"><div class="card h-100"><div class="card-body"><h2 class="h5">Registrar activo</h2><form method="post" class="row g-3">
-<div class="col-md-6"><label class="form-label">Sucursal</label><select class="form-select" name="id_sucursal" required><option value="">Seleccione</option><?php foreach ($sucursales as $id=>$nombre) { ?><option value="<?php echo $id; ?>"><?php echo activosH($nombre); ?></option><?php } ?></select></div>
+<div class="col-md-6"><label class="form-label">Sucursal</label><input class="form-control" value="<?php echo activosH($sucursales[$idSucursalSesion] ?? $_SESSION['desc_sucursal'] ?? ''); ?>" disabled></div>
 <div class="col-md-6"><label class="form-label">Tipo</label><input class="form-control" name="tipo" placeholder="Refrigerador, moto..." required></div>
 <div class="col-md-6"><label class="form-label">Nombre</label><input class="form-control" name="nombre" placeholder="Refrigerador cámara 1" required></div>
 <div class="col-md-6"><label class="form-label">Identificación</label><input class="form-control" name="identificador" placeholder="Serie, placas o número interno"></div>
@@ -192,7 +221,7 @@ try {
 
 <hr class="my-4"><h2 class="h4">Consultar bitácora</h2><form method="get" class="row g-3 align-items-end mb-3">
 <div class="col-md-3"><label class="form-label">Fecha inicial</label><input type="date" class="form-control" name="fecha1" value="<?php echo activosH($fecha1); ?>"></div><div class="col-md-3"><label class="form-label">Fecha final</label><input type="date" class="form-control" name="fecha2" value="<?php echo activosH($fecha2); ?>"></div>
-<div class="col-md-2"><label class="form-label">Sucursal</label><select class="form-select" name="sucursal"><option value="0">Todas</option><?php foreach ($sucursales as $id=>$nombre) { ?><option value="<?php echo $id; ?>" <?php echo $filtroSucursal===$id?'selected':''; ?>><?php echo activosH($nombre); ?></option><?php } ?></select></div>
+<div class="col-md-2"><label class="form-label">Sucursal</label><input class="form-control" value="<?php echo activosH($sucursales[$idSucursalSesion] ?? $_SESSION['desc_sucursal'] ?? ''); ?>" disabled></div>
 <div class="col-md-2"><label class="form-label">Estatus</label><select class="form-select" name="estatus"><option value="">Todos</option><?php foreach ($estatusEvento as $estatus) { ?><option <?php echo $filtroEstatus===$estatus?'selected':''; ?>><?php echo activosH($estatus); ?></option><?php } ?></select></div><div class="col-md-2"><button class="btn btn-primary w-100">Consultar</button></div></form>
 
 <div class="table-responsive"><table class="table table-sm table-bordered table-hover"><thead class="table-light"><tr><th>Fecha y hora</th><th>Sucursal</th><th>Activo</th><th>Evento</th><th>Detalle</th><th>Estatus</th><th>Solución / actualizar</th></tr></thead><tbody>

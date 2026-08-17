@@ -128,6 +128,14 @@ function cc_sync_get_entity_config(string $entityType): ?array
             'table' => 'cc_entradas',
             'keys' => ['id_entrada'],
         ],
+        'activo' => [
+            'table' => 'cc_activos',
+            'keys' => ['id_activo'],
+        ],
+        'activo_bitacora' => [
+            'table' => 'cc_activos_bitacora',
+            'keys' => ['id_bitacora'],
+        ],
     ];
 
     return $map[$entityType] ?? null;
@@ -251,6 +259,8 @@ function cc_sync_fetch_pending(mysqli $link, int $limit = 50): array
             WHEN 'proveedor' THEN 3
             WHEN 'producto' THEN 4
             WHEN 'derivado' THEN 5
+            WHEN 'activo' THEN 6
+            WHEN 'activo_bitacora' THEN 7
             WHEN 'saldo_cliente' THEN 14
             WHEN 'pago_cliente' THEN 15
             WHEN 'cierre' THEN 20

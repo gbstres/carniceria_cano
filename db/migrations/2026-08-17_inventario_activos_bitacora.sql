@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS cc_activos (
     id_usuario_act INT DEFAULT NULL,
     fecha_act DATE DEFAULT NULL,
     hora_act TIME DEFAULT NULL,
-    PRIMARY KEY (id_activo),
+    PRIMARY KEY (id_activo, id_sucursal),
     KEY idx_activos_sucursal (id_sucursal, activo),
     KEY idx_activos_tipo (tipo),
     KEY idx_activos_estado (estado)
@@ -23,6 +23,7 @@ CREATE TABLE IF NOT EXISTS cc_activos (
 
 CREATE TABLE IF NOT EXISTS cc_activos_bitacora (
     id_bitacora INT NOT NULL AUTO_INCREMENT,
+    id_sucursal INT NOT NULL,
     id_activo INT NOT NULL,
     tipo_evento ENUM('FALLA','MANTENIMIENTO','INSPECCION','REPARACION','OBSERVACION') NOT NULL,
     fecha_evento DATE NOT NULL,
@@ -38,8 +39,8 @@ CREATE TABLE IF NOT EXISTS cc_activos_bitacora (
     id_usuario_act INT DEFAULT NULL,
     fecha_act DATE DEFAULT NULL,
     hora_act TIME DEFAULT NULL,
-    PRIMARY KEY (id_bitacora),
-    KEY idx_bitacora_activo_fecha (id_activo, fecha_evento, hora_evento),
+    PRIMARY KEY (id_bitacora, id_sucursal),
+    KEY idx_bitacora_activo_fecha (id_sucursal, id_activo, fecha_evento, hora_evento),
     KEY idx_bitacora_estatus (estatus),
     KEY idx_bitacora_tipo (tipo_evento)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;
