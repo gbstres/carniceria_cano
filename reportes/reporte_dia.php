@@ -15,6 +15,7 @@ date_default_timezone_set("America/Mexico_City");
 $id_sucursal = $_SESSION["id_sucursal"];
 $_SESSION['carpeta'] = '../';
 $id_categoria = '0';
+$tipo_pago_filtro = isset($_POST['tipo_pago']) ? (int) $_POST['tipo_pago'] : 0;
 if (isset($_POST['fecha'])) {
     $fecha = $_POST['fecha'];
     if (isset($_POST['id_categoria'])) {
@@ -263,6 +264,19 @@ function generarToken() {
                                         ?>
                                     </select>
                                 </div>
+                                <div class="col-6">
+                                    <label for="tipo_pago" class="form-label">Tipo de pago</label>
+                                    <select id="tipo_pago" name="tipo_pago" class="form-select">
+                                        <option value="0">Todos</option>
+                                        <?php
+                                        $query_pagos = mysqli_query($link, "SELECT clave, descripcion FROM cc_claves WHERE nombre_clave = 'TIPO_PAGO' ORDER BY orden, clave");
+                                        while ($pago = mysqli_fetch_assoc($query_pagos)) {
+                                            $selected = ((int) $pago['clave'] === $tipo_pago_filtro) ? ' selected="selected"' : '';
+                                            echo '<option value="' . (int) $pago['clave'] . '"' . $selected . '>' . htmlspecialchars($pago['descripcion'], ENT_QUOTES, 'UTF-8') . '</option>';
+                                        }
+                                        ?>
+                                    </select>
+                                </div>
                             </div>
                             <br>
                             <div class="text-center p-3" >
@@ -296,10 +310,11 @@ function generarToken() {
                                     </tr>
                                 </thead>
                                 <?php
+                                $filtro_tipo_pago = $tipo_pago_filtro > 0 ? " and a.tipo_pago = $tipo_pago_filtro" : "";
                                 $sqlventas = mysqli_query($link, "SELECT a.id_venta,a.fecha_ingreso,a.hora_ingreso,b.codigo,b.precio_compra,b.precio_venta,b.cantidad,"
                                         . "round(b.precio_compra * b.cantidad,2) as importec,round(b.precio_venta * b.cantidad,2) as importev, a.id_cliente, a.tipo_pago, b.id_consecutivo,b.estatus "
                                         . "FROM cc_det_ventas as a inner join cc_ventas as b on a.id_sucursal = b.id_sucursal and a.id_venta = b.id_venta "
-                                        . "WHERE a.id_sucursal = '$id_sucursal' and a.fecha_ingreso = '$fecha' and a.estatus in (1,3)"
+                                        . "WHERE a.id_sucursal = '$id_sucursal' and a.fecha_ingreso = '$fecha' and a.estatus in (1,3)" . $filtro_tipo_pago
                                         . " order by a.id_venta DESC");
 
                                 $renglon = 0;
@@ -389,6 +404,7 @@ function generarToken() {
                             <input type="hidden" name="movimiento" id="movimiento" >
                             <input type="hidden" name="id_cliente" id="id_cliente" >
                             <input type="hidden" name="fecha" value="<?php echo $fecha ?>"/>
+                            <input type="hidden" name="tipo_pago" value="<?php echo $tipo_pago_filtro ?>"/>
                         </form>  
                         <br>
                         <div class="align-content-center text-center">
