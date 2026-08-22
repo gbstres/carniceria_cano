@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="es">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Manual de usuario | Carnicería Cano</title>
+    <style>
+        :root { --vino:#8b1e2d; --vino-oscuro:#641521; --crema:#fffaf4; --tinta:#292421; --gris:#6c6864; --linea:#e3d9d0; }
+        * { box-sizing:border-box; }
+        html { scroll-behavior:smooth; }
+        body { margin:0; color:var(--tinta); background:var(--crema); font:16px/1.65 Arial, sans-serif; }
+        header { padding:44px 24px; color:#fff; background:linear-gradient(135deg,var(--vino-oscuro),var(--vino)); }
+        header div, .layout { max-width:1180px; margin:auto; }
+        header h1 { margin:0 0 8px; font-size:clamp(2rem,5vw,3.5rem); }
+        header p { margin:0; max-width:720px; opacity:.92; }
+        .layout { display:grid; grid-template-columns:260px minmax(0,1fr); gap:36px; padding:32px 24px 64px; }
+        nav { position:sticky; top:20px; align-self:start; padding:20px; border:1px solid var(--linea); border-radius:12px; background:#fff; }
+        nav strong { display:block; margin-bottom:10px; color:var(--vino); }
+        nav a { display:block; padding:6px 0; color:var(--tinta); text-decoration:none; }
+        nav a:hover { color:var(--vino); text-decoration:underline; }
+        main { min-width:0; }
+        section { margin-bottom:26px; padding:28px; border:1px solid var(--linea); border-radius:12px; background:#fff; box-shadow:0 4px 16px rgba(60,35,20,.05); }
+        h2 { margin-top:0; color:var(--vino); }
+        h3 { margin-bottom:6px; }
+        ol, ul { padding-left:22px; }
+        .nota { padding:14px 16px; border-left:4px solid var(--vino); background:#fff4e9; }
+        .guia-visual { display:grid; gap:24px; margin-top:24px; }
+        .captura { margin:0; overflow:hidden; border:1px solid var(--linea); border-radius:10px; background:#fffaf4; }
+        .captura img { display:block; width:100%; height:auto; }
+        .captura figcaption { padding:12px 16px; color:var(--gris); border-top:1px solid var(--linea); }
+        .captura figcaption strong { color:var(--vino-oscuro); }
+        .tabla { overflow-x:auto; }
+        table { width:100%; border-collapse:collapse; }
+        th, td { padding:11px; border-bottom:1px solid var(--linea); text-align:left; vertical-align:top; }
+        th { color:var(--vino-oscuro); background:#fff8f1; }
+        kbd { padding:2px 6px; border:1px solid #c8beb5; border-radius:4px; background:#f6f1ec; }
+        footer { padding:24px; text-align:center; color:var(--gris); }
+        @media (max-width:800px) { .layout { grid-template-columns:1fr; } nav { position:static; } section { padding:20px; } }
+        @media print { header { padding:20px; } nav { display:none; } .layout { display:block; padding:0; } section { box-shadow:none; break-inside:avoid; } }
+    </style>
+</head>
+<body>
+<header><div><h1>Manual de usuario</h1><p>Guía rápida del sistema administrativo y punto de venta de Carnicería Cano.</p></div></header>
+<div class="layout">
+    <nav aria-label="Contenido del manual">
+        <strong>Contenido</strong>
+        <a href="#acceso">1. Acceso y navegación</a>
+        <a href="#venta">2. Punto de venta</a>
+        <a href="#mantenimientos">3. Mantenimientos</a>
+        <a href="#reportes">4. Reportes</a>
+        <a href="#control">5. Control diario</a>
+        <a href="#administracion">6. Administración</a>
+        <a href="#sesion">7. Sesión y sucursal</a>
+        <a href="#recomendaciones">8. Recomendaciones</a>
+        <a href="#problemas">9. Problemas frecuentes</a>
+    </nav>
+    <main>
+        <section id="acceso">
+            <h2>1. Acceso y navegación</h2>
+            <ol><li>Abra la página de acceso e ingrese sus credenciales.</li><li>Confirme la sucursal mostrada en la barra superior antes de capturar movimientos.</li><li>Use los menús <strong>Mantenimientos</strong>, <strong>Reportes</strong>, <strong>Control</strong> y, si su perfil lo permite, <strong>Admin y sistemas</strong>.</li></ol>
+            <p class="nota"><strong>Permisos:</strong> las opciones visibles dependen del rol. Si una función necesaria no aparece, solicite al administrador que revise su perfil.</p>
+        </section>
+        <section id="venta">
+            <h2>2. Punto de venta</h2>
+            <ol><li>Desde <strong>Inicio</strong>, capture el código o la descripción del producto.</li><li>Pulse <strong>Agregar</strong> y confirme producto, precio, cantidad y total.</li><li>Modifique el precio o la cantidad directamente en su campo, o elimine una línea antes de finalizar si es necesario.</li><li>Seleccione el cliente cuando la operación lo requiera y complete el cobro con las opciones disponibles en pantalla.</li><li>Revise el total y el cambio antes de confirmar e imprimir el comprobante.</li></ol>
+            <p class="nota">No cierre ni recargue la página mientras se guarda una venta. Antes de confirmar, verifique sucursal, cliente, productos y cantidades.</p>
+            <h3>Guía visual de una venta</h3>
+            <div class="guia-visual">
+                <figure class="captura"><img src="img/manual/01-punto-venta-inicio.png" alt="Pantalla inicial del punto de venta" loading="lazy"><figcaption><strong>1.</strong> Iniciar la venta y confirmar la sucursal.</figcaption></figure>
+                <figure class="captura"><img src="img/manual/02-busqueda-producto.png" alt="Búsqueda de un producto" loading="lazy"><figcaption><strong>2.</strong> Buscar el producto por código o descripción.</figcaption></figure>
+                <figure class="captura"><img src="img/manual/03-cantidad-total.png" alt="Captura de cantidad y total" loading="lazy"><figcaption><strong>3.</strong> Indicar la cantidad y revisar el total.</figcaption></figure>
+                <figure class="captura"><img src="img/manual/04-producto-agregado.png" alt="Producto agregado a la venta" loading="lazy"><figcaption><strong>4.</strong> Comprobar el producto agregado.</figcaption></figure>
+                <figure class="captura"><img src="img/manual/05-agregar-cliente.png" alt="Selección de cliente" loading="lazy"><figcaption><strong>5.</strong> Seleccionar el cliente cuando corresponda.</figcaption></figure>
+                <figure class="captura"><img src="img/manual/06-ventas-pendientes.png" alt="Ventas pendientes" loading="lazy"><figcaption><strong>6.</strong> Consultar o recuperar ventas pendientes.</figcaption></figure>
+                <figure class="captura"><img src="img/manual/07-varios-productos.png" alt="Venta con varios productos" loading="lazy"><figcaption><strong>7.</strong> Revisar todos los productos y cantidades.</figcaption></figure>
+                <figure class="captura"><img src="img/manual/08-cerrar-venta.png" alt="Cierre de la venta" loading="lazy"><figcaption><strong>8.</strong> Cerrar la venta para pasar al cobro.</figcaption></figure>
+                <figure class="captura"><img src="img/manual/09-pago-efectivo.png" alt="Pago en efectivo" loading="lazy"><figcaption><strong>9.</strong> Registrar el efectivo recibido y el cambio.</figcaption></figure>
+                <figure class="captura"><img src="img/manual/10-impresion-ticket.png" alt="Impresión del ticket" loading="lazy"><figcaption><strong>10.</strong> Confirmar e imprimir el ticket.</figcaption></figure>
+                <figure class="captura"><img src="img/manual/11-abrir-caja.png" alt="Ventana para abrir la caja registradora con comentarios obligatorios" loading="lazy"><figcaption><strong>11. Abrir Caja.</strong> Muestra una ventana emergente, solicita comentarios obligatorios y simula una impresión para abrir la caja registradora.</figcaption></figure>
+            </div>
+            <h3>Editar precio y cantidad</h3>
+            <p>Haga clic en el campo de <strong>Precio</strong> o <strong>Cantidad</strong> del producto, capture el nuevo valor y confirme que el total del renglón y el total de la venta se actualicen correctamente.</p>
+            <div class="guia-visual">
+                <figure class="captura"><img src="img/manual/14-editar-precio.png" alt="Edición del precio de un producto en el punto de venta" loading="lazy"><figcaption><strong>Editar precio.</strong> Seleccione el importe en la columna <strong>Precio</strong> y capture el valor correcto.</figcaption></figure>
+                <figure class="captura"><img src="img/manual/15-editar-cantidad.png" alt="Edición de la cantidad de un producto en el punto de venta" loading="lazy"><figcaption><strong>Editar cantidad.</strong> Seleccione el valor en la columna <strong>Cantidad</strong> y capture las unidades o el peso requerido.</figcaption></figure>
+            </div>
+            <h3>Acciones adicionales</h3>
+            <ul>
+                <li><strong>Nueva venta:</strong> coloca automáticamente la venta actual en <strong>Ventas pendientes</strong> y abre una operación nueva en blanco. La venta anterior puede recuperarse después desde la lista de pendientes.</li>
+                <li><strong>Eliminar venta:</strong> cancela la venta actual y elimina sus productos. Revise que sea la operación correcta y acepte el mensaje de confirmación únicamente si desea descartarla.</li>
+                <li><strong>Abrir Caja:</strong> abre una ventana emergente en la que es obligatorio escribir comentarios que expliquen el motivo. Al confirmar, el sistema simula la impresión que acciona la apertura de la caja registradora; esta función no registra una venta.</li>
+            </ul>
+            <div class="guia-visual">
+                <figure class="captura"><img src="img/manual/12-nueva-venta-actual.png" alt="Venta actual con productos antes de iniciar una nueva venta" loading="lazy"><figcaption><strong>Antes:</strong> la venta actual contiene productos y todavía no se ha cerrado.</figcaption></figure>
+                <figure class="captura"><img src="img/manual/13-nueva-venta-pendiente.png" alt="Nueva venta vacía y venta anterior guardada en ventas pendientes" loading="lazy"><figcaption><strong>Después:</strong> al pulsar <em>Nueva venta</em>, se abre una venta vacía y la anterior aparece en <strong>Ventas pendientes</strong>.</figcaption></figure>
+            </div>
+            <p class="nota"><strong>Importante:</strong> si sólo necesita corregir un producto, elimine o modifique ese renglón en lugar de borrar toda la venta.</p>
+        </section>
+        <section id="mantenimientos">
+            <h2>3. Mantenimientos</h2>
+            <div class="tabla"><table><thead><tr><th>Opción</th><th>Uso principal</th></tr></thead><tbody>
+                <tr><td>Productos</td><td>Consultar y administrar artículos, códigos, precios y datos relacionados.</td></tr>
+                <tr><td>Categorías / Homologación</td><td>Organizar productos y relacionar categorías entre sucursales.</td></tr>
+                <tr><td>Sucursales</td><td>Consultar o mantener la información de las tiendas.</td></tr>
+                <tr><td>Clientes</td><td>Registrar y actualizar clientes.</td></tr>
+                <tr><td>Proveedores</td><td>Registrar y actualizar proveedores.</td></tr>
+                <tr><td>Empleados</td><td>Administrar el catálogo de empleados.</td></tr>
+            </tbody></table></div>
+            <p>En cada catálogo, busque primero el registro para evitar duplicados. Revise los campos obligatorios y confirme el mensaje de éxito después de guardar.</p>
+        </section>
+        <section id="reportes">
+            <h2>4. Reportes</h2>
+            <p>Los reportes disponibles incluyen ventas y compras por día o por rango de fechas, stock, resumen de sucursales e inventario/bitácora, según permisos.</p>
+            <ol><li>Abra el reporte requerido.</li><li>Seleccione fecha, sucursal u otros filtros.</li><li>Ejecute la consulta.</li><li>Use la búsqueda y el orden de columnas para localizar información.</li><li>Verifique los filtros antes de imprimir o utilizar los resultados.</li></ol>
+        </section>
+        <section id="control">
+            <h2>5. Control diario</h2>
+            <h3>Inicio de día</h3><p>Registre la información inicial de la jornada antes de comenzar operaciones.</p>
+            <h3>Compras, gastos y entradas</h3><p>Capture cada movimiento con su fecha, importe y referencia correctos. Compruebe los renglones y totales antes de guardar.</p>
+            <h3>Cierre de día</h3><p>Realice el cierre cuando todas las operaciones estén capturadas. Compare los totales del sistema con los comprobantes y valores físicos.</p>
+            <h3>Respaldo</h3><p>Use esta opción conforme al procedimiento interno de la empresa y conserve los archivos resultantes en una ubicación autorizada.</p>
+        </section>
+        <section id="administracion">
+            <h2>6. Administración</h2>
+            <p>Los perfiles autorizados pueden administrar derivados, equivalencias de productos, información del servidor e importación de ventas.</p>
+            <p class="nota"><strong>Importaciones:</strong> confirme el archivo, la sucursal de origen y el periodo. No repita una importación sin comprobar antes si ya fue procesada.</p>
+        </section>
+        <section id="sesion">
+            <h2>7. Sesión y sucursal</h2>
+            <ul><li><strong>Cambiar sucursal:</strong> disponible para perfiles autorizados. Confirme el nombre mostrado en la barra después del cambio.</li><li><strong>Usuarios:</strong> permite al administrador gestionar accesos.</li><li><strong>Shop Online:</strong> abre la tienda en línea.</li><li><strong>Cerrar sesión:</strong> úselo siempre al terminar, especialmente en equipos compartidos.</li></ul>
+        </section>
+        <section id="recomendaciones">
+            <h2>8. Recomendaciones de operación</h2>
+            <ul><li>No comparta contraseñas ni deje una sesión abierta.</li><li>No use dos pestañas para capturar simultáneamente la misma operación.</li><li>Revise la sucursal activa antes de vender, comprar o generar un cierre.</li><li>Evite pulsar dos veces los botones de guardar o confirmar.</li><li>Reporte errores indicando pantalla, fecha, usuario y mensaje mostrado; una captura de pantalla ayuda.</li></ul>
+        </section>
+        <section id="problemas">
+            <h2>9. Problemas frecuentes</h2>
+            <div class="tabla"><table><thead><tr><th>Situación</th><th>Qué revisar</th></tr></thead><tbody>
+                <tr><td>No aparece una opción</td><td>Su rol puede no tener permiso. Consulte al administrador.</td></tr>
+                <tr><td>No se encuentra un producto</td><td>Revise código, descripción, sucursal y que el producto esté activo.</td></tr>
+                <tr><td>Los datos parecen incorrectos</td><td>Confirme sucursal, fechas y filtros antes de repetir la consulta.</td></tr>
+                <tr><td>La página no responde</td><td>Espere unos segundos antes de reintentar. No duplique la captura.</td></tr>
+                <tr><td>La sesión terminó</td><td>Ingrese de nuevo y confirme si la operación anterior quedó registrada.</td></tr>
+            </tbody></table></div>
+            <p>Para imprimir este manual, use <kbd>Ctrl</kbd> + <kbd>P</kbd> en el navegador.</p>
+        </section>
+    </main>
+</div>
+<footer>Manual de usuario · Carnicería Cano · Actualizado en agosto de 2026</footer>
+</body>
+</html>
