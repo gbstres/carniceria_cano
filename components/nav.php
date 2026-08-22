@@ -18,7 +18,7 @@ if (in_array($ccHost, ['localhost', '127.0.0.1', '::1'], true)) {
         <?php echo htmlspecialchars($ccEntorno, ENT_QUOTES, 'UTF-8'); ?>
     </div>
     <div class="container-fluid">
-        <a class="navbar-brand" href="#">Carnicería Cano</a>
+        <a class="navbar-brand" href="../main/inicio.php">Carnicería Cano</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarsExample09" aria-controls="navbarsExample09" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
@@ -99,7 +99,6 @@ if (in_array($ccHost, ['localhost', '127.0.0.1', '::1'], true)) {
                         echo '
                         <li><a class="dropdown-item" href="../admin/derivados.php">Derivados</a></li>
                         <li><a class="dropdown-item" href="../admin/equivalencias_productos.php">Equivalencias productos</a></li>
-                        <li><a class="dropdown-item" href="../admin/act_sistema.php">Actualizar sistema</a></li>
                         <li><a class="dropdown-item" href="../admin/actualiza_info.php">Actualiza inf. del servidor</a></li>';
                     }
                     echo '
@@ -124,14 +123,13 @@ if (in_array($ccHost, ['localhost', '127.0.0.1', '::1'], true)) {
                         <li><a href="../login/cambio_sucursal.php" class="dropdown-item"><i class="bi bi-building"></i> Cambiar sucursal</a></li>';
                         }
                         ?>
-
-                        <li><a href="#" class="dropdown-item"><i class="bi bi-lock-fill"></i> Cambiar Contraseña</a></li>
                         <?php
                         if (tienePermiso('ver')) {
                             echo ' 
                         <li><a href="../usuarios/usuarios.php" class="dropdown-item"><i class="bi bi-gear-fill"></i> Usuarios</a></li>';
                         }
                         ?>
+                        <li><a href="../manual_usuario.html" class="dropdown-item" target="_blank" rel="noopener"><i class="bi bi-book"></i> Manual de usuario</a></li>
                         <li>
                             <hr class="dropdown-divider">
                         </li>
