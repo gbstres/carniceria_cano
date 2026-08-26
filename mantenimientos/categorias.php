@@ -19,7 +19,6 @@ $id_sucursal = $_SESSION["id_sucursal"];
 $desc_categoria = "";
 $id_categoria = 0;
 $precio = null;
-$mayoreo = 0;
 $activo = 0;
 $fecha_ingreso = date('y-m-d');
 $hora_ingreso = date('H:i:s');
@@ -38,14 +37,13 @@ if (isset($_POST['agregar'])) {
     }
 
 
-    $sql = "INSERT INTO cc_categorias (id_sucursal, id_categoria, desc_categoria, almacen, precio, mayoreo, activo, id_usuario, fecha_ingreso,hora_ingreso) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    $sql = "INSERT INTO cc_categorias (id_sucursal, id_categoria, desc_categoria, almacen, precio, mayoreo, activo, id_usuario, fecha_ingreso,hora_ingreso) VALUES (?, ?, ?, ?, ?, 0, ?, ?, ?, ?)";
     if ($stmt = mysqli_prepare($link, $sql)) {
         // Bind variables to the prepared statement as parameters
-        mysqli_stmt_bind_param($stmt, "iisddiiiss", $id_sucursal, $id_categoria, $desc_categoria, $almacen, $precio, $mayoreo, $activo, $id_usuario, $fecha_ingreso, $hora_ingreso);
+        mysqli_stmt_bind_param($stmt, "iisddiiss", $id_sucursal, $id_categoria, $desc_categoria, $almacen, $precio, $activo, $id_usuario, $fecha_ingreso, $hora_ingreso);
         $desc_categoria = mb_strtoupper(trim($_POST["desc_categoria"]));
         $almacen_e = $almacen = trim($_POST["almacen"]);
         $precio = trim($_POST["precio"] ?? '') === '' ? null : (float) $_POST["precio"];
-        $mayoreo = isset($_POST['mayoreo']) ? 1 : 0;
         $activo = isset($_POST['activo']) ? 1 : 0;
         $fecha_ingreso = date('y-m-d');
         $hora_ingreso = date('H:i:s');
@@ -71,13 +69,12 @@ if (isset($_POST['editar'])) {
     $precioSql = trim($_POST["precio_e"] ?? '') === ''
             ? 'NULL'
             : "'" . mysqli_real_escape_string($link, trim($_POST["precio_e"])) . "'";
-    $mayoreo = isset($_POST['mayoreo_e']) ? 1 : 0;
     $activo = isset($_POST['activo_e']) ? 1 : 0;
     $id_usuario_act = $_SESSION["id"];
     $fecha_act = date('y-m-d');
     $hora_act = date('H:i:s');
     $update1 = mysqli_query($link, "UPDATE cc_categorias SET "
-                    . "desc_categoria='$desc_categoria', almacen='$almacen', precio=$precioSql, mayoreo='$mayoreo', activo='$activo', "
+                    . "desc_categoria='$desc_categoria', almacen='$almacen', precio=$precioSql, activo='$activo', "
                     . "fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act='$id_usuario_act' "
                     . "WHERE id_categoria='$id_categoria' and id_sucursal='$id_sucursal'")
             or die(mysqli_error());
@@ -201,13 +198,9 @@ if (isset($_GET['accion']) == 'delete' and $title == '') {
                                 </div>
                             </div>
                             <div class="row">
-                                <div class="col-6">
-                                    <label for="checkMayoreo" class="form-label">&nbsp;</label><br>
-                                    <input class="form-check-input" name="mayoreo" type="checkbox" value="0" id="mayoreo" >&nbsp;&nbsp;Mayoreo<br>
-                                </div>
-                                <div class="col-6">
-                                    <label for="checkMayoreo" class="form-label">&nbsp;</label><br>
-                                    <input class="form-check-input" name="activo" type="checkbox" value="1" id="mayoreo" checked>&nbsp;&nbsp;Activo<br>
+                                <div class="col-12">
+                                    <label for="activo" class="form-label">&nbsp;</label><br>
+                                    <input class="form-check-input" name="activo" type="checkbox" value="1" id="activo" checked>&nbsp;&nbsp;Activo<br>
                                 </div>
                             </div>
                             <div class="col-12 text-center" >
@@ -224,7 +217,6 @@ if (isset($_GET['accion']) == 'delete' and $title == '') {
                                         <th>Descripción</th>
                                         <th>Stock</th>
                                         <th>Precio</th>
-                                        <th>Mayoreo</th>
                                         <th>Activo</th>
                                         <th>Usuario</th>
                                         <th>Acciones</th>
@@ -243,10 +235,6 @@ if (isset($_GET['accion']) == 'delete' and $title == '') {
                                         <td>' . $rowc['desc_categoria'] . '</td>
                                         <td>' . $rowc['almacen'] . '</td>
                                         <td>' . ($rowc['precio'] === null ? '' : $rowc['precio']) . '</td>
-                                        <td class="' . $rowc['mayoreo'] . '"><input type="checkbox" class="form-check-input" disabled ';
-                                    if ($rowc['mayoreo'] == "1") {
-                                        echo 'checked';
-                                    } echo '></td>
                                         <td class="' . $rowc['activo'] . '"><input type="checkbox" class="form-check-input" disabled ';
                                     if ($rowc['activo'] == "1") {
                                         echo 'checked';
@@ -304,11 +292,7 @@ if (isset($_GET['accion']) == 'delete' and $title == '') {
                                 </div>
                             </div>
                             <div class="mb-3">
-                                <label for="checkMayoreo" class="form-label">¿Mayoreo?</label><br>
-                                <input class="form-check-input" name="mayoreo_e" type="checkbox" value="1" id="mayoreo_e" checked><br>
-                            </div>
-                            <div class="mb-3">
-                                <label for="checkMayoreo" class="form-label">¿Activo?</label><br>
+                                <label for="activo_e" class="form-label">¿Activo?</label><br>
                                 <input class="form-check-input" name="activo_e" type="checkbox" value="1" id="activo_e" checked><br>
                             </div>
                         </div>
@@ -384,7 +368,7 @@ if (isset($_GET['accion']) == 'delete' and $title == '') {
                             tooltip: 'Doble click para editar precio',
                             sColumnName: 'precio'
                         },
-                        null, null, null, null
+                        null, null, null
                     ]
                 });
 
@@ -414,18 +398,12 @@ if (isset($_GET['accion']) == 'delete' and $title == '') {
                 var desc_categoria = $(icono).parents("tr").find("td").eq(1).text();
                 var almacen = $(icono).parents("tr").find("td").eq(2).text();
                 var precio = $(icono).parents("tr").find("td").eq(3).text();
-                var mayoreo = $(icono).parents("tr").find("td").eq(4).attr('class');
-                var activo = $(icono).parents("tr").find("td").eq(5).attr('class');
+                var activo = $(icono).parents("tr").find("td").eq(4).attr('class');
                 $("#ModalLabelTitle").html("Editar categoría: " + id_categoria);
                 $("#id_categoria_e").val(id_categoria);
                 $("#desc_categoria_e").val(desc_categoria);
                 $("#almacen_e").val(almacen);
                 $("#precio_e").val(precio);
-
-                if (mayoreo == 0)
-                    $("#mayoreo_e").prop("checked", false);
-                else
-                    $("#mayoreo_e").prop("checked", true);
                 if (activo == 0)
                     $("#activo_e").prop("checked", false);
                 else
