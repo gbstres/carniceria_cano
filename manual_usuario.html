@@ -14,10 +14,12 @@
         header h1 { margin:0 0 8px; font-size:clamp(2rem,5vw,3.5rem); }
         header p { margin:0; max-width:720px; opacity:.92; }
         .layout { display:grid; grid-template-columns:260px minmax(0,1fr); gap:36px; padding:32px 24px 64px; }
-        nav { position:sticky; top:20px; align-self:start; padding:20px; border:1px solid var(--linea); border-radius:12px; background:#fff; }
+        nav { position:sticky; top:20px; align-self:start; max-height:calc(100vh - 40px); overflow-y:auto; padding:20px; border:1px solid var(--linea); border-radius:12px; background:#fff; }
         nav strong { display:block; margin-bottom:10px; color:var(--vino); }
         nav a { display:block; padding:6px 0; color:var(--tinta); text-decoration:none; }
         nav a:hover { color:var(--vino); text-decoration:underline; }
+        nav .submenu { margin:0 0 6px 10px; padding-left:12px; border-left:2px solid var(--linea); }
+        nav .submenu a { padding:3px 0; color:var(--gris); font-size:.9rem; }
         main { min-width:0; }
         section { margin-bottom:26px; padding:28px; border:1px solid var(--linea); border-radius:12px; background:#fff; box-shadow:0 4px 16px rgba(60,35,20,.05); }
         h2 { margin-top:0; color:var(--vino); }
@@ -29,6 +31,7 @@
         .captura img { display:block; width:100%; height:auto; }
         .captura figcaption { padding:12px 16px; color:var(--gris); border-top:1px solid var(--linea); }
         .captura figcaption strong { color:var(--vino-oscuro); }
+        .icono-inline { width:22px; height:22px; margin:0 4px; vertical-align:middle; }
         .tabla { overflow-x:auto; }
         table { width:100%; border-collapse:collapse; }
         th, td { padding:11px; border-bottom:1px solid var(--linea); text-align:left; vertical-align:top; }
@@ -47,7 +50,26 @@
         <a href="#acceso">1. Acceso y navegación</a>
         <a href="#venta">2. Punto de venta</a>
         <a href="#mantenimientos">3. Mantenimientos</a>
+        <div class="submenu" aria-label="Submenú de mantenimientos">
+            <a href="#productos">3.1 Productos</a>
+            <a href="#categorias">3.2 Categorías</a>
+            <a href="#homologacion-categorias">3.3 Homologación</a>
+            <a href="#sucursales">3.4 Sucursales</a>
+            <a href="#clientes">3.5 Clientes</a>
+            <a href="#proveedores">3.6 Proveedores</a>
+            <a href="#empleados">3.7 Empleados</a>
+        </div>
         <a href="#reportes">4. Reportes</a>
+        <div class="submenu" aria-label="Submenú de reportes">
+            <a href="#reporte-venta-dia">4.1 Venta x día</a>
+            <a href="#reporte-venta-fecha">4.2 Venta x fecha</a>
+            <a href="#reporte-compra-dia">4.3 Compra x día</a>
+            <a href="#reporte-compra-fecha">4.4 Compra x fecha</a>
+            <a href="#reporte-stock">4.5 Stock</a>
+            <a href="#reporte-resumen-sucursales">4.6 Resumen sucursales</a>
+            <a href="#reporte-ventas-categoria">4.7 Ventas x categoría</a>
+            <a href="#reporte-inventario-bitacora">4.8 Inventario y bitácora</a>
+        </div>
         <a href="#control">5. Control diario</a>
         <a href="#administracion">6. Administración</a>
         <a href="#sesion">7. Sesión y sucursal</a>
@@ -57,8 +79,24 @@
     <main>
         <section id="acceso">
             <h2>1. Acceso y navegación</h2>
+            <p>Abra el sistema desde la dirección correspondiente:</p>
+            <ul>
+                <li><strong>Red local:</strong> <a href="http://localhost/carniceriacano/login/login.php">http://localhost/carniceriacano/login/login.php</a></li>
+                <li><strong>Internet:</strong> <a href="https://carniceriacano.com/login/login.php">https://carniceriacano.com/login/login.php</a></li>
+            </ul>
             <ol><li>Abra la página de acceso e ingrese sus credenciales.</li><li>Confirme la sucursal mostrada en la barra superior antes de capturar movimientos.</li><li>Use los menús <strong>Mantenimientos</strong>, <strong>Reportes</strong>, <strong>Control</strong> y, si su perfil lo permite, <strong>Admin y sistemas</strong>.</li></ol>
             <p class="nota"><strong>Permisos:</strong> las opciones visibles dependen del rol. Si una función necesaria no aparece, solicite al administrador que revise su perfil.</p>
+            <div class="guia-visual">
+                <figure class="captura"><img src="img/manual/16-inicio-sesion.png" alt="Pantalla de acceso de Carnicería Cano" loading="lazy"><figcaption><strong>Inicio de sesión.</strong> Capture su usuario y contraseña y pulse <strong>Ingresar</strong>. Si no recuerda la contraseña, utilice el enlace <strong>¿Olvidaste tu contraseña?</strong>.</figcaption></figure>
+                <figure class="captura"><img src="img/manual/17-barra-navegacion.png" alt="Barra principal de navegación del sistema" loading="lazy"><figcaption><strong>Navegación principal.</strong> Después de ingresar, confirme la sucursal activa en la barra superior. Desde aquí puede abrir <strong>Inicio</strong>, <strong>Mantenimientos</strong>, <strong>Reportes</strong>, <strong>Control</strong>, <strong>Admin y sistemas</strong> y el menú del usuario, según sus permisos.</figcaption></figure>
+            </div>
+            <h3>Identificar el entorno</h3>
+            <p>Revise la etiqueta ubicada en el extremo derecho de la barra superior antes de trabajar:</p>
+            <div class="guia-visual">
+                <figure class="captura"><img src="img/manual/18-entorno-local.png" alt="Barra del sistema con la etiqueta amarilla Local" loading="lazy"><figcaption><strong>LOCAL:</strong> la etiqueta amarilla indica que está trabajando en la instalación local del equipo. Los movimientos realizados aquí no corresponden al servidor de Internet.</figcaption></figure>
+                <figure class="captura"><img src="img/manual/19-entorno-servidor.png" alt="Barra del sistema con la etiqueta gris Servidor" loading="lazy"><figcaption><strong>SERVIDOR:</strong> la etiqueta gris indica que está trabajando en el sistema alojado en Internet. Confirme también la sucursal mostrada en la barra.</figcaption></figure>
+            </div>
+            <p class="nota"><strong>Importante:</strong> antes de capturar una venta, compra o movimiento de control, confirme tanto el entorno como la sucursal activa.</p>
         </section>
         <section id="venta">
             <h2>2. Punto de venta</h2>
@@ -74,10 +112,21 @@
                 <figure class="captura"><img src="img/manual/06-ventas-pendientes.png" alt="Ventas pendientes" loading="lazy"><figcaption><strong>6.</strong> Consultar o recuperar ventas pendientes.</figcaption></figure>
                 <figure class="captura"><img src="img/manual/07-varios-productos.png" alt="Venta con varios productos" loading="lazy"><figcaption><strong>7.</strong> Revisar todos los productos y cantidades.</figcaption></figure>
                 <figure class="captura"><img src="img/manual/08-cerrar-venta.png" alt="Cierre de la venta" loading="lazy"><figcaption><strong>8.</strong> Cerrar la venta para pasar al cobro.</figcaption></figure>
-                <figure class="captura"><img src="img/manual/09-pago-efectivo.png" alt="Pago en efectivo" loading="lazy"><figcaption><strong>9.</strong> Registrar el efectivo recibido y el cambio.</figcaption></figure>
+                <figure class="captura"><img src="img/manual/09-pago-efectivo.png" alt="Selección del método de pago al cerrar una venta" loading="lazy"><figcaption><strong>9.</strong> Seleccionar el método de pago. Si es efectivo, capture el importe recibido y revise el cambio.</figcaption></figure>
                 <figure class="captura"><img src="img/manual/10-impresion-ticket.png" alt="Impresión del ticket" loading="lazy"><figcaption><strong>10.</strong> Confirmar e imprimir el ticket.</figcaption></figure>
                 <figure class="captura"><img src="img/manual/11-abrir-caja.png" alt="Ventana para abrir la caja registradora con comentarios obligatorios" loading="lazy"><figcaption><strong>11. Abrir Caja.</strong> Muestra una ventana emergente, solicita comentarios obligatorios y simula una impresión para abrir la caja registradora.</figcaption></figure>
             </div>
+            <h3>Métodos de pago al cerrar una venta</h3>
+            <figure class="captura"><img src="img/manual/27-metodos-pago-venta.png" alt="Ventana de cierre de venta con opciones de efectivo, transferencia y tarjeta bancaria" loading="lazy"><figcaption><strong>Forma de pago.</strong> Antes de cerrar la venta, seleccione <strong>Efectivo</strong>, <strong>Transferencia</strong> o <strong>Tarjeta bancaria</strong>.</figcaption></figure>
+            <ul>
+                <li><strong>Efectivo:</strong> capture la cantidad recibida; el sistema calcula el cambio que debe entregarse.</li>
+                <li><strong>Transferencia:</strong> seleccione esta opción cuando el cliente pague mediante transferencia bancaria.</li>
+                <li><strong>Tarjeta bancaria:</strong> utilícela para pagos con tarjeta de crédito o débito.</li>
+                <li><strong>Empleado:</strong> seleccione o capture a la persona que atendió la venta.</li>
+                <li><strong>Imprimir:</strong> genera el comprobante antes de finalizar, cuando sea necesario.</li>
+                <li><strong>Cerrar venta:</strong> confirma la operación con la forma de pago seleccionada.</li>
+            </ul>
+            <p class="nota"><strong>Antes de confirmar:</strong> revise el total, la forma de pago, el importe recibido y el cambio. No seleccione efectivo para una transferencia o pago con tarjeta.</p>
             <h3>Editar precio y cantidad</h3>
             <p>Haga clic en el campo de <strong>Precio</strong> o <strong>Cantidad</strong> del producto, capture el nuevo valor y confirme que el total del renglón y el total de la venta se actualicen correctamente.</p>
             <div class="guia-visual">
@@ -107,11 +156,288 @@
                 <tr><td>Empleados</td><td>Administrar el catálogo de empleados.</td></tr>
             </tbody></table></div>
             <p>En cada catálogo, busque primero el registro para evitar duplicados. Revise los campos obligatorios y confirme el mensaje de éxito después de guardar.</p>
+            <h3 id="productos">Productos</h3>
+            <figure class="captura"><img src="img/manual/20-mantenimiento-productos.png" alt="Pantalla de mantenimiento y consulta de productos" loading="lazy"><figcaption><strong>Mantenimiento de Productos.</strong> La parte superior permite capturar un artículo; la parte inferior permite buscar, consultar, imprimir, exportar y administrar los productos existentes.</figcaption></figure>
+            <h3>Campos para agregar un producto</h3>
+            <div class="tabla"><table><thead><tr><th>Componente</th><th>Función</th></tr></thead><tbody>
+                <tr><td>Código</td><td>Identificador o código de barras del producto. Debe evitarse registrar el mismo código más de una vez.</td></tr>
+                <tr><td>Descripción</td><td>Nombre con el que el artículo aparecerá en búsquedas, ventas y reportes.</td></tr>
+                <tr><td>Precio Compra</td><td>Costo de adquisición del producto; se utiliza como referencia administrativa.</td></tr>
+                <tr><td>Precio venta</td><td>Precio que se propone al agregar el producto en el punto de venta.</td></tr>
+                <tr><td>En almacén</td><td>Existencia inicial del producto, expresada en kilogramos o en la unidad utilizada por el artículo.</td></tr>
+                <tr><td>Límite stock</td><td>Nivel mínimo de existencia usado para identificar productos con inventario bajo.</td></tr>
+                <tr><td>Categoría</td><td>Clasificación del producto para organizar consultas y reportes.</td></tr>
+                <tr><td>¿Dónde centraliza almacén?</td><td>Campo obligatorio que define si las entradas y salidas de inventario se controlan en el producto específico (<strong>PROD</strong>) o en el total compartido de su categoría (<strong>CAT</strong>).</td></tr>
+                <tr><td>Mayoreo</td><td>Indica que el producto está habilitado para el tratamiento de mayoreo.</td></tr>
+                <tr><td>Activo</td><td>Determina si el producto está disponible para utilizarse en el sistema.</td></tr>
+                <tr><td>Agregar</td><td>Guarda el producto con los datos capturados.</td></tr>
+            </tbody></table></div>
+            <h3>¿Dónde centraliza almacén?</h3>
+            <p>Este campo <strong>no selecciona una sucursal física</strong>. Indica dónde debe actualizar el sistema la existencia cuando se registran ventas, compras, cancelaciones o correcciones:</p>
+            <ul>
+                <li><strong>Centralizar a nivel de producto (PROD):</strong> el inventario aumenta o disminuye directamente en el código del producto. Úselo cuando el artículo mantiene existencia propia e independiente.</li>
+                <li><strong>Centralizar a nivel de categoría (CAT):</strong> el movimiento aumenta o disminuye el almacén general de la categoría. Úselo cuando varios productos consumen una existencia común de la misma categoría.</li>
+            </ul>
+            <p>En el listado, la columna <strong>CA</strong> muestra <strong>PROD</strong> o <strong>CAT</strong> para identificar rápidamente cómo se controla el almacén de cada producto.</p>
+            <p class="nota"><strong>Selección obligatoria:</strong> elegir un nivel incorrecto puede provocar que la existencia se actualice en el producto o categoría equivocados y afectar los reportes de stock. Si no está seguro, confirme la configuración con el administrador antes de guardar.</p>
+            <h3>Búsqueda, listado y acciones</h3>
+            <ul>
+                <li><strong>Buscar por código o descripción:</strong> localiza productos por cualquiera de esos datos.</li>
+                <li><strong>Filtro de categoría:</strong> limita los resultados a una categoría o muestra todas.</li>
+                <li><strong>Buscar:</strong> aplica el texto y la categoría seleccionados.</li>
+                <li><strong>Limpiar:</strong> restablece los filtros de consulta.</li>
+                <li><strong>Imprimir:</strong> abre la salida imprimible del listado mostrado.</li>
+                <li><strong>Excel:</strong> exporta los resultados para consultarlos en una hoja de cálculo.</li>
+                <li><strong>Encabezados de la tabla:</strong> permiten ordenar el listado. Las columnas muestran código, descripción, precios, stock, límite, categoría, mayoreo (<strong>May.</strong>), centralización de almacén (<strong>CA</strong>), estado activo (<strong>Act.</strong>) y el usuario relacionado con el registro.</li>
+                <li><strong>Icono de lápiz:</strong> abre el producto para editarlo.</li>
+                <li><strong>Icono de papelera:</strong> elimina el producto después de la confirmación correspondiente.</li>
+            </ul>
+            <p class="nota"><strong>Antes de guardar:</strong> verifique especialmente el código, los precios, la existencia, el límite de stock, la categoría y el almacén centralizador.</p>
+            <h3 id="categorias">Categorías</h3>
+            <figure class="captura"><img src="img/manual/21-mantenimiento-categorias.png" alt="Pantalla de mantenimiento de categorías" loading="lazy"><figcaption><strong>Mantenimiento de Categorías.</strong> Permite registrar categorías, controlar su existencia centralizada, asignar un precio para valorar el inventario y administrar los registros existentes.</figcaption></figure>
+            <div class="tabla"><table><thead><tr><th>Componente</th><th>Función</th></tr></thead><tbody>
+                <tr><td>Categoría</td><td>Nombre de la clasificación que agrupa productos relacionados.</td></tr>
+                <tr><td>En almacén</td><td>Existencia común de la categoría. Se actualiza con los movimientos de productos configurados para centralizar a nivel <strong>CAT</strong>.</td></tr>
+                <tr><td>Precio (opcional)</td><td>Valor unitario de referencia para calcular el importe del inventario centralizado en la categoría.</td></tr>
+                <tr><td>Activo</td><td>Indica si la categoría está disponible para utilizarse en el sistema.</td></tr>
+                <tr><td>Agregar</td><td>Guarda una nueva categoría con los datos capturados.</td></tr>
+                <tr><td>Mostrar entradas</td><td>Cambia la cantidad de registros visibles por página.</td></tr>
+                <tr><td>Buscar</td><td>Filtra la tabla de categorías por los datos escritos.</td></tr>
+                <tr><td>Encabezados</td><td>Ordenan el listado por código, descripción, stock, precio, estado o usuario.</td></tr>
+                <tr><td>Icono de lápiz</td><td>Abre la categoría para editarla.</td></tr>
+                <tr><td>Icono de papelera</td><td>Elimina la categoría después de la confirmación correspondiente.</td></tr>
+            </tbody></table></div>
+            <h3>Uso del precio opcional</h3>
+            <p>El precio de categoría se utiliza en los siguientes reportes:</p>
+            <ul>
+                <li><strong>Reporte de stock:</strong> calcula el valor de cada categoría multiplicando su existencia por el precio configurado.</li>
+                <li><strong>Resumen sucursales:</strong> incluye ese mismo cálculo en el valor total del inventario centralizado por categorías.</li>
+            </ul>
+            <p class="nota"><strong>Importante:</strong> el precio es opcional, pero si la categoría tiene existencia y se deja vacío, su inventario aparecerá sin precio en el Reporte de stock y aportará $0.00 a la valoración del Resumen sucursales.</p>
+            <h3 id="homologacion-categorias">Homologación de categorías</h3>
+            <figure class="captura"><img src="img/manual/22-homologacion-categorias.png" alt="Pantalla de homologación de categorías entre sucursales" loading="lazy"><figcaption><strong>Homologación de categorías.</strong> Relaciona categorías locales que representan el mismo concepto en diferentes sucursales mediante una categoría global común.</figcaption></figure>
+            <p>La homologación permite consolidar y comparar información entre sucursales aunque los identificadores o nombres locales sean diferentes. Estas relaciones se utilizan en reportes consolidados como <strong>Resumen sucursales</strong> y <strong>Ventas por sucursal</strong>.</p>
+            <div class="tabla"><table><thead><tr><th>Componente</th><th>Función</th></tr></thead><tbody>
+                <tr><td>Categorías locales activas</td><td>Total de categorías activas existentes entre las sucursales.</td></tr>
+                <tr><td>Pendientes</td><td>Categorías locales que todavía no están relacionadas con una categoría global.</td></tr>
+                <tr><td>Categorías globales</td><td>Total de grupos globales creados para unificar categorías equivalentes.</td></tr>
+                <tr><td>Nombre</td><td>Nombre común de la categoría global, por ejemplo <strong>CERDO</strong>.</td></tr>
+                <tr><td>Activa</td><td>Determina si la categoría global puede utilizarse en la homologación y los reportes.</td></tr>
+                <tr><td>Nueva</td><td>Limpia el formulario para crear una categoría global.</td></tr>
+                <tr><td>Selectores por sucursal</td><td>Permiten elegir qué categoría local corresponde a la categoría global en cada sucursal.</td></tr>
+                <tr><td>No existe / pendiente</td><td>Indica que esa sucursal no tiene una categoría equivalente o que la relación se definirá después.</td></tr>
+                <tr><td>Guardar homologación</td><td>Guarda el nombre global y las correspondencias seleccionadas por sucursal.</td></tr>
+                <tr><td>Sucursal</td><td>Filtra el estado de homologación de una sucursal o muestra todas.</td></tr>
+                <tr><td>Sólo pendientes</td><td>Muestra únicamente las categorías locales que aún requieren asignación.</td></tr>
+                <tr><td>Filtrar</td><td>Aplica la sucursal y el estado seleccionados.</td></tr>
+                <tr><td>Estado de categorías locales</td><td>Presenta la sucursal, ID y nombre local, categoría global asignada y estado <strong>Homologada</strong> o <strong>Pendiente</strong>.</td></tr>
+                <tr><td>Catálogo global</td><td>Lista las categorías globales y permite editarlas junto con sus correspondencias.</td></tr>
+            </tbody></table></div>
+            <h3>Procedimiento recomendado</h3>
+            <ol>
+                <li>Escriba un nombre global que represente el mismo concepto en todas las sucursales.</li>
+                <li>Seleccione en cada sucursal la categoría local equivalente.</li>
+                <li>Deje <strong>No existe / pendiente</strong> si no hay una equivalencia válida; no relacione categorías sólo por tener nombres parecidos.</li>
+                <li>Pulse <strong>Guardar homologación</strong> y revise que las categorías aparezcan como <strong>Homologada</strong>.</li>
+                <li>Use el filtro <strong>Sólo pendientes</strong> hasta resolver todas las correspondencias necesarias.</li>
+            </ol>
+            <p class="nota"><strong>Mayoreo:</strong> este campo no participa en la homologación. La relación se establece por la categoría local y la sucursal, independientemente de que sus productos estén marcados para mayoreo.</p>
+            <h3 id="sucursales">Sucursales</h3>
+            <figure class="captura"><img src="img/manual/23-mantenimiento-sucursales.png" alt="Pantalla de mantenimiento de sucursales" loading="lazy"><figcaption><strong>Mantenimiento de Sucursales.</strong> Permite registrar, buscar, activar, editar y eliminar las ubicaciones que operan dentro del sistema.</figcaption></figure>
+            <div class="tabla"><table><thead><tr><th>Componente</th><th>Función</th></tr></thead><tbody>
+                <tr><td>Sucursal</td><td>Nombre descriptivo con el que se identifica la ubicación en menús, operaciones y reportes.</td></tr>
+                <tr><td>Activo</td><td>Indica si la sucursal está habilitada para utilizarse en el sistema. Desmarcarla permite conservar el registro sin ofrecerlo como opción activa.</td></tr>
+                <tr><td>Agregar</td><td>Registra una nueva sucursal con el nombre y estado capturados.</td></tr>
+                <tr><td>Mostrar entradas</td><td>Selecciona cuántas sucursales se presentan por página.</td></tr>
+                <tr><td>Buscar</td><td>Filtra el listado por código, descripción, estado o usuario.</td></tr>
+                <tr><td>Código</td><td>Identificador interno asignado a la sucursal.</td></tr>
+                <tr><td>Descripción</td><td>Nombre registrado para la sucursal.</td></tr>
+                <tr><td>Activo (columna)</td><td>Muestra visualmente si la sucursal está habilitada.</td></tr>
+                <tr><td>Usuario</td><td>Usuario relacionado con el registro para fines de seguimiento.</td></tr>
+                <tr><td>Encabezados</td><td>Permiten ordenar el listado por la columna seleccionada.</td></tr>
+                <tr><td>Icono de lápiz</td><td>Abre la sucursal para modificar su descripción o estado.</td></tr>
+                <tr><td>Icono de papelera</td><td>Elimina la sucursal después de la confirmación correspondiente.</td></tr>
+                <tr><td>Anterior / Siguiente</td><td>Permite recorrer las páginas cuando el listado supera la cantidad de entradas mostradas.</td></tr>
+            </tbody></table></div>
+            <p class="nota"><strong>Importante:</strong> antes de eliminar una sucursal, compruebe que no tenga usuarios, ventas, inventarios u otros movimientos relacionados. Cuando se necesite conservar el historial, prefiera desactivar la sucursal.</p>
+            <h3 id="clientes">Clientes</h3>
+            <figure class="captura"><img src="img/manual/24-mantenimiento-clientes.png" alt="Pantalla de mantenimiento y consulta de clientes" loading="lazy"><figcaption><strong>Mantenimiento de Clientes.</strong> Permite registrar datos del cliente, configurar crédito y descuento, consultar su saldo y abrir el historial de ventas y pagos.</figcaption></figure>
+            <div class="tabla"><table><thead><tr><th>Componente</th><th>Función</th></tr></thead><tbody>
+                <tr><td>Nombre y apellidos</td><td>Identifican al cliente en ventas, consultas y reportes.</td></tr>
+                <tr><td>Clave proveedor</td><td>Clave externa utilizada para relacionar un cliente de Matriz con el proveedor correspondiente de una sucursal. Debe coincidir con la <strong>Clave cliente</strong> registrada en ese proveedor.</td></tr>
+                <tr><td>Límite crédito</td><td>Importe máximo de crédito autorizado para el cliente.</td></tr>
+                <tr><td>Descuento</td><td>Porcentaje de descuento configurado para el cliente.</td></tr>
+                <tr><td>¿Activo?</td><td>Determina si el cliente está disponible para nuevas operaciones.</td></tr>
+                <tr><td>Agregar</td><td>Guarda un nuevo cliente con los datos capturados.</td></tr>
+                <tr><td>Filtro</td><td>Permite mostrar clientes activos, inactivos o todos.</td></tr>
+                <tr><td>Mostrar entradas / Buscar</td><td>Controlan la cantidad de registros por página y filtran el listado.</td></tr>
+                <tr><td>Crédito, Descuento y Saldo</td><td>Muestran el límite autorizado, porcentaje aplicado y cantidad pendiente del cliente.</td></tr>
+                <tr><td>Icono de papelera</td><td>Elimina el cliente después de la confirmación correspondiente.</td></tr>
+                <tr><td>Icono de lápiz</td><td>Abre el cliente para editar sus datos.</td></tr>
+                <tr><td>Icono de efectivo o billete</td><td>Es el tercer icono de <strong>Acciones</strong> <img class="icono-inline" src="img/icons/cash_icon.svg" alt="Icono de efectivo o billete">. Abre la pantalla <strong>Ventas y pagos x cliente</strong> para consultar movimientos y registrar pagos.</td></tr>
+            </tbody></table></div>
+            <h3>Clave proveedor</h3>
+            <figure class="captura"><img src="img/manual/28-clave-proveedor-cliente.png" alt="Campo Clave proveedor en el mantenimiento de clientes" loading="lazy"><figcaption><strong>Clave proveedor.</strong> Es la clave externa que permite reconocer qué proveedor local corresponde al cliente registrado en Matriz.</figcaption></figure>
+            <ul>
+                <li>Se utiliza principalmente cuando un cliente de <strong>Matriz</strong> representa a una sucursal o proveedor relacionado.</li>
+                <li>El valor debe coincidir exactamente con la <strong>Clave cliente</strong> capturada en el proveedor de la sucursal correspondiente.</li>
+                <li>La relación se usa para identificar las ventas de cada sucursal durante la <strong>Importación de ventas a Matriz</strong>.</li>
+                <li>También permite asociar correctamente las sucursales y sus movimientos en el reporte <strong>Resumen sucursales</strong>.</li>
+                <li>Para clientes normales que no participan en esta relación entre Matriz y sucursales, el campo puede dejarse vacío.</li>
+            </ul>
+            <p class="nota"><strong>Importante:</strong> no invente ni reutilice una clave. Si no coincide con la Clave cliente del proveedor local, las ventas pueden no identificarse durante la importación y la sucursal puede quedar sin relación en los reportes consolidados.</p>
+            <h3>Ventas y pagos por cliente</h3>
+            <figure class="captura"><img src="img/manual/25-ventas-pagos-cliente.png" alt="Pantalla de ventas, pagos y saldo de un cliente" loading="lazy"><figcaption><strong>Ventas y pagos x cliente.</strong> Muestra el saldo actual, las ventas y los pagos del cliente dentro del periodo seleccionado.</figcaption></figure>
+            <ul>
+                <li><strong>Fecha de inicio y fin:</strong> definen el periodo del detalle mostrado.</li>
+                <li><strong>Buscar:</strong> consulta las ventas y los pagos del periodo.</li>
+                <li><strong>Detalle de Ventas:</strong> muestra productos, estatus, precios, cantidades e importes cargados al cliente.</li>
+                <li><strong>Detalle de pagos:</strong> muestra fecha, hora, observaciones, importe, tipo de pago y usuario que registró cada abono.</li>
+                <li><strong>Agrega pago:</strong> abre una ventana para capturar el importe, tipo de pago y observaciones. Al guardar, el abono disminuye el saldo del cliente y se genera el comprobante para impresión.</li>
+                <li><strong>Reconstruir Saldo:</strong> vuelve a calcular el saldo usando las ventas y pagos registrados. Utilícelo sólo para corregir una diferencia comprobada.</li>
+                <li><strong>Regresar:</strong> vuelve al catálogo de clientes.</li>
+            </ul>
+            <h3>Acciones del detalle de ventas</h3>
+            <p>En la columna de acciones del <strong>Detalle de Ventas</strong> se muestran controles distintos según el estado de cada registro:</p>
+            <div class="tabla"><table><thead><tr><th>Icono</th><th>Acción</th><th>Resultado</th></tr></thead><tbody>
+                <tr><td><img class="icono-inline" src="img/icons/pencil-square.svg" alt="Icono de lápiz"> Lápiz</td><td><strong>Editar venta</strong></td><td>Abre la pantalla de edición de la venta seleccionada. Desde ella se pueden agregar productos, modificar precios y cantidades, cancelar partidas, imprimir o regresar al detalle del cliente.</td></tr>
+                <tr><td><img class="icono-inline" src="img/icons/x-circle.svg" alt="Icono de círculo con X"> Círculo con X</td><td><strong>Cancelar registro</strong></td><td>Cancela la partida activa. El estatus cambia de <strong>N</strong> (normal) a <strong>C</strong> (cancelada), su importe deja de sumar al total y el sistema recalcula el saldo del cliente y el inventario relacionado.</td></tr>
+                <tr><td><img class="icono-inline" src="img/icons/check-circle.svg" alt="Icono de círculo con marca"> Círculo con marca</td><td><strong>Activar registro</strong></td><td>Reactiva una partida cancelada. El estatus vuelve de <strong>C</strong> a <strong>N</strong>, se restaura su importe y se actualizan nuevamente el saldo y el inventario.</td></tr>
+            </tbody></table></div>
+            <figure class="captura"><img src="img/manual/32-edicion-venta-cliente.png" alt="Pantalla de edición de una venta de cliente" loading="lazy"><figcaption><strong>Edición de venta.</strong> El encabezado identifica el número, fecha y hora de la operación. El buscador permite añadir productos; el precio y la cantidad de cada partida se pueden editar, y el total se recalcula.</figcaption></figure>
+            <ul>
+                <li><strong>Código o descripción de producto / Agregar:</strong> localiza e incorpora otra partida a la venta.</li>
+                <li><strong>Precio y Cantidad:</strong> se pueden seleccionar para corregir sus valores; el total de la partida y el total de venta se actualizan.</li>
+                <li><strong>Cancelar:</strong> el círculo con X de una partida la cancela sin borrar el historial de la operación.</li>
+                <li><strong>Eliminar venta:</strong> cancela la venta completa; úselo sólo después de confirmar el número de venta y el cliente.</li>
+                <li><strong>Impresión:</strong> genera la salida imprimible de la venta.</li>
+                <li><strong>Regresar:</strong> vuelve a la consulta de ventas y pagos del cliente.</li>
+            </ul>
+            <figure class="captura"><img src="img/manual/33-venta-cancelada-cliente.png" alt="Detalle de una venta de cliente con una partida cancelada" loading="lazy"><figcaption><strong>Partida cancelada.</strong> El estatus aparece como <strong>C</strong>, el importe queda en cero y el círculo con marca permite volver a activarla.</figcaption></figure>
+            <p class="nota"><strong>Antes de cancelar o reactivar:</strong> confirme el cliente, número de venta, producto, cantidad e importe. Estas acciones modifican el saldo del cliente y las existencias relacionadas.</p>
+            <h3>Agregar pago de cliente</h3>
+            <figure class="captura"><img src="img/manual/26-agregar-pago-cliente.png" alt="Ventana para agregar un pago de cliente" loading="lazy"><figcaption><strong>Agregar pago de cliente.</strong> Capture el importe, seleccione el método de pago y registre una observación que permita identificar el abono.</figcaption></figure>
+            <div class="tabla"><table><thead><tr><th>Componente</th><th>Función</th></tr></thead><tbody>
+                <tr><td>Importe</td><td>Cantidad recibida del cliente. Debe ser mayor que cero y verificarse contra el comprobante o efectivo recibido.</td></tr>
+                <tr><td>Efectivo</td><td>Indica que el pago se recibió físicamente en caja.</td></tr>
+                <tr><td>Transferencia</td><td>Indica que el cliente pagó mediante transferencia bancaria.</td></tr>
+                <tr><td>Tarjeta bancaria</td><td>Indica que el pago se realizó con tarjeta.</td></tr>
+                <tr><td>Observaciones</td><td>Referencia para identificar el pago, por ejemplo folio de transferencia, autorización, concepto o aclaración.</td></tr>
+                <tr><td>Cerrar / X</td><td>Cierra la ventana sin registrar el pago.</td></tr>
+                <tr><td>Guardar Pago</td><td>Registra el abono, disminuye el saldo del cliente, lo agrega al detalle de pagos y genera el comprobante para impresión.</td></tr>
+            </tbody></table></div>
+            <p class="nota"><strong>Antes de agregar un pago:</strong> confirme el cliente, saldo, importe, tipo de pago y observaciones. Evite registrar el mismo abono dos veces.</p>
+            <h3 id="proveedores">Proveedores</h3>
+            <figure class="captura"><img src="img/manual/29-mantenimiento-proveedores.png" alt="Pantalla de mantenimiento y consulta de proveedores" loading="lazy"><figcaption><strong>Mantenimiento de Proveedores.</strong> Permite registrar proveedores, definir crédito, consultar saldos y abrir su historial de compras y pagos.</figcaption></figure>
+            <div class="tabla"><table><thead><tr><th>Componente</th><th>Función</th></tr></thead><tbody>
+                <tr><td>Nombre</td><td>Nombre con el que se identifica al proveedor en compras, consultas y reportes.</td></tr>
+                <tr><td>Límite crédito</td><td>Importe máximo de crédito autorizado por el proveedor.</td></tr>
+                <tr><td>Clave Cliente</td><td>Clave externa que relaciona este proveedor local con el cliente correspondiente registrado en Matriz.</td></tr>
+                <tr><td>¿Activo?</td><td>Determina si el proveedor está disponible para nuevas operaciones.</td></tr>
+                <tr><td>Agregar</td><td>Guarda un nuevo proveedor y crea su registro de saldo.</td></tr>
+                <tr><td>Crédito y Saldo</td><td>Muestran el límite autorizado y el importe pendiente con el proveedor.</td></tr>
+                <tr><td>Icono de papelera</td><td>Elimina el proveedor sólo cuando no tiene compras asociadas.</td></tr>
+                <tr><td>Icono de lápiz</td><td>Abre el proveedor para editar sus datos.</td></tr>
+                <tr><td>Icono de efectivo o billete</td><td>Abre <strong>Compras y pagos x proveedor</strong> para revisar movimientos y registrar pagos.</td></tr>
+            </tbody></table></div>
+            <h3>Relación entre Clave Cliente y Clave proveedor</h3>
+            <p>Ambos campos forman una relación cruzada entre la sucursal y Matriz:</p>
+            <ul>
+                <li>En la <strong>sucursal local</strong>, el proveedor que representa a Matriz tiene una <strong>Clave Cliente</strong>.</li>
+                <li>En <strong>Matriz</strong>, el cliente que representa a esa sucursal debe tener exactamente el mismo valor en <strong>Clave proveedor</strong>.</li>
+                <li>La coincidencia utilizada por el sistema es: <strong>Proveedor local · Clave Cliente = Cliente de Matriz · Clave proveedor</strong>.</li>
+                <li>Esta relación identifica a qué cliente de Matriz pertenecen las ventas importadas desde cada sucursal y permite asociar información en <strong>Resumen sucursales</strong>.</li>
+            </ul>
+            <p class="nota"><strong>Ejemplo:</strong> si el proveedor local tiene Clave Cliente <code>SUC_ECATEPEC</code>, el cliente correspondiente en Matriz debe registrar <code>SUC_ECATEPEC</code> en Clave proveedor. Respete exactamente letras, números y signos; no reutilice la misma clave para relaciones diferentes.</p>
+            <h3 id="empleados">Empleados</h3>
+            <figure class="captura"><img src="img/manual/30-mantenimiento-empleados.png" alt="Pantalla de mantenimiento y consulta de empleados" loading="lazy"><figcaption><strong>Mantenimiento de Empleados.</strong> Permite registrar al personal que se asociará con las operaciones realizadas en la sucursal.</figcaption></figure>
+            <div class="tabla"><table><thead><tr><th>Componente</th><th>Función</th></tr></thead><tbody>
+                <tr><td>Nombre</td><td>Nombre del empleado.</td></tr>
+                <tr><td>Apellido Paterno</td><td>Primer apellido utilizado para identificar al empleado.</td></tr>
+                <tr><td>Apellido Materno</td><td>Segundo apellido del empleado.</td></tr>
+                <tr><td>¿Activo?</td><td>Indica si el empleado continúa habilitado para las operaciones de la sucursal. Para conservar su historial, desactívelo cuando deje de participar.</td></tr>
+                <tr><td>Agregar</td><td>Guarda un nuevo empleado con los datos capturados.</td></tr>
+                <tr><td>Mostrar entradas</td><td>Cambia la cantidad de empleados visibles por página.</td></tr>
+                <tr><td>Buscar</td><td>Filtra el listado por ID, nombre, apellidos, estado o usuario.</td></tr>
+                <tr><td>Encabezados</td><td>Permiten ordenar el listado por la columna seleccionada.</td></tr>
+                <tr><td>Usuario</td><td>Muestra el usuario relacionado con el registro del empleado.</td></tr>
+                <tr><td>Icono de lápiz</td><td>Abre el empleado para modificar sus datos o estado.</td></tr>
+                <tr><td>Icono de papelera</td><td>Elimina al empleado únicamente cuando no tiene ventas relacionadas.</td></tr>
+                <tr><td>Anterior / Siguiente</td><td>Permite recorrer las páginas del listado.</td></tr>
+            </tbody></table></div>
+            <h3>Uso en el punto de venta</h3>
+            <p>Al cerrar una venta, el campo <strong>Empleado</strong> permite buscar y seleccionar a la persona que atendió al cliente. El sistema guarda esa relación en la venta para identificar quién participó en la operación.</p>
+            <p class="nota"><strong>Importante:</strong> no cree registros duplicados. Si un empleado ya tiene ventas asociadas, conserve el historial y cambie su estado a inactivo en lugar de intentar eliminarlo.</p>
         </section>
         <section id="reportes">
             <h2>4. Reportes</h2>
-            <p>Los reportes disponibles incluyen ventas y compras por día o por rango de fechas, stock, resumen de sucursales e inventario/bitácora, según permisos.</p>
-            <ol><li>Abra el reporte requerido.</li><li>Seleccione fecha, sucursal u otros filtros.</li><li>Ejecute la consulta.</li><li>Use la búsqueda y el orden de columnas para localizar información.</li><li>Verifique los filtros antes de imprimir o utilizar los resultados.</li></ol>
+            <p>Las opciones disponibles dependen de los permisos del usuario.</p>
+            <div class="tabla"><table><thead><tr><th>Opción</th><th>Uso principal</th></tr></thead><tbody>
+                <tr><td>Venta x día</td><td>Consultar las ventas de un día específico y revisar el detalle de sus productos, importes y estatus.</td></tr>
+                <tr><td>Venta x fecha</td><td>Consultar ventas dentro de un rango de fechas para análisis y seguimiento.</td></tr>
+                <tr id="reporte-compra-dia"><td>Compra x día</td><td>Consultar las compras registradas en una fecha determinada y revisar su detalle.</td></tr>
+                <tr id="reporte-compra-fecha"><td>Compra x fecha</td><td>Consultar compras dentro de un periodo seleccionado.</td></tr>
+                <tr id="reporte-stock"><td>Stock</td><td>Revisar existencias de productos y categorías, junto con su valoración de inventario.</td></tr>
+                <tr id="reporte-resumen-sucursales"><td>Resumen sucursales</td><td>Comparar y consolidar ventas, compras, existencias y valores entre sucursales relacionadas.</td></tr>
+                <tr id="reporte-ventas-categoria"><td>Ventas x categoría</td><td>Agrupar las ventas por categoría para analizar cantidades e importes.</td></tr>
+                <tr id="reporte-inventario-bitacora"><td>Inventario y bitácora</td><td>Consultar movimientos de inventario y su historial de cambios para seguimiento y auditoría.</td></tr>
+            </tbody></table></div>
+            <h3 id="reporte-venta-dia">4.1 Venta x día</h3>
+            <figure class="captura"><img src="img/manual/31-reporte-venta-dia.png" alt="Pantalla del reporte Ventas por día" loading="lazy"><figcaption><strong>Ventas por día.</strong> Consulta las ventas de una fecha y permite filtrarlas por categoría y tipo de pago.</figcaption></figure>
+            <div class="tabla"><table><thead><tr><th>Componente</th><th>Función</th></tr></thead><tbody>
+                <tr><td>Fecha</td><td>Día cuyas ventas se desean consultar.</td></tr>
+                <tr><td>Categoría</td><td>Limita los resultados a una categoría específica; puede dejarse sin selección para consultar todas.</td></tr>
+                <tr><td>Tipo de pago</td><td>Filtra por efectivo, transferencia, tarjeta bancaria u otra opción configurada. <strong>Todos</strong> no restringe la forma de pago.</td></tr>
+                <tr><td>Buscar</td><td>Ejecuta la consulta con la fecha y filtros seleccionados.</td></tr>
+                <tr><td>Mostrar entradas / Buscar en tabla</td><td>Cambian la cantidad de filas visibles y localizan información dentro de los resultados.</td></tr>
+                <tr><td>Precio C / Precio V</td><td>Precio de compra y precio de venta registrado para el producto.</td></tr>
+                <tr><td>Imp C / Imp V</td><td>Importe de compra e importe de venta del renglón, calculados con su cantidad.</td></tr>
+                <tr><td>T. V.</td><td>Total completo de la venta a la que pertenece el renglón.</td></tr>
+                <tr><td>Tipo</td><td>Forma de pago utilizada para cerrar la venta.</td></tr>
+                <tr><td>Acciones</td><td>Permite editar la venta o cambiar el estado de cada renglón mediante los iconos descritos a continuación.</td></tr>
+                <tr><td>Totales</td><td>Acumulan cantidad, importe de compra e importe de venta únicamente de los resultados vigentes. Los renglones cancelados muestran importes en cero y no se suman.</td></tr>
+                <tr><td>Extrae Excel</td><td>Exporta el detalle mostrado a un archivo de Excel.</td></tr>
+            </tbody></table></div>
+            <h3>Edición, cancelación y reactivación</h3>
+            <div class="tabla"><table><thead><tr><th>Icono</th><th>Acción</th><th>Resultado en Ventas por día</th></tr></thead><tbody>
+                <tr><td><img class="icono-inline" src="img/icons/pencil-square.svg" alt="Icono de lápiz"> Lápiz</td><td><strong>Editar venta</strong></td><td>Abre la venta correspondiente para agregar productos, corregir precios o cantidades, cancelar partidas, imprimir o regresar al reporte.</td></tr>
+                <tr><td><img class="icono-inline" src="img/icons/x-circle.svg" alt="Icono de círculo con X"> Círculo con X</td><td><strong>Cancelar</strong></td><td>Cancela el renglón activo. Sus importes quedan en cero, deja de participar en los totales y el icono cambia por el círculo con marca.</td></tr>
+                <tr><td><img class="icono-inline" src="img/icons/check-circle.svg" alt="Icono de círculo con marca"> Círculo con marca</td><td><strong>Reactivar</strong></td><td>Vuelve a activar un renglón cancelado, restaura sus importes y lo incorpora nuevamente a los totales.</td></tr>
+            </tbody></table></div>
+            <figure class="captura"><img src="img/manual/34-edicion-venta-dia.png" alt="Pantalla de edición de una venta abierta desde Ventas por día" loading="lazy"><figcaption><strong>Edición de venta desde el reporte.</strong> El encabezado permite comprobar el número, fecha y hora antes de modificar la operación.</figcaption></figure>
+            <ul>
+                <li><strong>Código o descripción / Agregar:</strong> localiza e incorpora otro producto a la venta.</li>
+                <li><strong>Precio y Cantidad:</strong> pueden editarse en el renglón; el importe y el total de venta se recalculan.</li>
+                <li><strong>Cancelar:</strong> el círculo con X cancela solamente la partida seleccionada.</li>
+                <li><strong>Eliminar venta:</strong> cancela la venta completa.</li>
+                <li><strong>Impresión:</strong> genera la salida imprimible de la operación.</li>
+                <li><strong>Regresar:</strong> vuelve al reporte Ventas por día.</li>
+            </ul>
+            <p class="nota"><strong>Antes de cancelar, reactivar o editar:</strong> confirme el ID de venta, producto, cliente e importe. El cambio actualiza los totales del reporte y puede modificar saldos e inventario.</p>
+            <h3 id="reporte-venta-fecha">4.2 Ventas por fecha</h3>
+            <figure class="captura"><img src="img/manual/35-reporte-ventas-fecha.png" alt="Pantalla del reporte Ventas por fecha" loading="lazy"><figcaption><strong>Ventas por fecha.</strong> Consulta y acumula las ventas realizadas dentro de un periodo, con filtros por categoría y tipo de pago.</figcaption></figure>
+            <div class="tabla"><table><thead><tr><th>Componente</th><th>Función</th></tr></thead><tbody>
+                <tr><td>Fecha de inicio</td><td>Primer día que se incluirá en la consulta.</td></tr>
+                <tr><td>Fecha de fin</td><td>Último día incluido. Debe ser igual o posterior a la fecha de inicio.</td></tr>
+                <tr><td>Categoría</td><td>Limita el resultado a los productos de una categoría. Sin selección, consulta todas las categorías.</td></tr>
+                <tr><td>Tipo de pago</td><td>Filtra las ventas por efectivo, transferencia, tarjeta bancaria u otra forma configurada. <strong>Todos</strong> incluye cualquier método.</td></tr>
+                <tr><td>Buscar</td><td>Ejecuta nuevamente el reporte con el periodo y los filtros seleccionados.</td></tr>
+                <tr><td>Mostrar entradas / Buscar en tabla</td><td>Controlan cuántos renglones se presentan por página y permiten localizar información dentro del resultado.</td></tr>
+                <tr><td>ID, Fecha y Hora</td><td>Identifican la venta y el momento en que fue registrada.</td></tr>
+                <tr><td>Código y Descripción</td><td>Identifican el producto vendido.</td></tr>
+                <tr><td>Cliente</td><td>Muestra el cliente asociado cuando la venta fue registrada a crédito o con cliente; puede aparecer vacío en una venta general.</td></tr>
+                <tr><td>Tipo</td><td>Abreviatura del método de pago registrado, por ejemplo <strong>EFE</strong> para efectivo.</td></tr>
+                <tr><td>Precio C / Precio V</td><td>Precio unitario de compra y precio unitario de venta.</td></tr>
+                <tr><td>Cantidad</td><td>Cantidad o peso vendido del producto.</td></tr>
+                <tr><td>Imp C / Imp V</td><td>Importe de compra e importe de venta del renglón, calculados con la cantidad.</td></tr>
+                <tr><td>T. V.</td><td>Total completo de la venta a la que pertenece el renglón.</td></tr>
+                <tr><td>Ganancia</td><td>Diferencia entre el importe de venta y el importe de compra del renglón.</td></tr>
+                <tr><td>Total de venta</td><td>Acumula cantidades, importes y ganancias de los movimientos vigentes dentro del periodo.</td></tr>
+                <tr><td>Extrae Excel</td><td>Descarga en Excel el detalle obtenido con los filtros aplicados.</td></tr>
+            </tbody></table></div>
+            <p class="nota"><strong>Ventas canceladas:</strong> permanecen visibles para conservar el historial, pero sus importes y ganancia aparecen en cero y no se suman a los totales. La cancelación, reactivación y edición se realizan desde <strong>Ventas por día</strong> o desde el detalle del cliente, cuando corresponda.</p>
+            <h3>Uso general</h3>
+            <ol><li>Abra el reporte requerido desde el submenú.</li><li>Seleccione fecha, sucursal u otros filtros.</li><li>Ejecute la consulta.</li><li>Use la búsqueda y el orden de columnas para localizar información.</li><li>Verifique los filtros antes de imprimir, exportar o utilizar los resultados.</li></ol>
         </section>
         <section id="control">
             <h2>5. Control diario</h2>
