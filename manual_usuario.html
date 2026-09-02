@@ -111,22 +111,14 @@
                 <figure class="captura"><img src="img/manual/05-agregar-cliente.png" alt="Selección de cliente" loading="lazy"><figcaption><strong>5.</strong> Seleccionar el cliente cuando corresponda.</figcaption></figure>
                 <figure class="captura"><img src="img/manual/06-ventas-pendientes.png" alt="Ventas pendientes" loading="lazy"><figcaption><strong>6.</strong> Consultar o recuperar ventas pendientes.</figcaption></figure>
                 <figure class="captura"><img src="img/manual/07-varios-productos.png" alt="Venta con varios productos" loading="lazy"><figcaption><strong>7.</strong> Revisar todos los productos y cantidades.</figcaption></figure>
-                <figure class="captura"><img src="img/manual/08-cerrar-venta.png" alt="Cierre de la venta" loading="lazy"><figcaption><strong>8.</strong> Cerrar la venta para pasar al cobro.</figcaption></figure>
-                <figure class="captura"><img src="img/manual/09-pago-efectivo.png" alt="Selección del método de pago al cerrar una venta" loading="lazy"><figcaption><strong>9.</strong> Seleccionar el método de pago. Si es efectivo, capture el importe recibido y revise el cambio.</figcaption></figure>
-                <figure class="captura"><img src="img/manual/10-impresion-ticket.png" alt="Impresión del ticket" loading="lazy"><figcaption><strong>10.</strong> Confirmar e imprimir el ticket.</figcaption></figure>
-                <figure class="captura"><img src="img/manual/11-abrir-caja.png" alt="Ventana para abrir la caja registradora con comentarios obligatorios" loading="lazy"><figcaption><strong>11. Abrir Caja.</strong> Muestra una ventana emergente, solicita comentarios obligatorios y simula una impresión para abrir la caja registradora.</figcaption></figure>
+                <figure class="captura"><img src="img/manual/08-cerrar-venta.png" alt="Ventana actualizada para cerrar una venta" loading="lazy"><figcaption><strong>8. Abrir el cobro.</strong> Revise el total de la venta y seleccione Efectivo, Transferencia, Tarjeta bancaria o Mixto.</figcaption></figure>
+                <figure class="captura"><img src="img/manual/09-pago-efectivo.png" alt="Pago en efectivo con importe recibido y cambio" loading="lazy"><figcaption><strong>9. Efectivo.</strong> Capture el importe recibido. El sistema calcula el cambio; verifíquelo antes de cerrar la venta.</figcaption></figure>
+                <figure class="captura"><img src="img/manual/36-pago-transferencia.png" alt="Pago de venta mediante transferencia" loading="lazy"><figcaption><strong>10. Transferencia.</strong> Seleccione esta opción cuando todo el importe se pague mediante transferencia bancaria. El importe recibido y el cambio permanecen en cero.</figcaption></figure>
+                <figure class="captura"><img src="img/manual/37-pago-tarjeta.png" alt="Pago de venta mediante tarjeta bancaria" loading="lazy"><figcaption><strong>11. Tarjeta bancaria.</strong> Seleccione esta opción cuando todo el importe se pague con tarjeta de crédito o débito. El importe recibido y el cambio permanecen en cero.</figcaption></figure>
+                <figure class="captura"><img src="img/manual/38-pago-mixto.png" alt="Pago mixto distribuido entre efectivo transferencia y tarjeta" loading="lazy"><figcaption><strong>12. Mixto.</strong> Capture la parte pagada en Efectivo, Transferencia y Tarjeta. Puede usar cualquier combinación, pero la suma de los tres campos debe ser igual al total de la venta.</figcaption></figure>
+                <figure class="captura"><img src="img/manual/10-impresion-ticket.png" alt="Impresión del ticket" loading="lazy"><figcaption><strong>13.</strong> Confirmar e imprimir el ticket.</figcaption></figure>
+                <figure class="captura"><img src="img/manual/11-abrir-caja.png" alt="Ventana para abrir la caja registradora con comentarios obligatorios" loading="lazy"><figcaption><strong>14. Abrir Caja.</strong> Muestra una ventana emergente, solicita comentarios obligatorios y simula una impresión para abrir la caja registradora.</figcaption></figure>
             </div>
-            <h3>Métodos de pago al cerrar una venta</h3>
-            <figure class="captura"><img src="img/manual/27-metodos-pago-venta.png" alt="Ventana de cierre de venta con opciones de efectivo, transferencia y tarjeta bancaria" loading="lazy"><figcaption><strong>Forma de pago.</strong> Antes de cerrar la venta, seleccione <strong>Efectivo</strong>, <strong>Transferencia</strong> o <strong>Tarjeta bancaria</strong>.</figcaption></figure>
-            <ul>
-                <li><strong>Efectivo:</strong> capture la cantidad recibida; el sistema calcula el cambio que debe entregarse.</li>
-                <li><strong>Transferencia:</strong> seleccione esta opción cuando el cliente pague mediante transferencia bancaria.</li>
-                <li><strong>Tarjeta bancaria:</strong> utilícela para pagos con tarjeta de crédito o débito.</li>
-                <li><strong>Empleado:</strong> seleccione o capture a la persona que atendió la venta.</li>
-                <li><strong>Imprimir:</strong> genera el comprobante antes de finalizar, cuando sea necesario.</li>
-                <li><strong>Cerrar venta:</strong> confirma la operación con la forma de pago seleccionada.</li>
-            </ul>
-            <p class="nota"><strong>Antes de confirmar:</strong> revise el total, la forma de pago, el importe recibido y el cambio. No seleccione efectivo para una transferencia o pago con tarjeta.</p>
             <h3>Editar precio y cantidad</h3>
             <p>Haga clic en el campo de <strong>Precio</strong> o <strong>Cantidad</strong> del producto, capture el nuevo valor y confirme que el total del renglón y el total de la venta se actualicen correctamente.</p>
             <div class="guia-visual">
@@ -393,7 +385,7 @@
                 <tr><td>Precio C / Precio V</td><td>Precio de compra y precio de venta registrado para el producto.</td></tr>
                 <tr><td>Imp C / Imp V</td><td>Importe de compra e importe de venta del renglón, calculados con su cantidad.</td></tr>
                 <tr><td>T. V.</td><td>Total completo de la venta a la que pertenece el renglón.</td></tr>
-                <tr><td>Tipo</td><td>Forma de pago utilizada para cerrar la venta.</td></tr>
+                <tr><td>Tipo</td><td>Forma de pago utilizada para cerrar la venta. En pagos mixtos puede mostrar combinaciones como <strong>EFE / TRA / TAR</strong>.</td></tr>
                 <tr><td>Acciones</td><td>Permite editar la venta o cambiar el estado de cada renglón mediante los iconos descritos a continuación.</td></tr>
                 <tr><td>Totales</td><td>Acumulan cantidad, importe de compra e importe de venta únicamente de los resultados vigentes. Los renglones cancelados muestran importes en cero y no se suman.</td></tr>
                 <tr><td>Extrae Excel</td><td>Exporta el detalle mostrado a un archivo de Excel.</td></tr>
@@ -426,7 +418,7 @@
                 <tr><td>ID, Fecha y Hora</td><td>Identifican la venta y el momento en que fue registrada.</td></tr>
                 <tr><td>Código y Descripción</td><td>Identifican el producto vendido.</td></tr>
                 <tr><td>Cliente</td><td>Muestra el cliente asociado cuando la venta fue registrada a crédito o con cliente; puede aparecer vacío en una venta general.</td></tr>
-                <tr><td>Tipo</td><td>Abreviatura del método de pago registrado, por ejemplo <strong>EFE</strong> para efectivo.</td></tr>
+                <tr><td>Tipo</td><td>Abreviatura del método de pago registrado: <strong>EFE</strong>, <strong>TRA</strong> o <strong>TAR</strong>. En una venta mixta aparecen combinadas, por ejemplo <strong>EFE / TAR</strong>.</td></tr>
                 <tr><td>Precio C / Precio V</td><td>Precio unitario de compra y precio unitario de venta.</td></tr>
                 <tr><td>Cantidad</td><td>Cantidad o peso vendido del producto.</td></tr>
                 <tr><td>Imp C / Imp V</td><td>Importe de compra e importe de venta del renglón, calculados con la cantidad.</td></tr>
@@ -443,7 +435,7 @@
             <h2>5. Control diario</h2>
             <h3>Inicio de día</h3><p>Registre la información inicial de la jornada antes de comenzar operaciones.</p>
             <h3>Compras, gastos y entradas</h3><p>Capture cada movimiento con su fecha, importe y referencia correctos. Compruebe los renglones y totales antes de guardar.</p>
-            <h3>Cierre de día</h3><p>Realice el cierre cuando todas las operaciones estén capturadas. Compare los totales del sistema con los comprobantes y valores físicos.</p>
+            <h3>Cierre de día</h3><p>Realice el cierre cuando todas las operaciones estén capturadas. Compare los totales del sistema con los comprobantes y valores físicos. Las ventas con pago mixto se distribuyen en los totales de <strong>Efectivo</strong>, <strong>Transferencia</strong> y <strong>Tarjeta</strong> según los importes capturados.</p>
             <h3>Respaldo</h3><p>Use esta opción conforme al procedimiento interno de la empresa y conserve los archivos resultantes en una ubicación autorizada.</p>
         </section>
         <section id="administracion">

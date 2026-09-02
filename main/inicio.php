@@ -715,10 +715,20 @@ $qr_precio = file_exists(__DIR__ . '/../img/qr_precios_sucursal_' . $id_sucursal
                                         Tarjeta bancaria
                                     </label>
                                 </div>
+                                <div class="form-check mb-3 me-3">
+                                    <input class="form-check-input" type="radio" name="opcion" id="opcion4" value="4" required>
+                                    <label class="form-check-label" for="opcion4">Mixto</label>
+                                </div>
                             </div>
                         </div>
+                                                <div class="row mb-3" id="desglose_mixto" style="display:none">
+                            <div class="col-4"><label class="form-label" for="importe_efectivo">Efectivo</label><input type="number" step="0.01" min="0" class="form-control" id="importe_efectivo" value="0"></div>
+                            <div class="col-4"><label class="form-label" for="importe_transferencia">Transferencia</label><input type="number" step="0.01" min="0" class="form-control" id="importe_transferencia" value="0"></div>
+                            <div class="col-4"><label class="form-label" for="importe_tarjeta">Tarjeta</label><input type="number" step="0.01" min="0" class="form-control" id="importe_tarjeta" value="0"></div>
+                            <div class="form-text" id="total_mixto"></div>
+                        </div>
                         <div class="mb-3">
-                            <label for="precioventa" class="form-label">Efectivo</label>
+                            <label for="precioventa" class="form-label">Importe recibido</label>
                             <div class="input-group has-validation">
                                 <input type="number" step="0.01" class="form-control" id="pago_v" name="pago_v" placeholder="Efectivo" autocomplete="off" required min="0" onkeyup="calculacambio()">
                                 <div class="invalid-feedback">
@@ -1176,11 +1186,14 @@ if (isset($_GET['id_venta'])) {
                                         comentarios = $("#comentarios_v").val();
 
                                         tipo_pago = obtenerValorSeleccionado();
+                                        importe_efectivo = $("#importe_efectivo").val() || 0;
+                                        importe_transferencia = $("#importe_transferencia").val() || 0;
+                                        importe_tarjeta = $("#importe_tarjeta").val() || 0;
                                         //id_consecutivo = $("#id_consecutivo").val();
                                         id_consecutivo = consecutivo;
                                         var parametros = {"codigo": codigo, "precio_venta": precio_venta, "cantidad": cantidad, "id_cliente": id_cliente, "id_venta": id_venta,
                                             "id_consecutivo": id_consecutivo, "movimiento": movimiento, "id_empleado": id_empleado, "importe_recibido": importe_recibido,
-                                            "comentarios": comentarios, "tipo_pago": tipo_pago, "clave_externa": clave_externa, "tipo_producto": tipo_producto};
+                                            "comentarios": comentarios, "tipo_pago": tipo_pago, "importe_efectivo": importe_efectivo, "importe_transferencia": importe_transferencia, "importe_tarjeta": importe_tarjeta, "clave_externa": clave_externa, "tipo_producto": tipo_producto};
                                         $.ajax({
                                             url: "../functions/edita_venta.php",
                                             data: parametros,
@@ -1290,6 +1303,11 @@ if ($descripcion_corta == 1) {
                                     }
                                     function guarda_venta()
                                     {
+                                        if (obtenerValorSeleccionado() === '4') {
+                                            var total = parseFloat($("#total_venta").html()) || 0;
+                                            var desglose = (parseFloat($("#importe_efectivo").val()) || 0) + (parseFloat($("#importe_transferencia").val()) || 0) + (parseFloat($("#importe_tarjeta").val()) || 0);
+                                            if (Math.abs(total - desglose) > 0.009) { alert('La suma de efectivo, transferencia y tarjeta debe coincidir con el total de la venta.'); return; }
+                                        }
                                         edita_venta(0, 0, 0, 0, 5, '', '');
                                     }
                                     function llenadatosimpresion()
@@ -1502,6 +1520,16 @@ if ($descripcion_corta == 1) {
                                             return null; // En caso de que ningún botón esté seleccionado
                                         }
                                     }
+                                    $('input[name="opcion"]').on('change', function () {
+                                        var mixto = this.value === '4';
+                                        $('#desglose_mixto').toggle(mixto);
+                                        $('#pago_v').prop('required', !mixto);
+                                        if (mixto) { $('#importe_efectivo, #importe_transferencia, #importe_tarjeta').val('0.00'); }
+                                    });
+                                    $('#importe_efectivo, #importe_transferencia, #importe_tarjeta').on('input', function () {
+                                        var suma = (parseFloat($('#importe_efectivo').val()) || 0) + (parseFloat($('#importe_transferencia').val()) || 0) + (parseFloat($('#importe_tarjeta').val()) || 0);
+                                        $('#total_mixto').text('Suma: $' + suma.toFixed(2));
+                                    });
                                     document.addEventListener('DOMContentLoaded', function () {
                                         const radios = document.querySelectorAll('input[name="opcion"]');
                                         const pagoInput = document.getElementById('pago_v');

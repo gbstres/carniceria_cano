@@ -310,7 +310,7 @@ function generarToken() {
                                     </tr>
                                 </thead>
                                 <?php
-                                $filtro_tipo_pago = $tipo_pago_filtro > 0 ? " and a.tipo_pago = $tipo_pago_filtro" : "";
+                                $filtro_tipo_pago = $tipo_pago_filtro > 0 ? " and (a.tipo_pago = $tipo_pago_filtro or exists (select 1 from cc_ventas_pagos fp where fp.id_sucursal=a.id_sucursal and fp.id_venta=a.id_venta and fp.tipo_pago=$tipo_pago_filtro))" : "";
                                 $sqlventas = mysqli_query($link, "SELECT a.id_venta,a.fecha_ingreso,a.hora_ingreso,b.codigo,b.precio_compra,b.precio_venta,b.cantidad,"
                                         . "round(b.precio_compra * b.cantidad,2) as importec,round(b.precio_venta * b.cantidad,2) as importev, a.id_cliente, a.tipo_pago, b.id_consecutivo,b.estatus "
                                         . "FROM cc_det_ventas as a inner join cc_ventas as b on a.id_sucursal = b.id_sucursal and a.id_venta = b.id_venta "
@@ -329,6 +329,8 @@ function generarToken() {
                                         $categoria = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM cc_categorias where id_sucursal = '$id_sucursal' and id_categoria =" . $producto['id_categoria']));
                                         $desc_pago = mysqli_fetch_assoc(mysqli_query($link, "SELECT descripcion_corta FROM cc_claves where nombre_clave = 'TIPO_PAGO' and clave = " . (int) $rowc['tipo_pago']));
                                         $tipo_pago = empty($desc_pago) ? '' : $desc_pago['descripcion_corta'];
+                                    $pagos_mixtos = mysqli_fetch_assoc(mysqli_query($link, "SELECT GROUP_CONCAT(CASE tipo_pago WHEN 1 THEN 'EFE' WHEN 2 THEN 'TRA' WHEN 3 THEN 'TAR' ELSE tipo_pago END ORDER BY tipo_pago SEPARATOR ' / ') tipos FROM cc_ventas_pagos WHERE id_sucursal = '$id_sucursal' AND id_venta = " . (int) $rowc['id_venta']));
+                                    if (!empty($pagos_mixtos['tipos'])) $tipo_pago = $pagos_mixtos['tipos'];
                                         if (empty($cliente)) {
                                             $nombre_cliente = '';
                                         } else {

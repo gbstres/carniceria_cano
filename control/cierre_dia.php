@@ -294,11 +294,11 @@ $sql = "
     SELECT
         MAX(b.fecha_ingreso),
         SUM(ROUND(b.cantidad * b.precio_venta, 2)) AS totalv,
-        SUM(CASE WHEN a.tipo_pago = 1 THEN ROUND(b.cantidad * b.precio_venta, 2) END) AS clave1,
-        SUM(CASE WHEN a.tipo_pago = 2 THEN ROUND(b.cantidad * b.precio_venta, 2) END) AS clave8,
-	SUM(CASE WHEN a.tipo_pago = 3 THEN ROUND(b.cantidad * b.precio_venta, 2) END) AS clave9,
+        SUM(CASE WHEN a.tipo_pago = 1 AND NOT EXISTS (SELECT 1 FROM cc_ventas_pagos px WHERE px.id_sucursal=a.id_sucursal AND px.id_venta=a.id_venta) THEN ROUND(b.cantidad*b.precio_venta,2) ELSE 0 END) + (SELECT COALESCE(SUM(vp.importe),0) FROM cc_ventas_pagos vp INNER JOIN cc_det_ventas dv ON dv.id_sucursal=vp.id_sucursal AND dv.id_venta=vp.id_venta WHERE dv.id_sucursal='$id_sucursal' AND dv.estatus=1 AND dv.id_cierre=0 AND vp.tipo_pago=1) AS clave1,
+        SUM(CASE WHEN a.tipo_pago = 2 AND NOT EXISTS (SELECT 1 FROM cc_ventas_pagos px WHERE px.id_sucursal=a.id_sucursal AND px.id_venta=a.id_venta) THEN ROUND(b.cantidad*b.precio_venta,2) ELSE 0 END) + (SELECT COALESCE(SUM(vp.importe),0) FROM cc_ventas_pagos vp INNER JOIN cc_det_ventas dv ON dv.id_sucursal=vp.id_sucursal AND dv.id_venta=vp.id_venta WHERE dv.id_sucursal='$id_sucursal' AND dv.estatus=1 AND dv.id_cierre=0 AND vp.tipo_pago=2) AS clave8,
+	SUM(CASE WHEN a.tipo_pago = 3 AND NOT EXISTS (SELECT 1 FROM cc_ventas_pagos px WHERE px.id_sucursal=a.id_sucursal AND px.id_venta=a.id_venta) THEN ROUND(b.cantidad*b.precio_venta,2) ELSE 0 END) + (SELECT COALESCE(SUM(vp.importe),0) FROM cc_ventas_pagos vp INNER JOIN cc_det_ventas dv ON dv.id_sucursal=vp.id_sucursal AND dv.id_venta=vp.id_venta WHERE dv.id_sucursal='$id_sucursal' AND dv.estatus=1 AND dv.id_cierre=0 AND vp.tipo_pago=3) AS clave9,
 	SUM(CASE WHEN a.id_cliente > 0 THEN ROUND(b.cantidad * b.precio_venta, 2) END) AS clave4,
-	SUM(CASE WHEN a.id_cliente > 0 AND a.tipo_pago = 1 THEN ROUND(b.cantidad * b.precio_venta, 2) END) AS clave4_efectivo
+	SUM(CASE WHEN a.id_cliente > 0 AND a.tipo_pago = 1 AND NOT EXISTS (SELECT 1 FROM cc_ventas_pagos px WHERE px.id_sucursal=a.id_sucursal AND px.id_venta=a.id_venta) THEN ROUND(b.cantidad*b.precio_venta,2) ELSE 0 END) + (SELECT COALESCE(SUM(vp.importe),0) FROM cc_ventas_pagos vp INNER JOIN cc_det_ventas dv ON dv.id_sucursal=vp.id_sucursal AND dv.id_venta=vp.id_venta WHERE dv.id_sucursal='$id_sucursal' AND dv.estatus=1 AND dv.id_cierre=0 AND dv.id_cliente>0 AND vp.tipo_pago=1) AS clave4_efectivo
     FROM
         cc_det_ventas AS a
     INNER JOIN cc_ventas AS b
@@ -1015,15 +1015,33 @@ $totalc = $val_claves[1] + $val_claves[2] + $val_claves[5] - $val_claves[3] - $a
                                 </thead>';
                                 $totalgastoh = 0;
                                 $rowCuentaVentaEfectivo = mysqli_fetch_assoc(mysqli_query($link, "
-                                    SELECT SUM(ROUND(b.cantidad * b.precio_venta, 2)) AS total
+                                    SELECT
+                                        SUM(CASE WHEN a.tipo_pago = 1
+                                            AND NOT EXISTS (
+                                                SELECT 1 FROM cc_ventas_pagos px
+                                                WHERE px.id_sucursal = a.id_sucursal
+                                                  AND px.id_venta = a.id_venta
+                                            )
+                                            THEN ROUND(b.cantidad * b.precio_venta, 2)
+                                            ELSE 0 END)
+                                        + (
+                                            SELECT COALESCE(SUM(vp.importe), 0)
+                                            FROM cc_ventas_pagos vp
+                                            INNER JOIN cc_det_ventas dv
+                                                ON dv.id_sucursal = vp.id_sucursal
+                                               AND dv.id_venta = vp.id_venta
+                                            WHERE dv.id_sucursal = '$id_sucursal'
+                                              AND dv.id_cierre = $id_cierre
+                                              AND dv.id_cliente > 0
+                                              AND vp.tipo_pago = 1
+                                        ) AS total
                                     FROM cc_det_ventas AS a
                                     INNER JOIN cc_ventas AS b
-                                    ON a.id_sucursal = b.id_sucursal
-                                    AND a.id_venta = b.id_venta
+                                      ON a.id_sucursal = b.id_sucursal
+                                     AND a.id_venta = b.id_venta
                                     WHERE a.id_sucursal = '$id_sucursal'
                                       AND a.id_cierre = $id_cierre
                                       AND a.id_cliente > 0
-                                      AND a.tipo_pago = 1
                                       AND b.estatus NOT IN (2)"));
                                 $aCuentaVentaEfectivoHistorico = $rowCuentaVentaEfectivo['total'] ?? 0;
                                 $sqlclaves = mysqli_query($link, "SELECT * FROM cc_claves where nombre_clave = 'CIERRE' order by orden");

@@ -87,9 +87,9 @@ $sql = "
     SELECT
         MAX(b.fecha_ingreso),
         SUM(ROUND(b.cantidad * b.precio_venta, 2)) AS totalv,
-        SUM(CASE WHEN a.tipo_pago = 1 THEN ROUND(b.cantidad * b.precio_venta, 2) END) AS clave1,
-        SUM(CASE WHEN a.tipo_pago = 2 THEN ROUND(b.cantidad * b.precio_venta, 2) END) AS clave8,
-	SUM(CASE WHEN a.tipo_pago = 3 THEN ROUND(b.cantidad * b.precio_venta, 2) END) AS clave9,
+        SUM(CASE WHEN a.tipo_pago = 1 AND NOT EXISTS (SELECT 1 FROM cc_ventas_pagos px WHERE px.id_sucursal=a.id_sucursal AND px.id_venta=a.id_venta) THEN ROUND(b.cantidad*b.precio_venta,2) ELSE 0 END) + (SELECT COALESCE(SUM(vp.importe),0) FROM cc_ventas_pagos vp INNER JOIN cc_det_ventas dv ON dv.id_sucursal=vp.id_sucursal AND dv.id_venta=vp.id_venta WHERE dv.id_sucursal='$id_sucursal' AND dv.estatus=1 AND dv.id_cierre=0 AND vp.tipo_pago=1) AS clave1,
+        SUM(CASE WHEN a.tipo_pago = 2 AND NOT EXISTS (SELECT 1 FROM cc_ventas_pagos px WHERE px.id_sucursal=a.id_sucursal AND px.id_venta=a.id_venta) THEN ROUND(b.cantidad*b.precio_venta,2) ELSE 0 END) + (SELECT COALESCE(SUM(vp.importe),0) FROM cc_ventas_pagos vp INNER JOIN cc_det_ventas dv ON dv.id_sucursal=vp.id_sucursal AND dv.id_venta=vp.id_venta WHERE dv.id_sucursal='$id_sucursal' AND dv.estatus=1 AND dv.id_cierre=0 AND vp.tipo_pago=2) AS clave8,
+	SUM(CASE WHEN a.tipo_pago = 3 AND NOT EXISTS (SELECT 1 FROM cc_ventas_pagos px WHERE px.id_sucursal=a.id_sucursal AND px.id_venta=a.id_venta) THEN ROUND(b.cantidad*b.precio_venta,2) ELSE 0 END) + (SELECT COALESCE(SUM(vp.importe),0) FROM cc_ventas_pagos vp INNER JOIN cc_det_ventas dv ON dv.id_sucursal=vp.id_sucursal AND dv.id_venta=vp.id_venta WHERE dv.id_sucursal='$id_sucursal' AND dv.estatus=1 AND dv.id_cierre=0 AND vp.tipo_pago=3) AS clave9,
 	SUM(CASE WHEN a.id_cliente > 0 THEN ROUND(b.cantidad * b.precio_venta, 2) END) AS clave4
     FROM
         cc_det_ventas AS a

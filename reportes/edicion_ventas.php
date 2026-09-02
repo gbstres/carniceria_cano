@@ -53,6 +53,11 @@ if (isset($_POST['movimiento'])) {
 if (isset($_GET['id_venta'])) {
     $id_venta = $_GET['id_venta'];
     $rowdetventas = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM cc_det_ventas WHERE id_sucursal = '$id_sucursal' and id_venta = $id_venta"));
+    $pagos_venta = ['efectivo' => 0, 'transferencia' => 0, 'tarjeta' => 0];
+    $rs_pagos = mysqli_query($link, "SELECT tipo_pago, importe FROM cc_ventas_pagos WHERE id_sucursal='$id_sucursal' AND id_venta=$id_venta");
+    while ($pago = mysqli_fetch_assoc($rs_pagos)) { if ((int) $pago['tipo_pago'] === 1) $pagos_venta['efectivo'] = $pago['importe']; if ((int) $pago['tipo_pago'] === 2) $pagos_venta['transferencia'] = $pago['importe']; if ((int) $pago['tipo_pago'] === 3) $pagos_venta['tarjeta'] = $pago['importe']; }
+    $tipo_pago_edicion = (int) $rowdetventas['tipo_pago'];
+    if (count(array_filter($pagos_venta, function ($importe) { return (float) $importe > 0; })) > 1) $tipo_pago_edicion = 4;
 }
 
 //recalcula saldo cliente
@@ -653,7 +658,18 @@ if (isset($_GET['id_venta'])) {
                                     <label for="descripcion" class="form-label" id="total_v"></label>
                                 </div>
                             </div>
-                            <div class="mb-3">
+                                                        <div class="mb-3">
+                                <label class="form-label" for="tipo_pago_edicion">Forma de pago</label>
+                                <select class="form-select" id="tipo_pago_edicion">
+                                    <option value="1" <?php echo $tipo_pago_edicion === 1 ? 'selected' : '' ?>>Efectivo</option><option value="2" <?php echo $tipo_pago_edicion === 2 ? 'selected' : '' ?>>Transferencia</option><option value="3" <?php echo $tipo_pago_edicion === 3 ? 'selected' : '' ?>>Tarjeta bancaria</option><option value="4" <?php echo $tipo_pago_edicion === 4 ? 'selected' : '' ?>>Mixto</option>
+                                </select>
+                            </div>
+                            <div class="row mb-3">
+                                <div class="col-4"><label class="form-label">Efectivo</label><input class="form-control" type="number" step="0.01" min="0" id="importe_efectivo" value="<?php echo $pagos_venta['efectivo'] ?>"></div>
+                                <div class="col-4"><label class="form-label">Transferencia</label><input class="form-control" type="number" step="0.01" min="0" id="importe_transferencia" value="<?php echo $pagos_venta['transferencia'] ?>"></div>
+                                <div class="col-4"><label class="form-label">Tarjeta</label><input class="form-control" type="number" step="0.01" min="0" id="importe_tarjeta" value="<?php echo $pagos_venta['tarjeta'] ?>"></div>
+                            </div>
+<div class="mb-3">
                                 <label for="precioventa" class="form-label">Efectivo</label>
                                 <div class="input-group has-validation">
                                     <input type="number" step="0.01" class="form-control" value="<?php echo $rowdetventas['importe_recibido'] ?>" id="pago_v" name="pago_v" placeholder="Efectivo" autocomplete="off" required min="0" onkeyup="calculacambio(this.value)" readonly>
@@ -1043,8 +1059,13 @@ if (isset($_GET['id_venta'])) {
                                         }
                                         function guarda_venta()
                                         {
-                                            //edita_venta(0, 0, 0, 0, 5);
-                                            imprSelec('div_impresion');
+                                            var tipo = $('#tipo_pago_edicion').val();
+                                            var efe = parseFloat($('#importe_efectivo').val()) || 0;
+                                            var tra = parseFloat($('#importe_transferencia').val()) || 0;
+                                            var tar = parseFloat($('#importe_tarjeta').val()) || 0;
+                                            var total = parseFloat($('#total_venta').html()) || 0;
+                                            if (tipo === '4' && Math.abs(total - efe - tra - tar) > 0.009) { alert('La suma EFE/TRA/TAR debe coincidir con el total.'); return; }
+                                            $.ajax({url: '../functions/edita_venta.php', type: 'POST', dataType: 'json', data: {movimiento: 9, id_venta: $('#id_venta_a').val(), id_cliente: $('#id_cliente').val(), tipo_pago: tipo, importe_efectivo: efe, importe_transferencia: tra, importe_tarjeta: tar}, success: function () { imprSelec('div_impresion'); }});
                                             //location.href = "index.php";
                                         }
                                         function imprSelec(nombre) {

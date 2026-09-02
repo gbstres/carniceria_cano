@@ -11,6 +11,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 
 require_once "../functions/config.php";
 require_once "../functions/sync_queue.php";
+require_once "../functions/venta_pagos.php";
 date_default_timezone_set("America/Mexico_City");
 // Define variables and initialize with empty values
 $codigo = 0;
@@ -187,16 +188,37 @@ else if ($_POST['movimiento'] == 5) {
     $hora_act = date('H:i:s');
     $id_empleado = $_POST['id_empleado'];
     $importe_recibido = $_POST['importe_recibido'];
-    $tipo_pago = $_POST['tipo_pago'];
-    $update1 = mysqli_query($link, "UPDATE cc_det_ventas SET estatus=1, id_empleado = $id_empleado, importe_recibido= $importe_recibido, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act='$id_usuario_act', tipo_pago='$tipo_pago' WHERE id_sucursal='$id_sucursal' and id_venta='$id_venta'")
-            or die(mysqli_error());
+    $tipo_pago = (int) $_POST['tipo_pago'];
+    $importe_efectivo = isset($_POST['importe_efectivo']) ? (float) $_POST['importe_efectivo'] : 0;
+    $importe_transferencia = isset($_POST['importe_transferencia']) ? (float) $_POST['importe_transferencia'] : 0;
+    $importe_tarjeta = isset($_POST['importe_tarjeta']) ? (float) $_POST['importe_tarjeta'] : 0;
+    try {
+        $total_venta = validarPagosVenta($link, $id_sucursal, $id_venta, $tipo_pago, $importe_efectivo, $importe_transferencia, $importe_tarjeta);
+        if ($tipo_pago !== 4) {
+            $importe_efectivo = $tipo_pago === 1 ? $total_venta : 0;
+            $importe_transferencia = $tipo_pago === 2 ? $total_venta : 0;
+            $importe_tarjeta = $tipo_pago === 3 ? $total_venta : 0;
+        }
+        mysqli_begin_transaction($link);
+        $tipo_pago_compat = $tipo_pago === 4 ? 1 : $tipo_pago;
+        $update1 = mysqli_query($link, "UPDATE cc_det_ventas SET estatus=1, id_empleado = $id_empleado, importe_recibido= $importe_recibido, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act='$id_usuario_act', tipo_pago='$tipo_pago_compat' WHERE id_sucursal='$id_sucursal' and id_venta='$id_venta'");
+        if (!$update1) throw new Exception(mysqli_error($link));
+        guardarPagosVenta($link, $id_sucursal, $id_venta, $tipo_pago_compat, $importe_efectivo, $importe_transferencia, $importe_tarjeta, $id_usuario_act, $fecha_act, $hora_act);
+        mysqli_commit($link);
+    } catch (Exception $e) {
+        mysqli_rollback($link);
+        http_response_code(422);
+        echo json_encode(['error' => $e->getMessage()]);
+        exit;
+    }
     if ($update1) {
         $row_det_venta = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM `cc_det_ventas` WHERE id_sucursal = '$id_sucursal' and id_venta = $id_venta"));
         cc_sync_enqueue($link, $id_sucursal, 'venta_detalle', 'close', [
             'id_venta' => (int) $id_venta,
         ], [
             'tabla' => 'cc_det_ventas',
-            'tipo_pago' => (int) $tipo_pago,
+            'tipo_pago' => (int) $tipo_pago_compat,
+            'pagos' => ['efectivo' => $importe_efectivo, 'transferencia' => $importe_transferencia, 'tarjeta' => $importe_tarjeta],
             'id_empleado' => (int) $id_empleado,
         ]);
         cc_sync_enqueue($link, $id_sucursal, 'venta', 'upsert', [
@@ -215,6 +237,35 @@ else if ($_POST['movimiento'] == 5) {
         echo '<div class="alert alert-danger alert-dismissable"><button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>Error, no se pudo guardar el producto.</div>';
     }
     echo json_encode($response_array);
+}
+// Edita únicamente el desglose de pago de una venta cerrada.
+else if ($_POST['movimiento'] == 9) {
+    $id_usuario_act = (int) $_SESSION['id'];
+    $fecha_act = date('Y-m-d');
+    $hora_act = date('H:i:s');
+    $tipo_pago = (int) $_POST['tipo_pago'];
+    $importe_efectivo = isset($_POST['importe_efectivo']) ? (float) $_POST['importe_efectivo'] : 0;
+    $importe_transferencia = isset($_POST['importe_transferencia']) ? (float) $_POST['importe_transferencia'] : 0;
+    $importe_tarjeta = isset($_POST['importe_tarjeta']) ? (float) $_POST['importe_tarjeta'] : 0;
+    try {
+        $total_venta = validarPagosVenta($link, $id_sucursal, $id_venta, $tipo_pago, $importe_efectivo, $importe_transferencia, $importe_tarjeta);
+        if ($tipo_pago !== 4) {
+            $importe_efectivo = $tipo_pago === 1 ? $total_venta : 0;
+            $importe_transferencia = $tipo_pago === 2 ? $total_venta : 0;
+            $importe_tarjeta = $tipo_pago === 3 ? $total_venta : 0;
+        }
+        mysqli_begin_transaction($link);
+        $tipo_pago_compat = $tipo_pago === 4 ? 1 : $tipo_pago;
+        if (!mysqli_query($link, "UPDATE cc_det_ventas SET tipo_pago=$tipo_pago_compat, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act=$id_usuario_act WHERE id_sucursal=$id_sucursal AND id_venta=$id_venta AND estatus IN (1,3)")) throw new Exception(mysqli_error($link));
+        guardarPagosVenta($link, $id_sucursal, $id_venta, $tipo_pago_compat, $importe_efectivo, $importe_transferencia, $importe_tarjeta, $id_usuario_act, $fecha_act, $hora_act);
+        mysqli_commit($link);
+        cc_sync_enqueue($link, $id_sucursal, 'venta_detalle', 'upsert', ['id_venta' => (int) $id_venta], ['tabla' => 'cc_det_ventas', 'pagos' => ['efectivo' => $importe_efectivo, 'transferencia' => $importe_transferencia, 'tarjeta' => $importe_tarjeta]]);
+        echo json_encode([['id_venta' => (int) $id_venta]]);
+    } catch (Exception $e) {
+        mysqli_rollback($link);
+        http_response_code(422);
+        echo json_encode(['error' => $e->getMessage()]);
+    }
 }
 // Abrir caja
 else if ($_POST['movimiento'] == 6) {
