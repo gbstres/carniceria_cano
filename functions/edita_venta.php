@@ -205,6 +205,7 @@ else if ($_POST['movimiento'] == 5) {
         if (!$update1) throw new Exception(mysqli_error($link));
         guardarPagosVenta($link, $id_sucursal, $id_venta, $tipo_pago_compat, $importe_efectivo, $importe_transferencia, $importe_tarjeta, $id_usuario_act, $fecha_act, $hora_act);
         mysqli_commit($link);
+        cc_sync_enqueue($link, $id_sucursal, 'venta_pago', 'upsert', ['id_venta' => (int) $id_venta], ['tabla' => 'cc_ventas_pagos', 'motivo' => 'cierre_venta']);
     } catch (Exception $e) {
         mysqli_rollback($link);
         http_response_code(422);
@@ -259,6 +260,7 @@ else if ($_POST['movimiento'] == 9) {
         if (!mysqli_query($link, "UPDATE cc_det_ventas SET tipo_pago=$tipo_pago_compat, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act=$id_usuario_act WHERE id_sucursal=$id_sucursal AND id_venta=$id_venta AND estatus IN (1,3)")) throw new Exception(mysqli_error($link));
         guardarPagosVenta($link, $id_sucursal, $id_venta, $tipo_pago_compat, $importe_efectivo, $importe_transferencia, $importe_tarjeta, $id_usuario_act, $fecha_act, $hora_act);
         mysqli_commit($link);
+        cc_sync_enqueue($link, $id_sucursal, 'venta_pago', 'upsert', ['id_venta' => (int) $id_venta], ['tabla' => 'cc_ventas_pagos', 'motivo' => 'edicion_pago']);
         cc_sync_enqueue($link, $id_sucursal, 'venta_detalle', 'upsert', ['id_venta' => (int) $id_venta], ['tabla' => 'cc_det_ventas', 'pagos' => ['efectivo' => $importe_efectivo, 'transferencia' => $importe_transferencia, 'tarjeta' => $importe_tarjeta]]);
         echo json_encode([['id_venta' => (int) $id_venta]]);
     } catch (Exception $e) {

@@ -112,6 +112,10 @@ function cc_sync_get_entity_config(string $entityType): ?array
             'table' => 'cc_det_ventas',
             'keys' => ['id_venta'],
         ],
+        'venta_pago' => [
+            'table' => 'cc_ventas_pagos',
+            'keys' => ['id_venta', 'tipo_pago'],
+        ],
         'compra' => [
             'table' => 'cc_compras',
             'keys' => ['id_compra', 'id_consecutivo'],
@@ -153,6 +157,13 @@ function cc_sync_enqueue_cierre_movimientos(mysqli $link, int $idSucursal, int $
             'id_venta' => (int) $rowVenta['id_venta'],
         ], [
             'tabla' => 'cc_det_ventas',
+            'motivo' => 'cierre',
+            'id_cierre' => $idCierre,
+        ]);
+        cc_sync_enqueue($link, $idSucursal, 'venta_pago', 'upsert', [
+            'id_venta' => (int) $rowVenta['id_venta'],
+        ], [
+            'tabla' => 'cc_ventas_pagos',
             'motivo' => 'cierre',
             'id_cierre' => $idCierre,
         ]);
@@ -263,6 +274,7 @@ function cc_sync_fetch_pending(mysqli $link, int $limit = 50): array
             WHEN 'activo_bitacora' THEN 7
             WHEN 'saldo_cliente' THEN 14
             WHEN 'pago_cliente' THEN 15
+            WHEN 'venta_pago' THEN 16
             WHEN 'cierre' THEN 20
             WHEN 'cierre_cliente' THEN 21
             ELSE 10
@@ -451,7 +463,7 @@ function cc_sync_process_item(mysqli $link, mysqli $linkRemote, array $item): vo
         return;
     }
 
-    if ($entityType === 'derivado') {
+    if ($entityType === 'derivado' || $entityType === 'venta_pago') {
         cc_sync_delete_remote_rows($linkRemote, $table, $idSucursal, $entityData);
     }
 
