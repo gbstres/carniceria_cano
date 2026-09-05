@@ -9,46 +9,34 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 }
 require_once "../functions/config.php";
 require_once "../functions/sync_queue.php";
+require_once "../functions/venta_pagos.php";
 date_default_timezone_set("America/Mexico_City");
 $id_sucursal = $_SESSION["id_sucursal"];
 if (isset($_POST['movimiento'])) {
-
-    $movimiento = $_POST['movimiento'];
-    $id_venta = $_POST['id_venta'];
-    $id_consecutivo = $_POST['id_consecutivo'];
-    $id_usuario_act = $_SESSION["id"];
+    $movimiento = (int) $_POST['movimiento'];
+    $id_venta = (int) $_POST['id_venta'];
+    $id_consecutivo = (int) $_POST['id_consecutivo'];
+    $id_usuario_act = (int) $_SESSION["id"];
     $fecha_act = date('Y-m-d');
     $hora_act = date('H:i:s');
-
-    $update1 = mysqli_query($link, "UPDATE cc_ventas SET "
-                    . "estatus='$movimiento', "
-                    . "fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act='$id_usuario_act' "
-                    . "WHERE id_sucursal='$id_sucursal' and id_venta = '$id_venta' and id_consecutivo = '$id_consecutivo'")
-            or die(mysqli_error());
-    if ($update1) {
-        cc_sync_enqueue($link, (int) $id_sucursal, 'venta', $movimiento == 2 ? 'cancel' : 'upsert', [
-            'id_venta' => (int) $id_venta,
-            'id_consecutivo' => (int) $id_consecutivo,
-        ], [
-            'tabla' => 'cc_ventas',
-            'motivo' => $movimiento == 2 ? 'edicion_ventas_cancelacion' : 'edicion_ventas_reactivacion',
-        ]);
-        //header("Location: " . $_GET["regresar"]);
-        $row_importe = mysqli_fetch_assoc(mysqli_query($link, "SELECT precio_venta * cantidad as 'importe' FROM cc_ventas WHERE id_sucursal='$id_sucursal' and id_venta = '$id_venta' and id_consecutivo = '$id_consecutivo'"));
-        $row_cliente = mysqli_fetch_assoc(mysqli_query($link, "SELECT id_cliente FROM cc_det_ventas WHERE id_sucursal='$id_sucursal' and id_venta = '$id_venta'"));
-        $abono = $row_importe['importe'];
-        $id_cliente = $row_cliente['id_cliente'];
-        if ($movimiento == 2) {
-            $abono = $abono * -1;
+    try {
+        mysqli_begin_transaction($link);
+        $cambio = procesarCambioEstadoVenta($link, $id_sucursal, $id_venta, $id_consecutivo, $movimiento, $id_usuario_act, $fecha_act, $hora_act);
+        foreach ($cambio['partidas'] as $partida) {
+            $consecutivo_afectado = (int) $partida['id_consecutivo'];
+            cc_sync_enqueue($link, (int) $id_sucursal, 'venta', $movimiento == 2 ? 'cancel' : 'upsert', ['id_venta' => $id_venta, 'id_consecutivo' => $consecutivo_afectado], ['tabla' => 'cc_ventas', 'motivo' => $cambio['es_mixto'] ? 'edicion_ventas_mixta_total' : ($movimiento == 2 ? 'edicion_ventas_cancelacion' : 'edicion_ventas_reactivacion')]);
+            recalcula_almacen_venta($link, $id_sucursal, $id_venta, $consecutivo_afectado, $fecha_act, $hora_act, $id_usuario_act);
         }
-        $efectivo = recalcula($link, $id_sucursal, $abono, $id_cliente, $fecha_act, $hora_act, $id_usuario_act);
-        recalcula_almacen_venta($link, $id_sucursal, $id_venta, $id_consecutivo, $fecha_act, $hora_act, $id_usuario_act);
-    } else {
-        echo '<div class="alert alert-danger alert-dismissable"><button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>Error, no se pudo guardar el producto.</div>';
+        $row_cliente = mysqli_fetch_assoc(mysqli_query($link, "SELECT id_cliente FROM cc_det_ventas WHERE id_sucursal=" . (int) $id_sucursal . " AND id_venta=$id_venta"));
+        recalcula($link, $id_sucursal, $cambio['ajuste'], (int) $row_cliente['id_cliente'], $fecha_act, $hora_act, $id_usuario_act);
+        if (!$cambio['es_mixto']) cc_sync_enqueue($link, (int) $id_sucursal, 'venta_pago', 'upsert', ['id_venta' => $id_venta], ['tabla' => 'cc_ventas_pagos', 'motivo' => 'ajuste_cancelacion_partida']);
+        mysqli_commit($link);
+        if ($cambio['es_mixto'] && $movimiento === 2) echo '<script>alert("Esta venta tiene pago mixto; se cancelaron todas sus partidas.");</script>';
+    } catch (Throwable $e) {
+        mysqli_rollback($link);
+        echo '<div class="alert alert-danger">No se pudo cambiar el estado de la venta: ' . htmlspecialchars($e->getMessage()) . '</div>';
     }
 }
-
-
 
 if (isset($_GET['id_venta'])) {
     $id_venta = $_GET['id_venta'];
@@ -915,6 +903,7 @@ if (isset($_GET['id_venta'])) {
                                         }
                                         function cancelar_reactivar(id_venta, id_consecutivo, movimiento)
                                         {
+                                            if (movimiento === 2 && <?= $tipo_pago_edicion === 4 ? 'true' : 'false' ?> && !confirm('Esta venta tiene pago mixto. Al continuar se cancelarán todas sus partidas. ¿Desea continuar?')) return;
                                             $('#id_venta').val(id_venta);
                                             $('#id_consecutivo').val(id_consecutivo);
                                             $('#movimiento').val(movimiento);
