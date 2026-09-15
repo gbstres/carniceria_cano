@@ -96,6 +96,10 @@ function cc_sync_get_entity_config(string $entityType): ?array
             'table' => 'cc_cierre_clientes',
             'keys' => ['id_cierre', 'id_cliente'],
         ],
+        'cierre_stock' => [
+            'table' => 'cc_cierre_stock',
+            'keys' => ['id_cierre', 'tipo', 'codigo'],
+        ],
         'saldo_cliente' => [
             'table' => 'cc_saldos_clientes',
             'keys' => ['id_cliente'],
@@ -277,6 +281,7 @@ function cc_sync_fetch_pending(mysqli $link, int $limit = 50): array
             WHEN 'venta_pago' THEN 16
             WHEN 'cierre' THEN 20
             WHEN 'cierre_cliente' THEN 21
+            WHEN 'cierre_stock' THEN 22
             ELSE 10
           END ASC,
           id_sync ASC

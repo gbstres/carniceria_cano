@@ -245,7 +245,133 @@ if (isset($_POST['fecha_cierre'])) {
         }
     }
 
+    // Insertar snapshot de stock de productos y categorias (Base de datos ligera: almacen <> 0)
+    $sqlStockProductos = mysqli_query($link, "
+        SELECT
+            p.codigo,
+            p.descripcion,
+            p.almacen,
+            p.id_categoria,
+            COALESCE(c.desc_categoria, '') AS desc_categoria,
+            COALESCE(ca.descripcion_corta, '') AS centraliza,
+            COALESCE(eq.precio_compra_origen, p.precio_compra, 0) AS precio_compra
+        FROM cc_productos p
+        LEFT JOIN cc_categorias c
+            ON c.id_sucursal = p.id_sucursal
+           AND c.id_categoria = p.id_categoria
+        LEFT JOIN cc_claves ca
+            ON ca.nombre_clave = 'CENTRALIZAR_ALMACEN'
+           AND ca.clave = p.centralizar_almacen
+        LEFT JOIN (
+            SELECT
+                e.id_sucursal,
+                e.codigo_destino,
+                AVG(po.precio_compra) AS precio_compra_origen
+            FROM cc_equivalencias_productos e
+            INNER JOIN cc_productos po
+                ON po.id_sucursal = e.id_sucursal
+               AND po.codigo = e.codigo_origen
+            WHERE e.activo = 1
+            GROUP BY e.id_sucursal, e.codigo_destino
+        ) eq
+            ON eq.id_sucursal = p.id_sucursal
+           AND eq.codigo_destino = p.codigo
+        WHERE p.id_sucursal = $id_sucursal
+          AND p.almacen <> 0
+        ORDER BY c.desc_categoria, p.descripcion
+    ");
 
+    $sqlInsertStock = "INSERT INTO cc_cierre_stock (id_sucursal, id_cierre, tipo, codigo, descripcion, id_categoria, desc_categoria, centraliza, stock, precio_compra, total, fecha_ingreso, hora_ingreso, id_usuario) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    if ($stmtStock = mysqli_prepare($link, $sqlInsertStock)) {
+        $tipoStockProd = 'PRODUCTO';
+        while ($rowsp = mysqli_fetch_assoc($sqlStockProductos)) {
+            $codProd = (string) $rowsp['codigo'];
+            $descProd = (string) $rowsp['descripcion'];
+            $idCatProd = (int) ($rowsp['id_categoria'] ?? 0);
+            $descCatProd = (string) ($rowsp['desc_categoria'] ?? '');
+            $centProd = (string) ($rowsp['centraliza'] ?? '');
+            $stockProd = (float) $rowsp['almacen'];
+            $costoProd = (float) $rowsp['precio_compra'];
+            $totalProd = $stockProd < 0 ? 0 : round($stockProd * $costoProd, 2);
+
+            mysqli_stmt_bind_param($stmtStock, "iisssissdddssi",
+                $id_sucursal,
+                $id_cierre,
+                $tipoStockProd,
+                $codProd,
+                $descProd,
+                $idCatProd,
+                $descCatProd,
+                $centProd,
+                $stockProd,
+                $costoProd,
+                $totalProd,
+                $fecha_ingreso,
+                $hora_ingreso,
+                $id_usuario
+            );
+            if (mysqli_stmt_execute($stmtStock)) {
+                cc_sync_enqueue($link, $id_sucursal, 'cierre_stock', 'upsert', [
+                    'id_cierre' => (int) $id_cierre,
+                    'tipo' => $tipoStockProd,
+                    'codigo' => $codProd,
+                ], [
+                    'tabla' => 'cc_cierre_stock',
+                ]);
+            }
+        }
+
+        // Categorias con stock
+        $sqlStockCategorias = mysqli_query($link, "
+            SELECT
+                c.id_categoria,
+                c.desc_categoria,
+                c.almacen,
+                COALESCE(c.precio, 0) AS precio
+            FROM cc_categorias c
+            WHERE c.id_sucursal = $id_sucursal
+              AND c.almacen <> 0
+            ORDER BY c.desc_categoria
+        ");
+
+        $tipoStockCat = 'CATEGORIA';
+        $centralizaCat = '';
+        while ($rowsc = mysqli_fetch_assoc($sqlStockCategorias)) {
+            $codCat = (string) $rowsc['id_categoria'];
+            $descCat = (string) $rowsc['desc_categoria'];
+            $idCatVal = (int) $rowsc['id_categoria'];
+            $stockCat = (float) $rowsc['almacen'];
+            $costoCat = (float) $rowsc['precio'];
+            $totalCat = $stockCat < 0 ? 0 : round($stockCat * $costoCat, 2);
+
+            mysqli_stmt_bind_param($stmtStock, "iisssissdddssi",
+                $id_sucursal,
+                $id_cierre,
+                $tipoStockCat,
+                $codCat,
+                $descCat,
+                $idCatVal,
+                $descCat,
+                $centralizaCat,
+                $stockCat,
+                $costoCat,
+                $totalCat,
+                $fecha_ingreso,
+                $hora_ingreso,
+                $id_usuario
+            );
+            if (mysqli_stmt_execute($stmtStock)) {
+                cc_sync_enqueue($link, $id_sucursal, 'cierre_stock', 'upsert', [
+                    'id_cierre' => (int) $id_cierre,
+                    'tipo' => $tipoStockCat,
+                    'codigo' => $codCat,
+                ], [
+                    'tabla' => 'cc_cierre_stock',
+                ]);
+            }
+        }
+        mysqli_stmt_close($stmtStock);
+    }
 
     if ($exito == 'N') {
         echo '<script type="text/javascript">alert("No se pudo almacenar el cierre");</script>';
