@@ -78,6 +78,27 @@ if ($modo === 'historico' && $id_cierre > 0) {
         $cierreFechaHora = $rowInfoCierre['fecha_ingreso'] . ' ' . $rowInfoCierre['hora_ingreso'];
     }
 
+    mysqli_query($link, "CREATE TABLE IF NOT EXISTS `cc_cierre_stock` (
+        `id_cierre_stock` int(11) NOT NULL AUTO_INCREMENT,
+        `id_sucursal` int(11) NOT NULL,
+        `id_cierre` int(11) NOT NULL,
+        `tipo` enum('PRODUCTO','CATEGORIA') NOT NULL,
+        `codigo` varchar(20) NOT NULL,
+        `descripcion` varchar(150) NOT NULL,
+        `id_categoria` int(11) DEFAULT 0,
+        `desc_categoria` varchar(100) DEFAULT '',
+        `centraliza` varchar(50) DEFAULT '',
+        `stock` decimal(10,3) NOT NULL DEFAULT 0.000,
+        `precio_compra` decimal(10,2) NOT NULL DEFAULT 0.00,
+        `total` decimal(12,2) NOT NULL DEFAULT 0.00,
+        `fecha_ingreso` date NOT NULL,
+        `hora_ingreso` time NOT NULL,
+        `id_usuario` int(11) NOT NULL,
+        PRIMARY KEY (`id_cierre_stock`),
+        KEY `idx_cierre_stock_busqueda` (`id_sucursal`,`id_cierre`,`tipo`),
+        KEY `idx_cierre_stock_fecha` (`id_sucursal`,`fecha_ingreso`)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_spanish_ci;");
+
     $sqlProductos = mysqli_query($link, "
         SELECT
             codigo,
