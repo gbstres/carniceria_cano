@@ -163,7 +163,7 @@ if (isset($_POST['agregar'])) {
     <body>
         <main>
             <div class="container">
-                <?php require_once "nav.php" ?>
+                <?php require_once "../components/nav.php" ?>
                 <div>
                     <div class="bg-light p-4 rounded ">
                         <div class="col-sm-8 mx-auto">
@@ -482,4 +482,3 @@ if (isset($_POST['agregar'])) {
         </script>      
     </body>
 </html>
-

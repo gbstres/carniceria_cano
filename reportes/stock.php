@@ -448,10 +448,8 @@ if ($sqlCategorias) {
                     <table style="width: 100%;">
                         <thead>
                             <tr>
-                                <th>Código</th>
                                 <th>Descripción</th>
                                 <th>Categoría</th>
-                                <th>Centraliza</th>
                                 <th class="text-end">Stock</th>
                                 <th class="text-end">Precio compra</th>
                                 <th class="text-end">Total</th>
@@ -459,15 +457,13 @@ if ($sqlCategorias) {
                         </thead>
                         <tbody>
                             <?php if (empty($listaProductos)): ?>
-                                <tr><td colspan="7" class="text-center">Sin productos con stock</td></tr>
+                                <tr><td colspan="5" class="text-center">Sin productos con stock</td></tr>
                             <?php else: ?>
                                 <?php foreach ($listaProductos as $prod): ?>
                                     <tr>
-                                        <td><?php echo htmlspecialchars($prod['codigo'], ENT_QUOTES, 'UTF-8'); ?></td>
                                         <td><?php echo htmlspecialchars($prod['descripcion'], ENT_QUOTES, 'UTF-8'); ?></td>
                                         <td><?php echo htmlspecialchars($prod['desc_categoria'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td><?php echo htmlspecialchars($prod['centraliza'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td class="text-end"><?php echo number_format($prod['stock'], 3); ?></td>
+                                        <td class="text-end"><?php echo number_format($prod['stock'], 1); ?></td>
                                         <td class="text-end"><?php echo number_format($prod['precio_compra'], 2); ?></td>
                                         <td class="text-end"><?php echo number_format($prod['total'], 2); ?></td>
                                     </tr>
@@ -476,8 +472,8 @@ if ($sqlCategorias) {
                         </tbody>
                         <tfoot>
                             <tr>
-                                <th colspan="4" class="text-end">Total</th>
-                                <th class="text-end"><?php echo number_format($totalProductos, 3); ?></th>
+                                <th colspan="2" class="text-end">Total</th>
+                                <th class="text-end"><?php echo number_format($totalProductos, 1); ?></th>
                                 <th></th>
                                 <th class="text-end"><?php echo number_format($importeProductos, 2); ?></th>
                             </tr>
@@ -505,7 +501,7 @@ if ($sqlCategorias) {
                                     <tr>
                                         <td><?php echo htmlspecialchars((string) $cat['id_categoria'], ENT_QUOTES, 'UTF-8'); ?></td>
                                         <td><?php echo htmlspecialchars($cat['desc_categoria'], ENT_QUOTES, 'UTF-8'); ?></td>
-                                        <td class="text-end"><?php echo number_format($cat['stock'], 3); ?></td>
+                                        <td class="text-end"><?php echo number_format($cat['stock'], 1); ?></td>
                                         <td class="text-end"><?php echo ($cat['precio'] === null ? '—' : number_format($cat['precio_val'], 2)); ?></td>
                                         <td class="text-end"><?php echo number_format($cat['total'], 2); ?></td>
                                     </tr>
@@ -515,7 +511,7 @@ if ($sqlCategorias) {
                         <tfoot>
                             <tr>
                                 <th colspan="2" class="text-end">Total</th>
-                                <th class="text-end"><?php echo number_format($totalCategorias, 3); ?></th>
+                                <th class="text-end"><?php echo number_format($totalCategorias, 1); ?></th>
                                 <th></th>
                                 <th class="text-end"><?php echo number_format($importeCategorias, 2); ?></th>
                             </tr>

@@ -838,15 +838,6 @@ $totalc = $val_claves[1] + $val_claves[2] + $val_claves[5] - $val_claves[3] - $a
                             <br>
                             <div class="card">
                                 <div class="card-header">
-                                    <h5 class="card-title mb-0">Stock bajo</h5>
-                                </div>
-                            </div>
-                            <div id="tabla_stock_bajo0">
-                                <?php echo render_stock_bajo_cierre($link, $id_sucursal); ?>
-                            </div>
-                            <br>
-                            <div class="card">
-                                <div class="card-header">
                                     <h5 class="card-title mb-0">Resumen</h5>
                                 </div>
                             </div>
@@ -1140,15 +1131,6 @@ $totalc = $val_claves[1] + $val_claves[2] + $val_claves[5] - $val_claves[3] - $a
                             <br>
                             <div class="card">
                                 <div class="card-header">
-                                    <h5 class="card-title mb-0">Stock bajo</h5>
-                                </div>
-                            </div>
-                            <div id="tabla_stock_bajo' . $id_cierre . '">
-                                ' . render_stock_bajo_cierre($link, $id_sucursal) . '
-                            </div>
-                            <br>
-                            <div class="card">
-                                <div class="card-header">
                                     <h5 class="card-title mb-0">Resumen</h5>
                                 </div>
                             </div>
@@ -1262,8 +1244,7 @@ $totalc = $val_claves[1] + $val_claves[2] + $val_claves[5] - $val_claves[3] - $a
                     #tabla_principal_cierre, #tabla_principal_cierre table, #tabla_principal_cierre th, #tabla_principal_cierre td, #tabla_movimientos_cierre table, #tabla_movimientos_cierre th, #tabla_movimientos_cierre td,
                     #tabla_gastos_cierre, #tabla_gastos_cierre table, #tabla_gastos_cierre th, #tabla_gastos_cierre td,
                     #tabla_entradas_cierre, #tabla_entradas_cierre table, #tabla_entradas_cierre th, #tabla_entradas_cierre td,
-                    #tabla_clientes_cierre, #tabla_clientes_cierre table, #tabla_clientes_cierre th, #tabla_clientes_cierre td,
-                    #tabla_stock_bajo_cierre, #tabla_stock_bajo_cierre table, #tabla_stock_bajo_cierre th, #tabla_stock_bajo_cierre td
+                    #tabla_clientes_cierre, #tabla_clientes_cierre table, #tabla_clientes_cierre th, #tabla_clientes_cierre td
                     {
                         border: 1px solid;
                         border-collapse: collapse;
@@ -1312,10 +1293,6 @@ $totalc = $val_claves[1] + $val_claves[2] + $val_claves[5] - $val_claves[3] - $a
                 <br>
                 <h5>Clientes con saldo<h5>
                 <div id="tabla_clientes_cierre">
-                </div>
-                <br>
-                <h5>Stock bajo<h5>
-                <div id="tabla_stock_bajo_cierre">
                 </div>
                 <br>
                 <h5>Resumen<h5>
@@ -1432,7 +1409,6 @@ if (isset($_POST['fecha_cierre'])) {
                                             $('#tabla_gastos_cierre').empty();
                                             $('#tabla_entradas_cierre').empty();
                                             $('#tabla_clientes_cierre').empty();
-                                            $('#tabla_stock_bajo_cierre').empty();
                                             $('#tabla_principal_cierre').empty();
                                             extrae_tabla(consecutivo);
 
@@ -1450,13 +1426,6 @@ if (isset($_POST['fecha_cierre'])) {
 
                                             var miVariable = "tabla_clientes" + consecutivo;
                                             $('#tabla_clientes_cierre').html($('#' + miVariable).html());
-
-                                            var miVariable = "tabla_stock_bajo" + consecutivo;
-                                            $('#tabla_stock_bajo_cierre').html($('#' + miVariable).html());
-
-
-
-                                            var contenidoOriginal = $('#' + miVariable).html();
 
                                             abrepaginaimpresion("div_impresion");
                                         }

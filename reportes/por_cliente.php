@@ -67,7 +67,7 @@ if (isset($_POST['fecha2'])) {
     <body>
         <main>
             <div class="container">
-                <?php require_once "nav.php" ?>
+                <?php require_once "../components/nav.php" ?>
                 <div>
                     <div class="bg-light p-4 rounded ">
                         <div class="col-sm-8 mx-auto">
@@ -278,4 +278,3 @@ if (isset($_POST['fecha2'])) {
         </script>      
     </body>
 </html>
-
