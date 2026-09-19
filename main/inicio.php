@@ -683,6 +683,7 @@ $qr_precio = file_exists(__DIR__ . '/../img/qr_precios_sucursal_' . $id_sucursal
                 <form class="needs-validation" action="#" method="post" novalidate id="form_venta">
                     <input type="hidden" name="id_empleado" id="id_empleado" value = "0">
                     <div class="modal-body">
+                        <div class="alert alert-danger mb-3" id="alert_modal_venta" style="display:none;" role="alert"></div>
                         <div class="mb-3">
                             <label for="descripcion" class="form-label">Total de venta:</label>
                             <div class="input-group">
@@ -727,7 +728,7 @@ $qr_precio = file_exists(__DIR__ . '/../img/qr_precios_sucursal_' . $id_sucursal
                             <div class="col-4"><label class="form-label" for="importe_tarjeta">Tarjeta</label><input type="number" step="0.01" min="0" class="form-control" id="importe_tarjeta" value="0"></div>
                             <div class="form-text" id="total_mixto"></div>
                         </div>
-                        <div class="mb-3">
+                        <div class="mb-3" id="div_importe_recibido">
                             <label for="precioventa" class="form-label">Importe recibido</label>
                             <div class="input-group has-validation">
                                 <input type="number" step="0.01" class="form-control" id="pago_v" name="pago_v" placeholder="Efectivo" autocomplete="off" required min="0" onkeyup="calculacambio()">
@@ -1051,19 +1052,33 @@ if (isset($_GET['id_venta'])) {
                                     }
                                     function calculacambio()
                                     {
-                                        if (isNaN($("#pago_v").val()) || $("#pago_v").val() == '')
-                                        {
-                                            valor = 0;
-                                        } else
-                                        {
-                                            valor = parseFloat($("#pago_v").val())
-                                        }
-                                        if ((valor - parseFloat($("#total_venta").html())).toFixed(2) < 0)
-                                        {
-                                            $("#cambio_v").html(0);
-                                        } else
-                                        {
-                                            $("#cambio_v").html((valor - parseFloat($("#total_venta").html())).toFixed(2));
+                                        var tipo = obtenerValorSeleccionado();
+                                        var total_venta = parseFloat($("#total_venta").html()) || 0;
+
+                                        if (tipo === '1') {
+                                            var valor = 0;
+                                            if (!isNaN($("#pago_v").val()) && $("#pago_v").val() !== '') {
+                                                valor = parseFloat($("#pago_v").val());
+                                            }
+                                            var cambio = valor - total_venta;
+                                            if (cambio < 0) {
+                                                $("#cambio_v").html('0.00');
+                                            } else {
+                                                $("#cambio_v").html(cambio.toFixed(2));
+                                            }
+                                        } else if (tipo === '4') {
+                                            var efe = parseFloat($('#importe_efectivo').val()) || 0;
+                                            var tra = parseFloat($('#importe_transferencia').val()) || 0;
+                                            var tar = parseFloat($('#importe_tarjeta').val()) || 0;
+                                            var suma = efe + tra + tar;
+                                            var exceso = suma - total_venta;
+                                            if (exceso > 0 && efe >= exceso) {
+                                                $("#cambio_v").html(exceso.toFixed(2));
+                                            } else {
+                                                $("#cambio_v").html('0.00');
+                                            }
+                                        } else {
+                                            $("#cambio_v").html('0.00');
                                         }
                                     }
 
@@ -1096,8 +1111,9 @@ if (isset($_GET['id_venta'])) {
                                             // Si hay errores, no hacer nada
                                             event.stopPropagation();
                                         } else {
-                                            guarda_venta();// Llama a la función JavaScript para agregar a la tabla
-                                            $('#Modalventa').modal('hide');
+                                            if (guarda_venta()) {
+                                                $('#Modalventa').modal('hide');
+                                            }
                                         }
                                         // Agregar la clase "was-validated" para mostrar los errores
                                         myForm_venta.classList.add('was-validated');
@@ -1182,13 +1198,19 @@ if (isset($_GET['id_venta'])) {
                                         id_cliente = $("#id_cliente").val();
                                         id_venta = $("#id_venta").val();
                                         id_empleado = $("#id_empleado").val();
-                                        importe_recibido = $("#pago_v").val();
                                         comentarios = $("#comentarios_v").val();
 
                                         tipo_pago = obtenerValorSeleccionado();
                                         importe_efectivo = $("#importe_efectivo").val() || 0;
                                         importe_transferencia = $("#importe_transferencia").val() || 0;
                                         importe_tarjeta = $("#importe_tarjeta").val() || 0;
+
+                                        if (tipo_pago === '4') {
+                                            importe_recibido = (parseFloat(importe_efectivo) || 0) + (parseFloat(importe_transferencia) || 0) + (parseFloat(importe_tarjeta) || 0);
+                                        } else {
+                                            importe_recibido = $("#pago_v").val();
+                                        }
+
                                         //id_consecutivo = $("#id_consecutivo").val();
                                         id_consecutivo = consecutivo;
                                         var parametros = {"codigo": codigo, "precio_venta": precio_venta, "cantidad": cantidad, "id_cliente": id_cliente, "id_venta": id_venta,
@@ -1253,14 +1275,26 @@ if ($descripcion_corta == 1) {
                                     function elimina_venta(codigo, cantidad, precio_venta, consecutivo, movimiento) {
                                         edita_venta(0, 0, 0, 0, 3, '', '');
                                     }
+                                    function mostrarErrorModalVenta(mensaje) {
+                                        $('#alert_modal_venta').html(mensaje).show();
+                                    }
+                                    function ocultarErrorModalVenta() {
+                                        $('#alert_modal_venta').hide().empty();
+                                    }
                                     function cerrar_venta(codigo, cantidad, precio_venta, consecutivo, movimiento) {
+                                        ocultarErrorModalVenta();
                                         var myModal = new bootstrap.Modal(document.getElementById("Modalventa"), {});
                                         myModal.show();
                                         $("#ModalLabelTitle3").html("Cerrar venta");
                                         $("#total_v").html($("#total_venta").html());
-                                        calculacambio();
+                                        var tipo = obtenerValorSeleccionado() || '1';
+                                        actualizarVisibilidadFormaPago(tipo);
                                         setTimeout(() => {
-                                            $("#pago_v").focus();
+                                            if (tipo === '1') {
+                                                $("#pago_v").focus();
+                                            } else if (tipo === '4') {
+                                                $("#importe_efectivo").focus();
+                                            }
                                         }, 500);
                                     }
                                     function agrega_cliente() {
@@ -1303,12 +1337,33 @@ if ($descripcion_corta == 1) {
                                     }
                                     function guarda_venta()
                                     {
-                                        if (obtenerValorSeleccionado() === '4') {
-                                            var total = parseFloat($("#total_venta").html()) || 0;
-                                            var desglose = (parseFloat($("#importe_efectivo").val()) || 0) + (parseFloat($("#importe_transferencia").val()) || 0) + (parseFloat($("#importe_tarjeta").val()) || 0);
-                                            if (Math.abs(total - desglose) > 0.009) { alert('La suma de efectivo, transferencia y tarjeta debe coincidir con el total de la venta.'); return; }
+                                        ocultarErrorModalVenta();
+                                        var tipo = obtenerValorSeleccionado();
+                                        var total = parseFloat($("#total_venta").html()) || 0;
+
+                                        if (tipo === '1') {
+                                            var pago = parseFloat($("#pago_v").val()) || 0;
+                                            if (pago < total - 0.009) {
+                                                mostrarErrorModalVenta('El importe recibido en efectivo es menor al total de la venta.');
+                                                return false;
+                                            }
+                                        } else if (tipo === '4') {
+                                            var efe = parseFloat($("#importe_efectivo").val()) || 0;
+                                            var tra = parseFloat($("#importe_transferencia").val()) || 0;
+                                            var tar = parseFloat($("#importe_tarjeta").val()) || 0;
+                                            var suma = efe + tra + tar;
+                                            if (suma < total - 0.009) {
+                                                mostrarErrorModalVenta('La suma de efectivo, transferencia y tarjeta no alcanza el total de la venta.');
+                                                return false;
+                                            }
+                                            var exceso = suma - total;
+                                            if (exceso > 0.009 && efe < exceso - 0.009) {
+                                                mostrarErrorModalVenta('La transferencia y tarjeta no pueden exceder el total de la venta.');
+                                                return false;
+                                            }
                                         }
                                         edita_venta(0, 0, 0, 0, 5, '', '');
+                                        return true;
                                     }
                                     function llenadatosimpresion()
                                     {
@@ -1361,7 +1416,14 @@ if ($descripcion_corta == 1) {
                                         });
 
                                         $("#total_venta_i").html($("#total_venta").html());
-                                        $("#recibido_i").html($("#pago_v").val());
+                                        if (obtenerValorSeleccionado() === '4') {
+                                            var efe = parseFloat($("#importe_efectivo").val()) || 0;
+                                            var tra = parseFloat($("#importe_transferencia").val()) || 0;
+                                            var tar = parseFloat($("#importe_tarjeta").val()) || 0;
+                                            $("#recibido_i").html((efe + tra + tar).toFixed(2));
+                                        } else {
+                                            $("#recibido_i").html($("#pago_v").val());
+                                        }
                                         calculacambio();
                                         $("#cambio_i").html($("#cambio_v").html());
                                     }
@@ -1520,35 +1582,36 @@ if ($descripcion_corta == 1) {
                                             return null; // En caso de que ningún botón esté seleccionado
                                         }
                                     }
+                                    function actualizarVisibilidadFormaPago(val) {
+                                        ocultarErrorModalVenta();
+                                        var esEfectivo = val === '1';
+                                        var esMixto = val === '4';
+
+                                        $('#div_importe_recibido').toggle(esEfectivo);
+                                        $('#pago_v').prop('required', esEfectivo);
+                                        $('#desglose_mixto').toggle(esMixto);
+
+                                        calculacambio();
+                                    }
+
                                     $('input[name="opcion"]').on('change', function () {
-                                        var mixto = this.value === '4';
-                                        $('#desglose_mixto').toggle(mixto);
-                                        $('#pago_v').prop('required', !mixto);
-                                        if (mixto) { $('#importe_efectivo, #importe_transferencia, #importe_tarjeta').val('0.00'); }
+                                        actualizarVisibilidadFormaPago(this.value);
+                                        if (this.value === '4') {
+                                            $('#importe_efectivo, #importe_transferencia, #importe_tarjeta').val('0.00');
+                                            $('#total_mixto').text('Suma: $0.00');
+                                        } else if (this.value === '1') {
+                                            $('#pago_v').val('');
+                                        }
                                     });
-                                    $('#importe_efectivo, #importe_transferencia, #importe_tarjeta').on('input', function () {
-                                        var suma = (parseFloat($('#importe_efectivo').val()) || 0) + (parseFloat($('#importe_transferencia').val()) || 0) + (parseFloat($('#importe_tarjeta').val()) || 0);
+
+                                    $('#pago_v, #importe_efectivo, #importe_transferencia, #importe_tarjeta').on('input change', function () {
+                                        ocultarErrorModalVenta();
+                                        var efe = parseFloat($('#importe_efectivo').val()) || 0;
+                                        var tra = parseFloat($('#importe_transferencia').val()) || 0;
+                                        var tar = parseFloat($('#importe_tarjeta').val()) || 0;
+                                        var suma = efe + tra + tar;
                                         $('#total_mixto').text('Suma: $' + suma.toFixed(2));
-                                    });
-                                    document.addEventListener('DOMContentLoaded', function () {
-                                        const radios = document.querySelectorAll('input[name="opcion"]');
-                                        const pagoInput = document.getElementById('pago_v');
-
-                                        radios.forEach(radio => {
-                                            radio.addEventListener('change', function () {
-                                                if (this.value === '1') {
-                                                    pagoInput.disabled = false;
-                                                    pagoInput.value = '';
-                                                    //pagoInput.placeholder = "Ingrese el monto";
-                                                } else {
-                                                    pagoInput.disabled = true;
-                                                    pagoInput.value = '0';
-                                                    //pagoInput.placeholder = "No aplica para esta opción";
-                                                }
-                                                calculacambio();
-                                            });
-                                        });
-
+                                        calculacambio();
                                     });
 
     </script>      

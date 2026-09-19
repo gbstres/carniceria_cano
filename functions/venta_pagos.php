@@ -8,14 +8,23 @@ function guardarPagosVenta($link, $id_sucursal, $id_venta, $tipo_pago, $importe_
     $importe_transferencia = round((float) $importe_transferencia, 2);
     $importe_tarjeta = round((float) $importe_tarjeta, 2);
     $id_usuario = (int) $id_usuario;
+
+    // Si la suma del desglose de pago mixto excede el total de la venta, ajustar el efectivo deduciendo el cambio entregado
+    $total_row = mysqli_fetch_assoc(mysqli_query($link, "SELECT COALESCE(SUM(ROUND(cantidad * precio_venta, 2)), 0) total FROM cc_ventas WHERE id_sucursal = $id_sucursal AND id_venta = $id_venta AND estatus <> 2"));
+    $total_venta = round((float) $total_row['total'], 2);
+    $suma = round($importe_efectivo + $importe_transferencia + $importe_tarjeta, 2);
+    if ($suma > $total_venta) {
+        $exceso = round($suma - $total_venta, 2);
+        $importe_efectivo = max(0, round($importe_efectivo - $exceso, 2));
+    }
+
     mysqli_query($link, "DELETE FROM cc_ventas_pagos WHERE id_sucursal = $id_sucursal AND id_venta = $id_venta");
     $pagos = [];
     if ($importe_efectivo > 0) $pagos[1] = $importe_efectivo;
     if ($importe_transferencia > 0) $pagos[2] = $importe_transferencia;
     if ($importe_tarjeta > 0) $pagos[3] = $importe_tarjeta;
     if (!$pagos && $tipo_pago > 0) {
-        $total = mysqli_fetch_assoc(mysqli_query($link, "SELECT COALESCE(SUM(ROUND(cantidad * precio_venta, 2)), 0) total FROM cc_ventas WHERE id_sucursal = $id_sucursal AND id_venta = $id_venta AND estatus <> 2"));
-        $pagos[$tipo_pago] = round((float) $total['total'], 2);
+        $pagos[$tipo_pago] = $total_venta;
     }
     $sql = "INSERT INTO cc_ventas_pagos (id_sucursal, id_venta, tipo_pago, importe, id_usuario, fecha_ingreso, hora_ingreso) VALUES (?, ?, ?, ?, ?, ?, ?)";
     foreach ($pagos as $tipo => $importe) {
@@ -30,7 +39,15 @@ function validarPagosVenta($link, $id_sucursal, $id_venta, $tipo_pago, $importe_
     $total = mysqli_fetch_assoc(mysqli_query($link, "SELECT COALESCE(SUM(ROUND(cantidad * precio_venta, 2)), 0) total FROM cc_ventas WHERE id_sucursal = " . (int) $id_sucursal . " AND id_venta = " . (int) $id_venta . " AND estatus <> 2"));
     $total_venta = round((float) $total['total'], 2);
     $suma = round((float) $importe_efectivo + (float) $importe_transferencia + (float) $importe_tarjeta, 2);
-    if ((int) $tipo_pago === 4 && abs($suma - $total_venta) > 0.009) throw new Exception('La suma de efectivo, transferencia y tarjeta debe coincidir con el total de la venta.');
+    if ((int) $tipo_pago === 4) {
+        if ($suma < $total_venta - 0.009) {
+            throw new Exception('La suma de efectivo, transferencia y tarjeta no alcanza el total de la venta.');
+        }
+        $exceso = round($suma - $total_venta, 2);
+        if ($exceso > 0 && round((float) $importe_efectivo, 2) < $exceso - 0.009) {
+            throw new Exception('La transferencia y tarjeta no pueden exceder el total de la venta.');
+        }
+    }
     return $total_venta;
 }
 

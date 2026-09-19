@@ -756,6 +756,7 @@ function reporteMatrizNumeroNullable($value, $decimales)
             #detalle_sucursales .detalle-separador {
                 box-shadow: inset 3px 0 0 #6c757d;
             }
+            #informacion_sucursales tbody tr.detalle-cantidad-alerta > td,
             #detalle_sucursales tbody tr.detalle-cantidad-alerta > td {
                 background-color: #f8d7da !important;
                 color: #842029;
@@ -788,6 +789,7 @@ function reporteMatrizNumeroNullable($value, $decimales)
                 table {
                     font-size: 9px !important;
                 }
+                #informacion_sucursales tbody tr.detalle-cantidad-alerta > td,
                 #detalle_sucursales tbody tr.detalle-cantidad-alerta > td {
                     background-color: #f8d7da !important;
                     color: #842029 !important;
@@ -887,7 +889,11 @@ function reporteMatrizNumeroNullable($value, $decimales)
                             </div>
                         </div>
 
-                        <div class="table-responsive mt-4">
+                        <p class="small no-print mt-4 mb-2">
+                            <span class="badge" style="background:#f8d7da;color:#842029;">Alerta</span>
+                            La cantidad vendida por MATRIZ es mayor que la cantidad vendida por la sucursal.
+                        </p>
+                        <div class="table-responsive">
                             <table id="informacion_sucursales" class="display" style="width:100%">
                                 <thead>
                                     <tr>
@@ -911,8 +917,13 @@ function reporteMatrizNumeroNullable($value, $decimales)
                                 </thead>
                                 <tbody>
                                     <?php foreach ($clientes as $cliente): ?>
-                                        <?php $datos = $cliente['id_sucursal'] !== null ? ($datosSucursales[(int) $cliente['id_sucursal']] ?? null) : null; ?>
-                                        <tr>
+                                        <?php
+                                        $datos = $cliente['id_sucursal'] !== null ? ($datosSucursales[(int) $cliente['id_sucursal']] ?? null) : null;
+                                        $cantidadMatrizResumen = (float) ($cliente['cantidad_ventas'] ?? 0);
+                                        $cantidadSucursalResumen = (float) ($datos['cantidad_sucursal'] ?? 0);
+                                        $claseAlertaResumen = $cantidadMatrizResumen > $cantidadSucursalResumen ? 'detalle-cantidad-alerta' : '';
+                                        ?>
+                                        <tr class="<?php echo $claseAlertaResumen; ?>">
                                             <td><?php echo htmlspecialchars($cliente['nombre'], ENT_QUOTES, 'UTF-8'); ?></td>
                                             <td class="text-end"><?php echo number_format($cliente['cantidad_ventas'], 3); ?></td>
                                             <td class="text-end"><?php echo number_format($cliente['ventas'], 2); ?></td>
