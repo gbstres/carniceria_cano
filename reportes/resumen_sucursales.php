@@ -730,6 +730,19 @@ function reporteMatrizNumeroNullable($value, $decimales)
 {
     return $value === null ? '—' : number_format((float) $value, $decimales);
 }
+
+function reporteMatrizFormatearGananciaNullable($value, $decimales = 2)
+{
+    if ($value === null) {
+        return '—';
+    }
+    $num = (float) $value;
+    $formateado = number_format($num, $decimales);
+    if ($num < 0) {
+        return '<span class="text-danger fw-bold">' . $formateado . '</span>';
+    }
+    return $formateado;
+}
 ?>
 <!doctype html>
 <html lang="es">
@@ -866,16 +879,16 @@ function reporteMatrizNumeroNullable($value, $decimales)
                             <div class="col-md">
                                 <div class="card metric-card h-100">
                                     <div class="card-body">
-                                        <div class="text-muted">Venta sucursal (imp. V)</div>
-                                        <div class="fs-4 fw-bold">$<?php echo number_format($totales['ventas_sucursal'], 2); ?></div>
+                                        <div class="text-muted">Venta sucursal (imp. C)</div>
+                                        <div class="fs-4 fw-bold">$<?php echo number_format($totales['ventas_sucursal_compra'], 2); ?></div>
                                     </div>
                                 </div>
                             </div>
                             <div class="col-md">
                                 <div class="card metric-card h-100">
                                     <div class="card-body">
-                                        <div class="text-muted">Venta sucursal (imp. C)</div>
-                                        <div class="fs-4 fw-bold">$<?php echo number_format($totales['ventas_sucursal_compra'], 2); ?></div>
+                                        <div class="text-muted">Venta sucursal (imp. V)</div>
+                                        <div class="fs-4 fw-bold">$<?php echo number_format($totales['ventas_sucursal'], 2); ?></div>
                                     </div>
                                 </div>
                             </div>
@@ -903,14 +916,14 @@ function reporteMatrizNumeroNullable($value, $decimales)
                                     <tr>
                                         <th>Cliente en matriz</th>
                                         <th>Cantidad</th>
-                                        <th>Ventas (imp. V)</th>
                                         <th>Ventas (imp. C)</th>
+                                        <th>Ventas (imp. V)</th>
                                         <th>Ganancia</th>
                                         <th>Sucursal relacionada</th>
                                         <th>Valor stock</th>
                                         <th>Cantidad</th>
-                                        <th>Venta (imp. V)</th>
                                         <th>Venta (imp. C)</th>
+                                        <th>Venta (imp. V)</th>
                                         <th>Ganancia</th>
                                         <th>Compras sucursal</th>
                                     </tr>
@@ -926,15 +939,15 @@ function reporteMatrizNumeroNullable($value, $decimales)
                                         <tr class="<?php echo $claseAlertaResumen; ?>">
                                             <td><?php echo htmlspecialchars($cliente['nombre'], ENT_QUOTES, 'UTF-8'); ?></td>
                                             <td class="text-end"><?php echo number_format($cliente['cantidad_ventas'], 3); ?></td>
-                                            <td class="text-end"><?php echo number_format($cliente['ventas'], 2); ?></td>
                                             <td class="text-end"><?php echo number_format($cliente['ventas_compra'], 2); ?></td>
-                                            <td class="text-end"><?php echo number_format($cliente['ganancia_ventas'], 2); ?></td>
+                                            <td class="text-end"><?php echo number_format($cliente['ventas'], 2); ?></td>
+                                            <td class="text-end" data-order="<?php echo (float) $cliente['ganancia_ventas']; ?>"><?php echo reporteMatrizFormatearGananciaNullable($cliente['ganancia_ventas'], 2); ?></td>
                                             <td><?php echo htmlspecialchars($cliente['desc_sucursal'] ?: '—', ENT_QUOTES, 'UTF-8'); ?></td>
                                             <td class="text-end"><?php echo $datos === null ? '—' : number_format($datos['valor_productos'] + $datos['valor_categorias'], 2); ?></td>
                                             <td class="text-end"><?php echo $datos === null ? '—' : number_format($datos['cantidad_sucursal'], 3); ?></td>
-                                            <td class="text-end"><?php echo $datos === null ? '—' : number_format($datos['ventas_sucursal'], 2); ?></td>
                                             <td class="text-end"><?php echo $datos === null ? '—' : number_format($datos['ventas_sucursal_compra'], 2); ?></td>
-                                            <td class="text-end"><?php echo $datos === null ? '—' : number_format($datos['ganancia_sucursal'], 2); ?></td>
+                                            <td class="text-end"><?php echo $datos === null ? '—' : number_format($datos['ventas_sucursal'], 2); ?></td>
+                                            <td class="text-end"<?php echo $datos === null ? '' : ' data-order="' . (float) $datos['ganancia_sucursal'] . '"'; ?>><?php echo $datos === null ? '—' : reporteMatrizFormatearGananciaNullable($datos['ganancia_sucursal'], 2); ?></td>
                                             <td class="text-end"><?php echo $datos === null ? '—' : number_format($datos['compras'], 2); ?></td>
                                         </tr>
                                     <?php endforeach; ?>
@@ -943,15 +956,15 @@ function reporteMatrizNumeroNullable($value, $decimales)
                                     <tr>
                                         <th>Total</th>
                                         <th class="text-end"><?php echo number_format($totales['cantidad_ventas'], 3); ?></th>
-                                        <th class="text-end"><?php echo number_format($totales['ventas'], 2); ?></th>
                                         <th class="text-end"><?php echo number_format($totales['ventas_compra'], 2); ?></th>
-                                        <th class="text-end"><?php echo number_format($totales['ganancia_ventas'], 2); ?></th>
+                                        <th class="text-end"><?php echo number_format($totales['ventas'], 2); ?></th>
+                                        <th class="text-end"><?php echo reporteMatrizFormatearGananciaNullable($totales['ganancia_ventas'], 2); ?></th>
                                         <th></th>
                                         <th class="text-end"><?php echo number_format($totales['valor_productos'] + $totales['valor_categorias'], 2); ?></th>
                                         <th class="text-end"><?php echo number_format($totales['cantidad_sucursal'], 3); ?></th>
-                                        <th class="text-end"><?php echo number_format($totales['ventas_sucursal'], 2); ?></th>
                                         <th class="text-end"><?php echo number_format($totales['ventas_sucursal_compra'], 2); ?></th>
-                                        <th class="text-end"><?php echo number_format($totales['ganancia_sucursal'], 2); ?></th>
+                                        <th class="text-end"><?php echo number_format($totales['ventas_sucursal'], 2); ?></th>
+                                        <th class="text-end"><?php echo reporteMatrizFormatearGananciaNullable($totales['ganancia_sucursal'], 2); ?></th>
                                         <th class="text-end"><?php echo number_format($totales['compras'], 2); ?></th>
                                     </tr>
                                 </tfoot>
@@ -981,14 +994,14 @@ function reporteMatrizNumeroNullable($value, $decimales)
                                                 <th>Cliente</th>
                                                  <th>Categoría global</th>
                                                 <th>Cantidad</th>
-                                                <th>Ventas (imp. V)</th>
                                                 <th>Ventas (imp. C)</th>
+                                                <th>Ventas (imp. V)</th>
                                                 <th>Ganancia</th>
                                                 <th class="detalle-separador">Sucursal relacionada</th>
                                                 <th>Valor stock</th>
                                                 <th>Cantidad</th>
-                                                <th>Venta (imp. V)</th>
                                                 <th>Venta (imp. C)</th>
+                                                <th>Venta (imp. V)</th>
                                                 <th>Ganancia</th>
                                                 <th>Compras</th>
                                             </tr>
@@ -1003,14 +1016,14 @@ function reporteMatrizNumeroNullable($value, $decimales)
                                                 <th>Producto</th>
                                                 <th>Categoría</th>
                                                 <th>Cantidad</th>
-                                                <th>Ventas (imp. V)</th>
                                                 <th>Ventas (imp. C)</th>
+                                                <th>Ventas (imp. V)</th>
                                                 <th>Ganancia</th>
                                                 <th class="detalle-separador">Sucursal relacionada</th>
                                                 <th>Valor stock</th>
                                                 <th>Cantidad</th>
-                                                <th>Venta (imp. V)</th>
                                                 <th>Venta (imp. C)</th>
+                                                <th>Venta (imp. V)</th>
                                                 <th>Ganancia</th>
                                                 <th>Compras</th>
                                             </tr>
@@ -1030,15 +1043,15 @@ function reporteMatrizNumeroNullable($value, $decimales)
                                                     <td><?php echo htmlspecialchars($detalle['nombre_cliente'], ENT_QUOTES, 'UTF-8'); ?></td>
                                                     <td><?php echo htmlspecialchars($detalle['desc_categoria'] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
                                                     <td class="text-end"><?php echo number_format((float) $detalle['cantidad_matriz'], 3); ?></td>
-                                                    <td class="text-end"><?php echo number_format((float) $detalle['ventas'], 2); ?></td>
                                                     <td class="text-end"><?php echo number_format((float) $detalle['ventas_compra'], 2); ?></td>
-                                                    <td class="text-end"><?php echo number_format((float) $detalle['ganancia_matriz'], 2); ?></td>
+                                                    <td class="text-end"><?php echo number_format((float) $detalle['ventas'], 2); ?></td>
+                                                    <td class="text-end" data-order="<?php echo (float) ($detalle['ganancia_matriz'] ?? 0); ?>"><?php echo reporteMatrizFormatearGananciaNullable($detalle['ganancia_matriz'], 2); ?></td>
                                                     <td class="detalle-separador"><?php echo htmlspecialchars($detalle['desc_sucursal'] ?: '—', ENT_QUOTES, 'UTF-8'); ?></td>
                                                     <td class="text-end"><?php echo reporteMatrizNumeroNullable($detalle['valor_stock'], 2); ?></td>
                                                     <td class="text-end"><?php echo reporteMatrizNumeroNullable($detalle['cantidad_sucursal'], 3); ?></td>
-                                                    <td class="text-end"><?php echo reporteMatrizNumeroNullable($detalle['ventas_sucursal'], 2); ?></td>
                                                     <td class="text-end"><?php echo reporteMatrizNumeroNullable($detalle['ventas_sucursal_compra'], 2); ?></td>
-                                                    <td class="text-end"><?php echo reporteMatrizNumeroNullable($detalle['ganancia_sucursal'], 2); ?></td>
+                                                    <td class="text-end"><?php echo reporteMatrizNumeroNullable($detalle['ventas_sucursal'], 2); ?></td>
+                                                    <td class="text-end"<?php echo $detalle['ganancia_sucursal'] === null ? '' : ' data-order="' . (float) $detalle['ganancia_sucursal'] . '"'; ?>><?php echo reporteMatrizFormatearGananciaNullable($detalle['ganancia_sucursal'], 2); ?></td>
                                                     <td class="text-end"><?php echo reporteMatrizNumeroNullable($detalle['compras'], 2); ?></td>
                                                 </tr>
                                             <?php else: ?>
@@ -1048,15 +1061,15 @@ function reporteMatrizNumeroNullable($value, $decimales)
                                                     <td><?php echo htmlspecialchars($detalle['descripcion'] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
                                                     <td><?php echo htmlspecialchars($detalle['desc_categoria'] ?? '', ENT_QUOTES, 'UTF-8'); ?></td>
                                                     <td class="text-end"><?php echo number_format((float) $detalle['cantidad_matriz'], 3); ?></td>
-                                                    <td class="text-end"><?php echo number_format((float) $detalle['ventas'], 2); ?></td>
                                                     <td class="text-end"><?php echo number_format((float) $detalle['ventas_compra'], 2); ?></td>
-                                                    <td class="text-end"><?php echo number_format((float) $detalle['ganancia_matriz'], 2); ?></td>
+                                                    <td class="text-end"><?php echo number_format((float) $detalle['ventas'], 2); ?></td>
+                                                    <td class="text-end" data-order="<?php echo (float) ($detalle['ganancia_matriz'] ?? 0); ?>"><?php echo reporteMatrizFormatearGananciaNullable($detalle['ganancia_matriz'], 2); ?></td>
                                                     <td class="detalle-separador"><?php echo htmlspecialchars($detalle['desc_sucursal'] ?: '—', ENT_QUOTES, 'UTF-8'); ?></td>
                                                     <td class="text-end"><?php echo reporteMatrizNumeroNullable($detalle['valor_stock'], 2); ?></td>
                                                     <td class="text-end"><?php echo reporteMatrizNumeroNullable($detalle['cantidad_sucursal'], 3); ?></td>
-                                                    <td class="text-end"><?php echo reporteMatrizNumeroNullable($detalle['ventas_sucursal'], 2); ?></td>
                                                     <td class="text-end"><?php echo reporteMatrizNumeroNullable($detalle['ventas_sucursal_compra'], 2); ?></td>
-                                                    <td class="text-end"><?php echo reporteMatrizNumeroNullable($detalle['ganancia_sucursal'], 2); ?></td>
+                                                    <td class="text-end"><?php echo reporteMatrizNumeroNullable($detalle['ventas_sucursal'], 2); ?></td>
+                                                    <td class="text-end"<?php echo $detalle['ganancia_sucursal'] === null ? '' : ' data-order="' . (float) $detalle['ganancia_sucursal'] . '"'; ?>><?php echo reporteMatrizFormatearGananciaNullable($detalle['ganancia_sucursal'], 2); ?></td>
                                                     <td class="text-end"><?php echo reporteMatrizNumeroNullable($detalle['compras'], 2); ?></td>
                                                 </tr>
                                             <?php endif; ?>
