@@ -64,6 +64,7 @@ if (in_array($ccHost, ['localhost', '127.0.0.1', '::1'], true)) {
                         <li><a class="dropdown-item" href="../reportes/compras_vs_ventas.php">Compras vs Ventas</a></li>
                         <li><a class="dropdown-item" href="../reportes/resumen_sucursales.php">Resumen sucursales</a></li>
                         <li><a class="dropdown-item" href="../reportes/Ventas_categoria.php">Ventas x categoría</a></li>
+                        <li><a class="dropdown-item" href="../reportes/transferencias_tarjeta.php">Transferencias y tarjetas</a></li>
                         <li><a class="dropdown-item" href="../reportes/inventario_bitacora.php">Inventario y bitácora</a></li>';
                         } elseif ((int) ($_SESSION['rol'] ?? 0) === 3) {
                             echo '
