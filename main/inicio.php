@@ -1207,6 +1207,8 @@ if (isset($_GET['id_venta'])) {
 
                                         if (tipo_pago === '4') {
                                             importe_recibido = (parseFloat(importe_efectivo) || 0) + (parseFloat(importe_transferencia) || 0) + (parseFloat(importe_tarjeta) || 0);
+                                        } else if (tipo_pago === '2' || tipo_pago === '3') {
+                                            importe_recibido = parseFloat($("#total_venta").html()) || 0;
                                         } else {
                                             importe_recibido = $("#pago_v").val();
                                         }
@@ -1216,6 +1218,7 @@ if (isset($_GET['id_venta'])) {
                                         var parametros = {"codigo": codigo, "precio_venta": precio_venta, "cantidad": cantidad, "id_cliente": id_cliente, "id_venta": id_venta,
                                             "id_consecutivo": id_consecutivo, "movimiento": movimiento, "id_empleado": id_empleado, "importe_recibido": importe_recibido,
                                             "comentarios": comentarios, "tipo_pago": tipo_pago, "importe_efectivo": importe_efectivo, "importe_transferencia": importe_transferencia, "importe_tarjeta": importe_tarjeta, "clave_externa": clave_externa, "tipo_producto": tipo_producto};
+                                        var exito = false;
                                         $.ajax({
                                             url: "../functions/edita_venta.php",
                                             data: parametros,
@@ -1223,7 +1226,10 @@ if (isset($_GET['id_venta'])) {
                                             type: "POST",
                                             async: false,
                                             success: function (response) {
-                                                $("#id_venta").val(response[0].id_venta);
+                                                exito = true;
+                                                if (response && response[0] && response[0].id_venta) {
+                                                    $("#id_venta").val(response[0].id_venta);
+                                                }
                                                 console.log(response);
                                                 if (movimiento === 1)
                                                 {
@@ -1266,11 +1272,19 @@ if ($descripcion_corta == 1) {
                                                     $("#td_hora_a").html('Hora: ' + response[0].hora_ingreso);
                                                 }
                                             },
-                                            error: function (response) {
-                                                console.log(response);
-                                                id_venta = 0;
+                                            error: function (xhr) {
+                                                console.log(xhr);
+                                                exito = false;
+                                                var msg = 'Ocurrió un error al guardar la venta.';
+                                                if (xhr.responseJSON && xhr.responseJSON.error) {
+                                                    msg = xhr.responseJSON.error;
+                                                }
+                                                if (movimiento === 5) {
+                                                    mostrarErrorModalVenta(msg);
+                                                }
                                             }
                                         });
+                                        return exito;
                                     }
                                     function elimina_venta(codigo, cantidad, precio_venta, consecutivo, movimiento) {
                                         edita_venta(0, 0, 0, 0, 3, '', '');
@@ -1362,8 +1376,7 @@ if ($descripcion_corta == 1) {
                                                 return false;
                                             }
                                         }
-                                        edita_venta(0, 0, 0, 0, 5, '', '');
-                                        return true;
+                                        return edita_venta(0, 0, 0, 0, 5, '', '');
                                     }
                                     function llenadatosimpresion()
                                     {
@@ -1416,11 +1429,14 @@ if ($descripcion_corta == 1) {
                                         });
 
                                         $("#total_venta_i").html($("#total_venta").html());
-                                        if (obtenerValorSeleccionado() === '4') {
+                                        var tipoPagoSel = obtenerValorSeleccionado();
+                                        if (tipoPagoSel === '4') {
                                             var efe = parseFloat($("#importe_efectivo").val()) || 0;
                                             var tra = parseFloat($("#importe_transferencia").val()) || 0;
                                             var tar = parseFloat($("#importe_tarjeta").val()) || 0;
                                             $("#recibido_i").html((efe + tra + tar).toFixed(2));
+                                        } else if (tipoPagoSel === '2' || tipoPagoSel === '3') {
+                                            $("#recibido_i").html($("#total_venta").html());
                                         } else {
                                             $("#recibido_i").html($("#pago_v").val());
                                         }

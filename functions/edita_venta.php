@@ -183,11 +183,11 @@ else if ($_POST['movimiento'] == 4) {
 }
 // Cierra venta
 else if ($_POST['movimiento'] == 5) {
-    $id_usuario_act = $_SESSION["id"];
+    $id_usuario_act = (int) $_SESSION["id"];
     $fecha_act = date('Y-m-d');
     $hora_act = date('H:i:s');
-    $id_empleado = $_POST['id_empleado'];
-    $importe_recibido = $_POST['importe_recibido'];
+    $id_empleado = (int) $_POST['id_empleado'];
+    $importe_recibido_raw = $_POST['importe_recibido'] ?? '';
     $tipo_pago = (int) $_POST['tipo_pago'];
     $importe_efectivo = isset($_POST['importe_efectivo']) ? (float) $_POST['importe_efectivo'] : 0;
     $importe_transferencia = isset($_POST['importe_transferencia']) ? (float) $_POST['importe_transferencia'] : 0;
@@ -199,6 +199,15 @@ else if ($_POST['movimiento'] == 5) {
             $importe_transferencia = $tipo_pago === 2 ? $total_venta : 0;
             $importe_tarjeta = $tipo_pago === 3 ? $total_venta : 0;
         }
+
+        if ($tipo_pago === 1) {
+            $importe_recibido = $importe_recibido_raw !== '' ? (float) $importe_recibido_raw : $total_venta;
+        } else if ($tipo_pago === 4) {
+            $importe_recibido = (float) ($importe_efectivo + $importe_transferencia + $importe_tarjeta);
+        } else {
+            $importe_recibido = (float) $total_venta;
+        }
+
         mysqli_begin_transaction($link);
         $tipo_pago_compat = $tipo_pago === 4 ? 1 : $tipo_pago;
         $update1 = mysqli_query($link, "UPDATE cc_det_ventas SET estatus=1, id_empleado = $id_empleado, importe_recibido= $importe_recibido, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act='$id_usuario_act', tipo_pago='$tipo_pago_compat' WHERE id_sucursal='$id_sucursal' and id_venta='$id_venta'");
