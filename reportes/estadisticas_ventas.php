@@ -45,6 +45,11 @@ if ($sqlCats) {
 // -------------------------------------------------------------
 $whereCat = $id_categoria_filtro > 0 ? "AND p.id_categoria = $id_categoria_filtro" : "";
 
+$subqueryCatFilter = "";
+if ($id_categoria_filtro > 0) {
+    $subqueryCatFilter = "INNER JOIN cc_productos p_sub ON p_sub.id_sucursal = v.id_sucursal AND p_sub.codigo = v.codigo AND p_sub.id_categoria = $id_categoria_filtro";
+}
+
 $sqlVelocidadQuery = "
     SELECT 
         p.codigo,
@@ -66,6 +71,7 @@ $sqlVelocidadQuery = "
             SUM(ROUND(v.cantidad * v.precio_compra, 2)) AS total_costo
         FROM cc_det_ventas dv
         INNER JOIN cc_ventas v ON v.id_sucursal = dv.id_sucursal AND v.id_venta = dv.id_venta
+        $subqueryCatFilter
         WHERE dv.id_sucursal = $id_sucursal
           AND dv.fecha_ingreso BETWEEN '$fecha1Escaped' AND '$fecha2Escaped'
           AND dv.estatus IN (1, 3)
