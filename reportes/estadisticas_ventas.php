@@ -60,17 +60,17 @@ $sqlVelocidadQuery = "
     LEFT JOIN cc_categorias c ON c.id_sucursal = p.id_sucursal AND c.id_categoria = p.id_categoria
     LEFT JOIN (
         SELECT 
-            dv.codigo,
-            SUM(dv.cantidad) AS total_cant,
-            SUM(ROUND(dv.cantidad * dv.precio_venta, 2)) AS total_importe,
-            SUM(ROUND(dv.cantidad * dv.precio_compra, 2)) AS total_costo
+            v.codigo,
+            SUM(v.cantidad) AS total_cant,
+            SUM(ROUND(v.cantidad * v.precio_venta, 2)) AS total_importe,
+            SUM(ROUND(v.cantidad * v.precio_compra, 2)) AS total_costo
         FROM cc_det_ventas dv
         INNER JOIN cc_ventas v ON v.id_sucursal = dv.id_sucursal AND v.id_venta = dv.id_venta
         WHERE dv.id_sucursal = $id_sucursal
           AND dv.fecha_ingreso BETWEEN '$fecha1Escaped' AND '$fecha2Escaped'
           AND dv.estatus IN (1, 3)
           AND v.estatus <> 2
-        GROUP BY dv.codigo
+        GROUP BY v.codigo
     ) v ON v.codigo = p.codigo
     WHERE p.id_sucursal = $id_sucursal $whereCat
       AND (COALESCE(v.total_cant, 0) > 0 OR COALESCE(p.stock, 0) > 0)
@@ -122,11 +122,11 @@ if ($resVelocidad) {
 $sqlDiasSemanaQuery = "
     SELECT 
         DAYOFWEEK(dv.fecha_ingreso) as num_dia,
-        SUM(dv.cantidad) as total_cant,
-        SUM(ROUND(dv.cantidad * dv.precio_venta, 2)) as total_importe
+        SUM(v.cantidad) as total_cant,
+        SUM(ROUND(v.cantidad * v.precio_venta, 2)) as total_importe
     FROM cc_det_ventas dv
     INNER JOIN cc_ventas v ON v.id_sucursal = dv.id_sucursal AND v.id_venta = dv.id_venta
-    INNER JOIN cc_productos p ON p.id_sucursal = dv.id_sucursal AND p.codigo = dv.codigo
+    INNER JOIN cc_productos p ON p.id_sucursal = v.id_sucursal AND p.codigo = v.codigo
     WHERE dv.id_sucursal = $id_sucursal
       AND dv.fecha_ingreso BETWEEN '$fecha1Escaped' AND '$fecha2Escaped'
       AND dv.estatus IN (1, 3)
@@ -164,11 +164,11 @@ if ($resDiasSemana) {
 $sqlMensualQuery = "
     SELECT 
         DATE_FORMAT(dv.fecha_ingreso, '%Y-%m') as mes_anio,
-        SUM(dv.cantidad) as total_cant,
-        SUM(ROUND(dv.cantidad * dv.precio_venta, 2)) as total_importe
+        SUM(v.cantidad) as total_cant,
+        SUM(ROUND(v.cantidad * v.precio_venta, 2)) as total_importe
     FROM cc_det_ventas dv
     INNER JOIN cc_ventas v ON v.id_sucursal = dv.id_sucursal AND v.id_venta = dv.id_venta
-    INNER JOIN cc_productos p ON p.id_sucursal = dv.id_sucursal AND p.codigo = dv.codigo
+    INNER JOIN cc_productos p ON p.id_sucursal = v.id_sucursal AND p.codigo = v.codigo
     WHERE dv.id_sucursal = $id_sucursal
       AND dv.estatus IN (1, 3)
       AND v.estatus <> 2
