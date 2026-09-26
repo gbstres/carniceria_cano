@@ -5,7 +5,27 @@ if (PHP_SAPI !== 'cli') {
     exit("Solo disponible desde CLI.\n");
 }
 
-require_once __DIR__ . "/config.php";
+$isRemote = false;
+global $argv;
+if (isset($argv) && is_array($argv)) {
+    foreach ($argv as $arg) {
+        if (in_array(strtolower($arg), ['--remote', '--gcp', 'remote', 'gcp'], true)) {
+            $isRemote = true;
+            break;
+        }
+    }
+}
+
+if ($isRemote) {
+    require_once __DIR__ . "/config_2.php";
+    $link = $link2;
+    $targetName = "BD Remota en GCP (34.172.184.194)";
+} else {
+    require_once __DIR__ . "/config.php";
+    $targetName = "BD Local";
+}
+
+fwrite(STDOUT, "=== Ejecutando Migraciones en $targetName ===\n\n");
 
 $migrationsDir = realpath(__DIR__ . "/../db/migrations");
 if ($migrationsDir === false || !is_dir($migrationsDir)) {
@@ -90,5 +110,5 @@ foreach ($files as $file) {
     $appliedCount++;
 }
 
-fwrite(STDOUT, "\nProceso finalizado. Migraciones aplicadas: $appliedCount, omitidas: $skippedCount.\n");
+fwrite(STDOUT, "\nProceso finalizado en $targetName. Migraciones aplicadas: $appliedCount, omitidas: $skippedCount.\n");
 exit(0);
