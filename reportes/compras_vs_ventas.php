@@ -97,6 +97,7 @@ $totProdComprasCant = 0;
 $totProdComprasImp = 0;
 $totProdVentasCant = 0;
 $totProdVentasImp = 0;
+$totProdVentasCost = 0;
 $totProdBalanceImp = 0;
 $totProdGananciaImp = 0;
 
@@ -111,11 +112,13 @@ if ($sqlProductos) {
         $difCant = $vCant - $cCant;
         $balance = $vImp - $cImp;
         $ganancia = $vImp - $vCost;
+        $pctMargen = ($vImp > 0) ? ($ganancia / $vImp) * 100 : 0;
 
         $totProdComprasCant += $cCant;
         $totProdComprasImp += $cImp;
         $totProdVentasCant += $vCant;
         $totProdVentasImp += $vImp;
+        $totProdVentasCost += $vCost;
         $totProdBalanceImp += $balance;
         $totProdGananciaImp += $ganancia;
 
@@ -129,12 +132,16 @@ if ($sqlProductos) {
             'compras_importe' => $cImp,
             'ventas_cant' => $vCant,
             'ventas_importe' => $vImp,
+            'ventas_costo' => $vCost,
             'dif_cant' => $difCant,
             'balance' => $balance,
             'ganancia' => $ganancia,
+            'pct_margen' => $pctMargen,
         ];
     }
 }
+
+$totGlobalPctMargen = ($totProdVentasImp > 0) ? ($totProdGananciaImp / $totProdVentasImp) * 100 : 0;
 
 // Consulta de Categorías (Compras vs Ventas)
 $sqlCategoriasQuery = "
@@ -199,6 +206,7 @@ $totCatComprasCant = 0;
 $totCatComprasImp = 0;
 $totCatVentasCant = 0;
 $totCatVentasImp = 0;
+$totCatVentasCost = 0;
 $totCatBalanceImp = 0;
 $totCatGananciaImp = 0;
 
@@ -213,11 +221,13 @@ if ($sqlCategorias) {
         $difCant = $vCant - $cCant;
         $balance = $vImp - $cImp;
         $ganancia = $vImp - $vCost;
+        $pctMargenCat = ($vImp > 0) ? ($ganancia / $vImp) * 100 : 0;
 
         $totCatComprasCant += $cCant;
         $totCatComprasImp += $cImp;
         $totCatVentasCant += $vCant;
         $totCatVentasImp += $vImp;
+        $totCatVentasCost += $vCost;
         $totCatBalanceImp += $balance;
         $totCatGananciaImp += $ganancia;
 
@@ -228,12 +238,15 @@ if ($sqlCategorias) {
             'compras_importe' => $cImp,
             'ventas_cant' => $vCant,
             'ventas_importe' => $vImp,
+            'ventas_costo' => $vCost,
             'dif_cant' => $difCant,
             'balance' => $balance,
             'ganancia' => $ganancia,
+            'pct_margen' => $pctMargenCat,
         ];
     }
 }
+$totCatGlobalPctMargen = ($totCatVentasImp > 0) ? ($totCatGananciaImp / $totCatVentasImp) * 100 : 0;
 ?>
 <!doctype html>
 <html lang="es">
@@ -295,6 +308,49 @@ if ($sqlCategorias) {
                         </div>
                     </div>
 
+                    <!-- Tarjetas Resumen (KPIs de Margen y Rentabilidad) -->
+                    <div class="row mb-4 g-3">
+                        <div class="col-md-3">
+                            <div class="card bg-primary text-white shadow-sm border-0 h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title text-uppercase text-white-50 small fw-bold mb-1">Ventas Totales</h6>
+                                    <h3 class="card-text mb-1">$<?php echo number_format($totProdVentasImp, 2); ?></h3>
+                                    <small class="text-white-50"><?php echo number_format($totProdVentasCant, 3); ?> unidades/kg</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-secondary text-white shadow-sm border-0 h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title text-uppercase text-white-50 small fw-bold mb-1">Costo de Ventas</h6>
+                                    <h3 class="card-text mb-1">$<?php echo number_format($totProdVentasCost, 2); ?></h3>
+                                    <small class="text-white-50">Costo total de producto vendido</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="card bg-success text-white shadow-sm border-0 h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title text-uppercase text-white-50 small fw-bold mb-1">Ganancia Bruta Est.</h6>
+                                    <h3 class="card-text mb-1">$<?php echo number_format($totProdGananciaImp, 2); ?></h3>
+                                    <small class="text-white-50">Utilidad del periodo</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <?php
+                            $cardBgClass = ($totGlobalPctMargen >= 25) ? 'bg-success' : (($totGlobalPctMargen >= 10) ? 'bg-warning text-dark' : 'bg-danger');
+                            ?>
+                            <div class="card <?php echo $cardBgClass; ?> shadow-sm border-0 h-100">
+                                <div class="card-body">
+                                    <h6 class="card-title text-uppercase text-white-50 small fw-bold mb-1">Margen Real Global</h6>
+                                    <h3 class="card-text mb-1"><?php echo number_format($totGlobalPctMargen, 1); ?>%</h3>
+                                    <small class="text-white-50">Rentabilidad media general</small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="col-sm mx-auto">
                         <h3 class="text-left">Productos (Compras vs Ventas)</h3>
                     </div>
@@ -314,6 +370,7 @@ if ($sqlCategorias) {
                                     <th>Dif. Cant.</th>
                                     <th>Balance ($)</th>
                                     <th>Ganancia Est. ($)</th>
+                                    <th>Margen %</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -321,6 +378,15 @@ if ($sqlCategorias) {
                                 foreach ($listaProductos as $prod) {
                                     $classBalance = $prod['balance'] >= 0 ? 'text-success' : 'text-danger';
                                     $classGanancia = $prod['ganancia'] >= 0 ? 'text-success' : 'text-danger';
+                                    
+                                    if ($prod['ventas_importe'] == 0) {
+                                        $badgeMargen = '<span class="badge bg-secondary">N/A</span>';
+                                    } else {
+                                        $pct = $prod['pct_margen'];
+                                        $badgeClass = ($pct >= 25) ? 'bg-success' : (($pct >= 10) ? 'bg-warning text-dark' : 'bg-danger');
+                                        $badgeMargen = '<span class="badge ' . $badgeClass . '">' . number_format($pct, 1) . '%</span>';
+                                    }
+
                                     echo '<tr>
                                         <td>' . htmlspecialchars($prod["codigo"], ENT_QUOTES, "UTF-8") . '</td>
                                         <td>' . htmlspecialchars($prod["descripcion"], ENT_QUOTES, "UTF-8") . '</td>
@@ -333,6 +399,7 @@ if ($sqlCategorias) {
                                         <td class="text-end">' . number_format($prod["dif_cant"], 3) . '</td>
                                         <td class="text-end fw-bold ' . $classBalance . '">$' . number_format($prod["balance"], 2) . '</td>
                                         <td class="text-end fw-bold ' . $classGanancia . '">$' . number_format($prod["ganancia"], 2) . '</td>
+                                        <td class="text-center">' . $badgeMargen . '</td>
                                     </tr>';
                                 }
                                 ?>
@@ -347,6 +414,7 @@ if ($sqlCategorias) {
                                     <th class="text-end"><?php echo number_format($totProdVentasCant - $totProdComprasCant, 3); ?></th>
                                     <th class="text-end">$<?php echo number_format($totProdBalanceImp, 2); ?></th>
                                     <th class="text-end">$<?php echo number_format($totProdGananciaImp, 2); ?></th>
+                                    <th class="text-center"><?php echo number_format($totGlobalPctMargen, 1); ?>%</th>
                                 </tr>
                             </tfoot>
                         </table>
@@ -370,6 +438,7 @@ if ($sqlCategorias) {
                                     <th>Dif. Cant.</th>
                                     <th>Balance ($)</th>
                                     <th>Ganancia Est. ($)</th>
+                                    <th>Margen %</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -377,6 +446,15 @@ if ($sqlCategorias) {
                                 foreach ($listaCategorias as $cat) {
                                     $classBalance = $cat['balance'] >= 0 ? 'text-success' : 'text-danger';
                                     $classGanancia = $cat['ganancia'] >= 0 ? 'text-success' : 'text-danger';
+
+                                    if ($cat['ventas_importe'] == 0) {
+                                        $badgeMargenCat = '<span class="badge bg-secondary">N/A</span>';
+                                    } else {
+                                        $pctCat = $cat['pct_margen'];
+                                        $badgeClassCat = ($pctCat >= 25) ? 'bg-success' : (($pctCat >= 10) ? 'bg-warning text-dark' : 'bg-danger');
+                                        $badgeMargenCat = '<span class="badge ' . $badgeClassCat . '">' . number_format($pctCat, 1) . '%</span>';
+                                    }
+
                                     echo '<tr>
                                         <td>' . htmlspecialchars($cat["id_categoria"], ENT_QUOTES, "UTF-8") . '</td>
                                         <td>' . htmlspecialchars($cat["desc_categoria"], ENT_QUOTES, "UTF-8") . '</td>
@@ -387,6 +465,7 @@ if ($sqlCategorias) {
                                         <td class="text-end">' . number_format($cat["dif_cant"], 3) . '</td>
                                         <td class="text-end fw-bold ' . $classBalance . '">$' . number_format($cat["balance"], 2) . '</td>
                                         <td class="text-end fw-bold ' . $classGanancia . '">$' . number_format($cat["ganancia"], 2) . '</td>
+                                        <td class="text-center">' . $badgeMargenCat . '</td>
                                     </tr>';
                                 }
                                 ?>
@@ -401,6 +480,7 @@ if ($sqlCategorias) {
                                     <th class="text-end"><?php echo number_format($totCatVentasCant - $totCatComprasCant, 3); ?></th>
                                     <th class="text-end">$<?php echo number_format($totCatBalanceImp, 2); ?></th>
                                     <th class="text-end">$<?php echo number_format($totCatGananciaImp, 2); ?></th>
+                                    <th class="text-center"><?php echo number_format($totCatGlobalPctMargen, 1); ?>%</th>
                                 </tr>
                             </tfoot>
                         </table>
@@ -592,7 +672,7 @@ if ($sqlCategorias) {
 
                             if (nombreCategoria !== ultimaCategoria) {
                                 $(rows).eq(indice).before(
-                                    '<tr class="category-group"><td colspan="10">' +
+                                    '<tr class="category-group"><td colspan="11">' +
                                     $('<div>').text(nombreCategoria).html() +
                                     '</td></tr>'
                                 );
