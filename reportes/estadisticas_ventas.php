@@ -51,7 +51,7 @@ $sqlVelocidadQuery = "
         p.descripcion,
         p.id_categoria,
         COALESCE(c.desc_categoria, 'Sin categoría') AS desc_categoria,
-        COALESCE(p.stock, 0) AS stock_actual,
+        COALESCE(p.almacen, 0) AS stock_actual,
         COALESCE(p.limite_stock, 0) AS limite_stock,
         COALESCE(v.total_cant, 0) AS total_cant,
         COALESCE(v.total_importe, 0) AS total_importe,
@@ -73,7 +73,7 @@ $sqlVelocidadQuery = "
         GROUP BY v.codigo
     ) v ON v.codigo = p.codigo
     WHERE p.id_sucursal = $id_sucursal $whereCat
-      AND (COALESCE(v.total_cant, 0) > 0 OR COALESCE(p.stock, 0) > 0)
+      AND (COALESCE(v.total_cant, 0) > 0 OR COALESCE(p.almacen, 0) <> 0)
     ORDER BY total_cant DESC, p.descripcion ASC
 ";
 
