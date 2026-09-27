@@ -23,7 +23,7 @@ $fecha2 = $_POST['fecha2'] ?? date('Y-m-d');
 $fecha1Escaped = mysqli_real_escape_string($link, $fecha1);
 $fecha2Escaped = mysqli_real_escape_string($link, $fecha2);
 
-// Consulta de Categorías (Compras vs Ventas y Stock de Cierre a fecha fin)
+// Consulta de Categorías (Compras vs Ventas y Stock de Cierre Híbrido)
 $sqlCategoriasQuery = "
     SELECT
         cat.id_categoria,
@@ -33,7 +33,11 @@ $sqlCategoriasQuery = "
         COALESCE(vent.ventas_cant, 0) AS ventas_cant,
         COALESCE(vent.ventas_costo, 0) AS ventas_costo,
         COALESCE(vent.ventas_importe, 0) AS ventas_importe,
-        COALESCE(stk.stock_cierre, cat.almacen, 0) AS stock_cierre
+        CASE 
+            WHEN stk_cat.stock_cierre IS NOT NULL AND stk_cat.stock_cierre <> 0 THEN stk_cat.stock_cierre
+            WHEN cat.almacen IS NOT NULL AND cat.almacen <> 0 THEN cat.almacen
+            ELSE COALESCE(stk_prod.stock_prod_cierre, p_curr.stock_prod_curr, 0)
+        END AS stock_cierre
     FROM cc_categorias cat
     LEFT JOIN (
         SELECT
@@ -72,6 +76,7 @@ $sqlCategoriasQuery = "
           AND v.estatus <> 2
         GROUP BY p.id_categoria
     ) vent ON vent.id_categoria = cat.id_categoria
+    -- Stock oficial registrado a nivel CATEGORIA en cierre de día
     LEFT JOIN (
         SELECT 
             CAST(cs.codigo AS UNSIGNED) AS id_categoria,
@@ -86,13 +91,37 @@ $sqlCategoriasQuery = "
         ) u_cierre ON cs.id_sucursal = u_cierre.id_sucursal AND cs.id_cierre = u_cierre.max_cierre
         WHERE cs.id_sucursal = $id_sucursal
           AND cs.tipo = 'CATEGORIA'
-    ) stk ON stk.id_categoria = cat.id_categoria
+    ) stk_cat ON stk_cat.id_categoria = cat.id_categoria
+    -- Suma de stock registrada a nivel PRODUCTO en cierre de día (para categorías sin stock de categoría directo)
+    LEFT JOIN (
+        SELECT 
+            cs.id_categoria,
+            SUM(cs.stock) AS stock_prod_cierre
+        FROM cc_cierre_stock cs
+        INNER JOIN (
+            SELECT id_sucursal, MAX(id_cierre) AS max_cierre
+            FROM cc_cierre
+            WHERE id_sucursal = $id_sucursal
+              AND fecha_ingreso <= '$fecha2Escaped'
+            GROUP BY id_sucursal
+        ) u_cierre ON cs.id_sucursal = u_cierre.id_sucursal AND cs.id_cierre = u_cierre.max_cierre
+        WHERE cs.id_sucursal = $id_sucursal
+          AND cs.tipo = 'PRODUCTO'
+        GROUP BY cs.id_categoria
+    ) stk_prod ON stk_prod.id_categoria = cat.id_categoria
+    -- Stock actual por suma de productos en linea
+    LEFT JOIN (
+        SELECT id_categoria, SUM(almacen) AS stock_prod_curr
+        FROM cc_productos
+        WHERE id_sucursal = $id_sucursal
+        GROUP BY id_categoria
+    ) p_curr ON p_curr.id_categoria = cat.id_categoria
     WHERE cat.id_sucursal = $id_sucursal
       AND (COALESCE(comp.compras_cant, 0) <> 0 
            OR COALESCE(comp.compras_importe, 0) <> 0 
            OR COALESCE(vent.ventas_cant, 0) <> 0 
            OR COALESCE(vent.ventas_importe, 0) <> 0
-           OR COALESCE(stk.stock_cierre, cat.almacen, 0) <> 0)
+           OR COALESCE(stk_cat.stock_cierre, cat.almacen, stk_prod.stock_prod_cierre, p_curr.stock_prod_curr, 0) <> 0)
     ORDER BY cat.desc_categoria
 ";
 
