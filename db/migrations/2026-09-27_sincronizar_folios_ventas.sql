@@ -7,3 +7,13 @@ WHERE NOT EXISTS (
     WHERE dv.id_sucursal = v.id_sucursal AND dv.id_venta = v.id_venta
 )
 GROUP BY v.id_sucursal, v.id_venta;
+
+-- Cancela borradores vacíos abandonados de días anteriores
+UPDATE cc_det_ventas 
+SET estatus = 2 
+WHERE estatus = 0 
+  AND fecha_ingreso < CURDATE() 
+  AND NOT EXISTS (
+      SELECT 1 FROM cc_ventas v 
+      WHERE v.id_sucursal = cc_det_ventas.id_sucursal AND v.id_venta = cc_det_ventas.id_venta
+  );
