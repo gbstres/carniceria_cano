@@ -221,7 +221,7 @@ $totGlobalPctMargen = ($totCatVentasImp > 0) ? ($totCatGananciaImp / $totCatVent
                                 <div class="card-body">
                                     <h6 class="card-title text-uppercase text-white-50 small fw-bold mb-1">Ventas Totales</h6>
                                     <h3 class="card-text mb-1">$<?php echo number_format($totCatVentasImp, 2); ?></h3>
-                                    <small class="text-white-50"><?php echo number_format($totCatVentasCant, 3); ?> kg</small>
+                                    <small class="text-white-50"><?php echo number_format($totCatVentasCant, 1); ?> kg</small>
                                 </div>
                             </div>
                         </div>
@@ -259,7 +259,7 @@ $totGlobalPctMargen = ($totCatVentasImp > 0) ? ($totCatGananciaImp / $totCatVent
                             <div class="card bg-dark text-white shadow-sm border-0 h-100">
                                 <div class="card-body">
                                     <h6 class="card-title text-uppercase text-white-50 small fw-bold mb-1">Stock Cierre (Fecha Fin)</h6>
-                                    <h3 class="card-text mb-1"><?php echo number_format($totCatStockCierre, 3); ?> kg</h3>
+                                    <h3 class="card-text mb-1"><?php echo number_format($totCatStockCierre, 1); ?> kg</h3>
                                     <small class="text-white-50">Suma de productos al <?php echo htmlspecialchars($fecha2, ENT_QUOTES, 'UTF-8'); ?></small>
                                 </div>
                             </div>
@@ -304,12 +304,12 @@ $totGlobalPctMargen = ($totCatVentasImp > 0) ? ($totCatGananciaImp / $totCatVent
                                     echo '<tr>
                                         <td>' . htmlspecialchars($cat["id_categoria"], ENT_QUOTES, "UTF-8") . '</td>
                                         <td><strong>' . htmlspecialchars($cat["desc_categoria"], ENT_QUOTES, "UTF-8") . '</strong></td>
-                                        <td class="text-end">' . number_format($cat["compras_cant"], 3) . '</td>
+                                        <td class="text-end">' . number_format($cat["compras_cant"], 1) . '</td>
                                         <td class="text-end">$' . number_format($cat["compras_importe"], 2) . '</td>
-                                        <td class="text-end">' . number_format($cat["ventas_cant"], 3) . '</td>
+                                        <td class="text-end">' . number_format($cat["ventas_cant"], 1) . '</td>
                                         <td class="text-end">$' . number_format($cat["ventas_importe"], 2) . '</td>
-                                        <td class="text-end fw-bold text-primary">' . number_format($cat["stock_cierre"], 3) . ' kg</td>
-                                        <td class="text-end">' . number_format($cat["dif_cant"], 3) . '</td>
+                                        <td class="text-end fw-bold text-primary">' . number_format($cat["stock_cierre"], 1) . ' kg</td>
+                                        <td class="text-end">' . number_format($cat["dif_cant"], 1) . '</td>
                                         <td class="text-end fw-bold ' . $classBalance . '">$' . number_format($cat["balance"], 2) . '</td>
                                         <td class="text-end fw-bold ' . $classGanancia . '">$' . number_format($cat["ganancia"], 2) . '</td>
                                         <td class="text-center">' . $badgeMargenCat . '</td>
@@ -320,12 +320,12 @@ $totGlobalPctMargen = ($totCatVentasImp > 0) ? ($totCatGananciaImp / $totCatVent
                             <tfoot>
                                 <tr>
                                     <th colspan="2" class="text-end">Total General:</th>
-                                    <th class="text-end"><?php echo number_format($totCatComprasCant, 3); ?></th>
+                                    <th class="text-end"><?php echo number_format($totCatComprasCant, 1); ?></th>
                                     <th class="text-end">$<?php echo number_format($totCatComprasImp, 2); ?></th>
-                                    <th class="text-end"><?php echo number_format($totCatVentasCant, 3); ?></th>
+                                    <th class="text-end"><?php echo number_format($totCatVentasCant, 1); ?></th>
                                     <th class="text-end">$<?php echo number_format($totCatVentasImp, 2); ?></th>
-                                    <th class="text-end"><?php echo number_format($totCatStockCierre, 3); ?> kg</th>
-                                    <th class="text-end"><?php echo number_format($totCatVentasCant - $totCatComprasCant, 3); ?></th>
+                                    <th class="text-end"><?php echo number_format($totCatStockCierre, 1); ?> kg</th>
+                                    <th class="text-end"><?php echo number_format($totCatVentasCant - $totCatComprasCant, 1); ?></th>
                                     <th class="text-end">$<?php echo number_format($totCatBalanceImp, 2); ?></th>
                                     <th class="text-end">$<?php echo number_format($totCatGananciaImp, 2); ?></th>
                                     <th class="text-center"><?php echo number_format($totGlobalPctMargen, 1); ?>%</th>
