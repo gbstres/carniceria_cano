@@ -1,6 +1,28 @@
 <?php
 
+function asegurarTablaVentasPagos($link) {
+    static $creada = false;
+    if ($creada) return;
+    mysqli_query($link, "CREATE TABLE IF NOT EXISTS cc_ventas_pagos (
+        id_sucursal INT NOT NULL,
+        id_venta INT NOT NULL,
+        tipo_pago INT NOT NULL,
+        importe DECIMAL(12,2) NOT NULL DEFAULT 0,
+        id_usuario INT NOT NULL,
+        fecha_ingreso DATE NOT NULL,
+        hora_ingreso TIME NOT NULL,
+        id_usuario_act INT NULL,
+        fecha_act DATE NULL,
+        hora_act TIME NULL,
+        PRIMARY KEY (id_sucursal, id_venta, tipo_pago),
+        KEY idx_cc_ventas_pagos_venta (id_sucursal, id_venta),
+        KEY idx_cc_ventas_pagos_tipo (id_sucursal, tipo_pago)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_general_ci");
+    $creada = true;
+}
+
 function guardarPagosVenta($link, $id_sucursal, $id_venta, $tipo_pago, $importe_efectivo, $importe_transferencia, $importe_tarjeta, $id_usuario, $fecha, $hora) {
+    asegurarTablaVentasPagos($link);
     $id_sucursal = (int) $id_sucursal;
     $id_venta = (int) $id_venta;
     $tipo_pago = (int) $tipo_pago;
@@ -29,6 +51,9 @@ function guardarPagosVenta($link, $id_sucursal, $id_venta, $tipo_pago, $importe_
     $sql = "INSERT INTO cc_ventas_pagos (id_sucursal, id_venta, tipo_pago, importe, id_usuario, fecha_ingreso, hora_ingreso) VALUES (?, ?, ?, ?, ?, ?, ?)";
     foreach ($pagos as $tipo => $importe) {
         $stmt = mysqli_prepare($link, $sql);
+        if (!$stmt) {
+            throw new Exception("Error al preparar la consulta de pago: " . mysqli_error($link));
+        }
         mysqli_stmt_bind_param($stmt, "iiidiss", $id_sucursal, $id_venta, $tipo, $importe, $id_usuario, $fecha, $hora);
         if (!mysqli_stmt_execute($stmt)) throw new Exception(mysqli_stmt_error($stmt));
         mysqli_stmt_close($stmt);

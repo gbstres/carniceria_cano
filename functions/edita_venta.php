@@ -55,13 +55,11 @@ if ($_POST['movimiento'] == 1) {
     $descripcion = $rowproducto['descripcion'];
     $clave_externa = trim($_POST["clave_externa"]);
     if ($id_venta == '' OR $id_venta == '0') {
-        $rowventa = mysqli_fetch_assoc(mysqli_query($link, "SELECT max(id_venta) as id_venta FROM `cc_det_ventas` WHERE id_sucursal = '$id_sucursal'"));
-        $id_venta = $rowventa['id_venta'];
-        if ($id_venta == null) {
-            $id_venta = 1;
-        } else {
-            $id_venta = $id_venta + 1;
-        }
+        $rowventa = mysqli_fetch_assoc(mysqli_query($link, "SELECT GREATEST(
+            COALESCE((SELECT MAX(id_venta) FROM cc_ventas WHERE id_sucursal = '$id_sucursal'), 0),
+            COALESCE((SELECT MAX(id_venta) FROM cc_det_ventas WHERE id_sucursal = '$id_sucursal'), 0)
+        ) as id_venta"));
+        $id_venta = intval($rowventa['id_venta']) + 1;
         $id_consecutivo = 1;
     } else {
         $rowventa = mysqli_fetch_assoc(mysqli_query($link, "SELECT max(id_consecutivo) as id_consecutivo FROM `cc_ventas` WHERE id_sucursal = '$id_sucursal' and id_venta = $id_venta"));
@@ -215,7 +213,7 @@ else if ($_POST['movimiento'] == 5) {
         guardarPagosVenta($link, $id_sucursal, $id_venta, $tipo_pago_compat, $importe_efectivo, $importe_transferencia, $importe_tarjeta, $id_usuario_act, $fecha_act, $hora_act);
         mysqli_commit($link);
         cc_sync_enqueue($link, $id_sucursal, 'venta_pago', 'upsert', ['id_venta' => (int) $id_venta], ['tabla' => 'cc_ventas_pagos', 'motivo' => 'cierre_venta']);
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         mysqli_rollback($link);
         http_response_code(422);
         echo json_encode(['error' => $e->getMessage()]);
@@ -272,7 +270,7 @@ else if ($_POST['movimiento'] == 9) {
         cc_sync_enqueue($link, $id_sucursal, 'venta_pago', 'upsert', ['id_venta' => (int) $id_venta], ['tabla' => 'cc_ventas_pagos', 'motivo' => 'edicion_pago']);
         cc_sync_enqueue($link, $id_sucursal, 'venta_detalle', 'upsert', ['id_venta' => (int) $id_venta], ['tabla' => 'cc_det_ventas', 'pagos' => ['efectivo' => $importe_efectivo, 'transferencia' => $importe_transferencia, 'tarjeta' => $importe_tarjeta]]);
         echo json_encode([['id_venta' => (int) $id_venta]]);
-    } catch (Exception $e) {
+    } catch (Throwable $e) {
         mysqli_rollback($link);
         http_response_code(422);
         echo json_encode(['error' => $e->getMessage()]);

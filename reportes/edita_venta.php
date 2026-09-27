@@ -32,13 +32,11 @@ if ($_POST['movimiento'] == 1) {
     $precio_compra = $rowproducto['precio_compra'];
     $descripcion = $rowproducto['descripcion'];
     if ($id_venta == '' OR $id_venta == '0') {
-        $rowventa = mysqli_fetch_assoc(mysqli_query($link, "SELECT max(id_venta) as id_venta FROM `cc_ventas` WHERE id_sucursal = '$id_sucursal'"));
-        $id_venta = $rowventa['id_venta'];
-        if ($id_venta == null) {
-            $id_venta = 1;
-        } else {
-            $id_venta = $id_venta + 1;
-        }
+        $rowventa = mysqli_fetch_assoc(mysqli_query($link, "SELECT GREATEST(
+            COALESCE((SELECT MAX(id_venta) FROM cc_ventas WHERE id_sucursal = '$id_sucursal'), 0),
+            COALESCE((SELECT MAX(id_venta) FROM cc_det_ventas WHERE id_sucursal = '$id_sucursal'), 0)
+        ) as id_venta"));
+        $id_venta = intval($rowventa['id_venta']) + 1;
         $id_consecutivo = 1;
     } else {
         $rowventa = mysqli_fetch_assoc(mysqli_query($link, "SELECT max(id_consecutivo) as id_consecutivo FROM `cc_ventas` WHERE id_sucursal = '$id_sucursal' and id_venta = $id_venta"));
