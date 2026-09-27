@@ -33,7 +33,7 @@ $sqlCategoriasQuery = "
         COALESCE(vent.ventas_cant, 0) AS ventas_cant,
         COALESCE(vent.ventas_costo, 0) AS ventas_costo,
         COALESCE(vent.ventas_importe, 0) AS ventas_importe,
-        COALESCE(stk.stock_cierre, p_curr.stock_actual, 0) AS stock_cierre
+        COALESCE(stk.stock_cierre, cat.almacen, 0) AS stock_cierre
     FROM cc_categorias cat
     LEFT JOIN (
         SELECT
@@ -74,8 +74,8 @@ $sqlCategoriasQuery = "
     ) vent ON vent.id_categoria = cat.id_categoria
     LEFT JOIN (
         SELECT 
-            cs.id_categoria,
-            SUM(cs.stock) AS stock_cierre
+            CAST(cs.codigo AS UNSIGNED) AS id_categoria,
+            cs.stock AS stock_cierre
         FROM cc_cierre_stock cs
         INNER JOIN (
             SELECT id_sucursal, MAX(id_cierre) AS max_cierre
@@ -85,21 +85,14 @@ $sqlCategoriasQuery = "
             GROUP BY id_sucursal
         ) u_cierre ON cs.id_sucursal = u_cierre.id_sucursal AND cs.id_cierre = u_cierre.max_cierre
         WHERE cs.id_sucursal = $id_sucursal
-          AND cs.tipo = 'PRODUCTO'
-        GROUP BY cs.id_categoria
+          AND cs.tipo = 'CATEGORIA'
     ) stk ON stk.id_categoria = cat.id_categoria
-    LEFT JOIN (
-        SELECT id_categoria, SUM(almacen) AS stock_actual
-        FROM cc_productos
-        WHERE id_sucursal = $id_sucursal
-        GROUP BY id_categoria
-    ) p_curr ON p_curr.id_categoria = cat.id_categoria
     WHERE cat.id_sucursal = $id_sucursal
       AND (COALESCE(comp.compras_cant, 0) <> 0 
            OR COALESCE(comp.compras_importe, 0) <> 0 
            OR COALESCE(vent.ventas_cant, 0) <> 0 
            OR COALESCE(vent.ventas_importe, 0) <> 0
-           OR COALESCE(stk.stock_cierre, p_curr.stock_actual, 0) <> 0)
+           OR COALESCE(stk.stock_cierre, cat.almacen, 0) <> 0)
     ORDER BY cat.desc_categoria
 ";
 
