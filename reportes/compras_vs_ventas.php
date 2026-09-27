@@ -23,7 +23,7 @@ $fecha2 = $_POST['fecha2'] ?? date('Y-m-d');
 $fecha1Escaped = mysqli_real_escape_string($link, $fecha1);
 $fecha2Escaped = mysqli_real_escape_string($link, $fecha2);
 
-// Consulta de Categorías (Compras vs Ventas y Stock de Cierre Híbrido)
+// Consulta de Categorías (Compras vs Ventas y Suma de Stock de Productos por Categoría)
 $sqlCategoriasQuery = "
     SELECT
         cat.id_categoria,
@@ -33,11 +33,7 @@ $sqlCategoriasQuery = "
         COALESCE(vent.ventas_cant, 0) AS ventas_cant,
         COALESCE(vent.ventas_costo, 0) AS ventas_costo,
         COALESCE(vent.ventas_importe, 0) AS ventas_importe,
-        CASE 
-            WHEN stk_cat.stock_cierre IS NOT NULL AND stk_cat.stock_cierre <> 0 THEN stk_cat.stock_cierre
-            WHEN cat.almacen IS NOT NULL AND cat.almacen <> 0 THEN cat.almacen
-            ELSE COALESCE(stk_prod.stock_prod_cierre, p_curr.stock_prod_curr, 0)
-        END AS stock_cierre
+        COALESCE(stk.stock_cierre, p_curr.stock_actual, 0) AS stock_cierre
     FROM cc_categorias cat
     LEFT JOIN (
         SELECT
@@ -76,27 +72,11 @@ $sqlCategoriasQuery = "
           AND v.estatus <> 2
         GROUP BY p.id_categoria
     ) vent ON vent.id_categoria = cat.id_categoria
-    -- Stock oficial registrado a nivel CATEGORIA en cierre de día
-    LEFT JOIN (
-        SELECT 
-            CAST(cs.codigo AS UNSIGNED) AS id_categoria,
-            cs.stock AS stock_cierre
-        FROM cc_cierre_stock cs
-        INNER JOIN (
-            SELECT id_sucursal, MAX(id_cierre) AS max_cierre
-            FROM cc_cierre
-            WHERE id_sucursal = $id_sucursal
-              AND fecha_ingreso <= '$fecha2Escaped'
-            GROUP BY id_sucursal
-        ) u_cierre ON cs.id_sucursal = u_cierre.id_sucursal AND cs.id_cierre = u_cierre.max_cierre
-        WHERE cs.id_sucursal = $id_sucursal
-          AND cs.tipo = 'CATEGORIA'
-    ) stk_cat ON stk_cat.id_categoria = cat.id_categoria
-    -- Suma de stock registrada a nivel PRODUCTO en cierre de día (para categorías sin stock de categoría directo)
+    -- Suma del stock real de los productos de cada categoría al cierre del día (tipo = 'PRODUCTO')
     LEFT JOIN (
         SELECT 
             cs.id_categoria,
-            SUM(cs.stock) AS stock_prod_cierre
+            SUM(cs.stock) AS stock_cierre
         FROM cc_cierre_stock cs
         INNER JOIN (
             SELECT id_sucursal, MAX(id_cierre) AS max_cierre
@@ -108,10 +88,10 @@ $sqlCategoriasQuery = "
         WHERE cs.id_sucursal = $id_sucursal
           AND cs.tipo = 'PRODUCTO'
         GROUP BY cs.id_categoria
-    ) stk_prod ON stk_prod.id_categoria = cat.id_categoria
-    -- Stock actual por suma de productos en linea
+    ) stk ON stk.id_categoria = cat.id_categoria
+    -- Suma de stock actual en línea por producto
     LEFT JOIN (
-        SELECT id_categoria, SUM(almacen) AS stock_prod_curr
+        SELECT id_categoria, SUM(almacen) AS stock_actual
         FROM cc_productos
         WHERE id_sucursal = $id_sucursal
         GROUP BY id_categoria
@@ -121,7 +101,7 @@ $sqlCategoriasQuery = "
            OR COALESCE(comp.compras_importe, 0) <> 0 
            OR COALESCE(vent.ventas_cant, 0) <> 0 
            OR COALESCE(vent.ventas_importe, 0) <> 0
-           OR COALESCE(stk_cat.stock_cierre, cat.almacen, stk_prod.stock_prod_cierre, p_curr.stock_prod_curr, 0) <> 0)
+           OR COALESCE(stk.stock_cierre, p_curr.stock_actual, 0) <> 0)
     ORDER BY cat.desc_categoria
 ";
 
@@ -280,7 +260,7 @@ $totGlobalPctMargen = ($totCatVentasImp > 0) ? ($totCatGananciaImp / $totCatVent
                                 <div class="card-body">
                                     <h6 class="card-title text-uppercase text-white-50 small fw-bold mb-1">Stock Cierre (Fecha Fin)</h6>
                                     <h3 class="card-text mb-1"><?php echo number_format($totCatStockCierre, 3); ?> kg</h3>
-                                    <small class="text-white-50">Cierre al <?php echo htmlspecialchars($fecha2, ENT_QUOTES, 'UTF-8'); ?></small>
+                                    <small class="text-white-50">Suma de productos al <?php echo htmlspecialchars($fecha2, ENT_QUOTES, 'UTF-8'); ?></small>
                                 </div>
                             </div>
                         </div>
