@@ -132,6 +132,9 @@ else if ($_POST['movimiento'] == 2) {
 // elimina venta desde el inicio. Solo se actualizan los movimientos
 else if ($_POST['movimiento'] == 3) {
     $movimiento = 2;
+    // Reversar stock si la venta tenía productos registrados en inventario
+    recalcula_almacen_cancela_venta($link, $id_sucursal, $id_venta, $fecha_ingreso, $hora_ingreso, $id_usuario);
+
     $update2 = mysqli_query($link, "UPDATE cc_ventas SET "
             . "estatus = 2, "
             . "fecha_act='$fecha_ingreso', hora_act='$hora_ingreso', id_usuario_act='$id_usuario' "
@@ -141,6 +144,16 @@ else if ($_POST['movimiento'] == 3) {
                 . "estatus = 1, "
                 . "fecha_act='$fecha_ingreso', hora_act='$hora_ingreso', id_usuario_act='$id_usuario' "
                 . "WHERE id_sucursal='$id_sucursal' and id_venta='$id_venta'");
+
+        // Limpiar registro de pagos para evitar duplicados en corte de caja
+        mysqli_query($link, "DELETE FROM cc_ventas_pagos WHERE id_sucursal = '$id_sucursal' AND id_venta = '$id_venta'");
+        cc_sync_enqueue($link, $id_sucursal, 'venta_pago', 'delete', [
+            'id_venta' => (int) $id_venta,
+        ], [
+            'tabla' => 'cc_ventas_pagos',
+            'motivo' => 'cancelacion_venta',
+        ]);
+
         cc_sync_enqueue($link, $id_sucursal, 'venta', 'cancel', [
             'id_venta' => (int) $id_venta,
         ], [
