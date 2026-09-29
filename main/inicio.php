@@ -1108,14 +1108,26 @@ if (isset($_GET['id_venta'])) {
                                         event.preventDefault(); // Evitar que el formulario se envíe automáticamente
                                         // Validar el formulario
                                         if (myForm_venta.checkValidity() === false) {
-                                            // Si hay errores, no hacer nada
                                             event.stopPropagation();
                                         } else {
-                                            if (guarda_venta()) {
+                                            var btnGuardar = myForm_venta.querySelector('button[type="submit"]');
+                                            if (btnGuardar && btnGuardar.disabled) {
+                                                return;
+                                            }
+                                            if (btnGuardar) {
+                                                btnGuardar.disabled = true;
+                                                btnGuardar.textContent = 'Guardando...';
+                                            }
+                                            var ok = guarda_venta();
+                                            if (ok) {
                                                 $('#Modalventa').modal('hide');
+                                            } else {
+                                                if (btnGuardar) {
+                                                    btnGuardar.disabled = false;
+                                                    btnGuardar.textContent = 'Guardar';
+                                                }
                                             }
                                         }
-                                        // Agregar la clase "was-validated" para mostrar los errores
                                         myForm_venta.classList.add('was-validated');
                                     });
 
@@ -1297,6 +1309,11 @@ if ($descripcion_corta == 1) {
                                     }
                                     function cerrar_venta(codigo, cantidad, precio_venta, consecutivo, movimiento) {
                                         ocultarErrorModalVenta();
+                                        var btnG = document.querySelector('#form_venta button[type="submit"]');
+                                        if (btnG) {
+                                            btnG.disabled = false;
+                                            btnG.textContent = 'Guardar';
+                                        }
                                         var myModal = new bootstrap.Modal(document.getElementById("Modalventa"), {});
                                         myModal.show();
                                         $("#ModalLabelTitle3").html("Cerrar venta");
