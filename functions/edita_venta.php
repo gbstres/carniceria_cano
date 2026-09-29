@@ -75,13 +75,10 @@ if ($_POST['movimiento'] == 1) {
         $cantidad = trim($_POST["cantidad"]);
         $estatus = 0;
         if (mysqli_stmt_execute($stmt)) {
-            if ($id_venta_t == '' OR $id_venta_t == '0') {
-                $sql2 = "INSERT INTO cc_det_ventas (id_sucursal, id_venta, estatus, id_cliente, pagado, id_usuario, fecha_ingreso, hora_ingreso) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
-                $stmt = mysqli_prepare($link, $sql2);
-                mysqli_stmt_bind_param($stmt, "iiiiiiss", $id_sucursal, $id_venta, $estatus, $id_cliente, $pagado, $id_usuario, $fecha_ingreso, $hora_ingreso);
-                $estatus = 0;
-                $pagado = 0;
-                mysqli_stmt_execute($stmt);
+            $id_cliente_int = (int) $id_cliente;
+            mysqli_query($link, "INSERT IGNORE INTO cc_det_ventas (id_sucursal, id_venta, estatus, id_cliente, pagado, id_usuario, fecha_ingreso, hora_ingreso) VALUES ($id_sucursal, $id_venta, 0, $id_cliente_int, 0, $id_usuario, '$fecha_ingreso', '$hora_ingreso')");
+            if ($id_cliente_int > 0) {
+                mysqli_query($link, "UPDATE cc_det_ventas SET id_cliente = $id_cliente_int WHERE id_sucursal = $id_sucursal AND id_venta = $id_venta");
             }
             cc_sync_enqueue($link, $id_sucursal, 'venta', 'upsert', [
                 'id_venta' => (int) $id_venta,
@@ -194,6 +191,12 @@ else if ($_POST['movimiento'] == 4) {
 }
 // Cierra venta
 else if ($_POST['movimiento'] == 5) {
+    $checkVentaCerrada = mysqli_fetch_assoc(mysqli_query($link, "SELECT estatus FROM cc_det_ventas WHERE id_sucursal = '$id_sucursal' AND id_venta = '$id_venta' LIMIT 1"));
+    if ($checkVentaCerrada && (int)$checkVentaCerrada['estatus'] === 1) {
+        $row_det_venta = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM `cc_det_ventas` WHERE id_sucursal = '$id_sucursal' and id_venta = $id_venta"));
+        echo json_encode([['id_venta' => $id_venta, 'fecha_ingreso' => $row_det_venta['fecha_ingreso'] ?? date('Y-m-d'), 'hora_ingreso' => $row_det_venta['hora_ingreso'] ?? date('H:i:s')]]);
+        exit;
+    }
     $id_usuario_act = (int) $_SESSION["id"];
     $fecha_act = date('Y-m-d');
     $hora_act = date('H:i:s');

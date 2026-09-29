@@ -88,6 +88,7 @@ if (in_array($ccHost, ['localhost', '127.0.0.1', '::1'], true)) {
                         <li><a class="dropdown-item" href="../control/respaldo.php">Respaldo</a></li>
                         <li><a class="dropdown-item" href="../control/cierre_dia.php">Cierre de día</a></li>
                         <li><a class="dropdown-item" href="../control/inicio_dia.php">Inicio de día</a></li>
+                        <li><a class="dropdown-item" href="../control/reconstruir_stock.php">Reconstruir Stock</a></li>
                     </ul>
                 </li>
                 <?php
