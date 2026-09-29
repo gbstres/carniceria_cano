@@ -21,6 +21,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['id_cierre'])) {
         $resCierre = mysqli_query($link, "SELECT fecha_ingreso, hora_ingreso FROM cc_cierre WHERE id_sucursal = $id_sucursal AND id_cierre = $id_cierre LIMIT 1");
         $rowCierre = mysqli_fetch_assoc($resCierre);
         $fecha_cierre = $rowCierre['fecha_ingreso'] ?? date('Y-m-d');
+        $hora_cierre = $rowCierre['hora_ingreso'] ?? '00:00:00';
 
         // 1. Recalcular Stock de Productos
         $sqlProd = "
@@ -34,7 +35,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['id_cierre'])) {
             SELECT codigo, SUM(cantidad) AS cant_vendida
             FROM cc_ventas
             WHERE id_sucursal = $id_sucursal 
-              AND fecha_ingreso >= '$fecha_cierre' 
+              AND TIMESTAMP(fecha_ingreso, hora_ingreso) > TIMESTAMP('$fecha_cierre', '$hora_cierre')
               AND estatus <> 2
             GROUP BY codigo
         ) v ON p.codigo = v.codigo COLLATE utf8_spanish_ci
@@ -42,7 +43,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['id_cierre'])) {
             SELECT codigo, SUM(cantidad) AS cant_comprada
             FROM cc_compras
             WHERE id_sucursal = $id_sucursal 
-              AND fecha_ingreso >= '$fecha_cierre'
+              AND TIMESTAMP(fecha_ingreso, hora_ingreso) > TIMESTAMP('$fecha_cierre', '$hora_cierre')
               AND estatus <> 2
             GROUP BY codigo
         ) c ON p.codigo = c.codigo COLLATE utf8_spanish_ci
@@ -50,7 +51,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['id_cierre'])) {
             SELECT codigo, SUM(cantidad) AS cant_entrada
             FROM cc_entradas
             WHERE id_sucursal = $id_sucursal 
-              AND fecha_ingreso >= '$fecha_cierre' 
+              AND TIMESTAMP(fecha_ingreso, hora_ingreso) > TIMESTAMP('$fecha_cierre', '$hora_cierre')
               AND estatus <> 2
             GROUP BY codigo
         ) e ON p.codigo = e.codigo COLLATE utf8_spanish_ci
@@ -73,7 +74,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['id_cierre'])) {
             FROM cc_ventas v
             INNER JOIN cc_productos p ON v.id_sucursal = p.id_sucursal AND v.codigo = p.codigo COLLATE utf8_spanish_ci
             WHERE v.id_sucursal = $id_sucursal 
-              AND v.fecha_ingreso >= '$fecha_cierre' 
+              AND TIMESTAMP(v.fecha_ingreso, v.hora_ingreso) > TIMESTAMP('$fecha_cierre', '$hora_cierre')
               AND v.estatus <> 2
               AND p.centralizar_almacen = 2
             GROUP BY p.id_categoria
@@ -83,7 +84,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['id_cierre'])) {
             FROM cc_compras c
             INNER JOIN cc_productos p ON c.id_sucursal = p.id_sucursal AND c.codigo = p.codigo COLLATE utf8_spanish_ci
             WHERE c.id_sucursal = $id_sucursal 
-              AND c.fecha_ingreso >= '$fecha_cierre'
+              AND TIMESTAMP(c.fecha_ingreso, c.hora_ingreso) > TIMESTAMP('$fecha_cierre', '$hora_cierre')
               AND c.estatus <> 2
               AND p.centralizar_almacen = 2
             GROUP BY p.id_categoria
@@ -95,7 +96,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['id_cierre'])) {
         $updCat = mysqli_query($link, $sqlCat);
 
         if ($updProd && $updCat) {
-            $mensaje = "El stock de productos y categorías se reconstruyó con éxito a partir del Cierre ID $id_cierre (Fecha: $fecha_cierre).";
+            $mensaje = "El stock de productos y categorías se reconstruyó con éxito a partir del Cierre ID $id_cierre (Fecha: $fecha_cierre $hora_cierre).";
 
             // Encolar sincronización para GCP
             $sqlAllP = mysqli_query($link, "SELECT codigo FROM cc_productos WHERE id_sucursal = $id_sucursal");
@@ -163,7 +164,7 @@ while ($row = mysqli_fetch_assoc($qCierres)) {
                 <?php endif; ?>
 
                 <p class="text-muted">
-                    Esta herramienta toma las existencias exactas guardadas al momento de un cierre de caja previo y le suma las compras y resta las ventas registradas posteriormente para recalcular el inventario exacto.
+                    Esta herramienta toma las existencias exactas guardadas al momento de un cierre de caja previo y le suma las compras y resta las ventas registradas posteriormente a la hora exacta de ese cierre.
                 </p>
 
                 <form method="post" action="reconstruir_stock.php" class="row g-3 align-items-end">
