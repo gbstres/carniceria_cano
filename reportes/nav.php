@@ -54,6 +54,7 @@ if (in_array($ccHost, ['localhost', '127.0.0.1', '::1'], true)) {
                         <li><a class="dropdown-item" href="../gastos.php">Gastos</a></li>
                         <li><a class="dropdown-item" href="../gastos.php">Entradas</a></li>
                         <li><a class="dropdown-item" href="../respaldo.php">Respaldo</a></li>
+                        <li><a class="dropdown-item" href="../control/reconstruir_cierre.php">Reconstruir Cierre</a></li>
                     </ul>
                 </li>
                 <li class="nav-item">
