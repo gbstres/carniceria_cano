@@ -1205,9 +1205,7 @@ $totalc = $val_claves[1] + $val_claves[2] + $val_claves[5] - $val_claves[3]
                                         case 5:
                                             $totalgastoh = $totalgastoh + $importeC;
                                             break;
-                                        case 4:
-                                            $totalgastoh = $totalgastoh - $aCuentaVentaEfectivoHistorico;
-                                            break;
+                                        // case 4 omitido para mantener la suma real del arqueo de caja
                                     }
                                 }
 
