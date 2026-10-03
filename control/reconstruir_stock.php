@@ -135,15 +135,22 @@ while ($row = mysqli_fetch_assoc($qCierres)) {
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Reconstruir Stock - Carnicería Cano</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <link href="../css/bootstrap.min.css" rel="stylesheet">
+    <link href="../css/bootstrap.css" rel="stylesheet">
+    <link href="../css/navbar.css" rel="stylesheet">
+    <link rel="stylesheet" href="../css/bootstrap-icons.css">
+    <style>
+        .card { margin-top: 20px; }
+        .table-responsive { margin-top: 20px; }
+    </style>
 </head>
-<body class="bg-light">
-    <?php include "../components/nav.php"; ?>
+<body>
+<main>
+    <div class="container">
+        <?php require_once "../components/nav.php"; ?>
 
-    <div class="container my-4">
         <div class="card shadow-sm mb-4">
             <div class="card-header bg-primary text-white">
                 <h4 class="mb-0"><i class="bi bi-arrow-repeat"></i> Reconstruir e Igualar Inventario desde Cierre</h4>
@@ -247,6 +254,7 @@ while ($row = mysqli_fetch_assoc($qCierres)) {
             </div>
         <?php endif; ?>
     </div>
+</main>
 
     <script src="../js/bootstrap.bundle.min.js"></script>
 </body>
