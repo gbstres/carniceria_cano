@@ -475,38 +475,58 @@ html, body, body.mobile-first-app {
     transform: scale(0.98);
 }
 
-/* Paginación - Respetando CSS */
+/* Paginación - Respetando CSS & Mobile-First */
 .catalog-pagination {
     display: flex !important;
     justify-content: center !important;
     align-items: center !important;
-    gap: 0.4rem !important;
+    gap: 0.35rem !important;
     margin: 2rem auto !important;
-    padding: 0.6rem 1rem !important;
+    padding: 0.5rem 0.75rem !important;
     background: #FFFFFF !important;
     border-radius: 14px !important;
     border: 1px solid #EAE2D7 !important;
     box-shadow: var(--cano-shadow-mobile) !important;
     width: fit-content !important;
+    max-width: 100% !important;
+    overflow-x: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    scrollbar-width: none !important;
+}
+
+.catalog-pagination::-webkit-scrollbar {
+    display: none !important;
 }
 
 .page-link-store,
-.catalog-pagination a {
+.catalog-pagination a,
+.catalog-pagination span.disabled {
     display: inline-flex !important;
     align-items: center !important;
     justify-content: center !important;
-    min-width: 38px !important;
-    height: 38px !important;
-    padding: 0 0.75rem !important;
+    min-width: 36px !important;
+    height: 36px !important;
+    padding: 0 0.5rem !important;
     border-radius: 10px !important;
     background: #F8F4EE !important;
     color: #211917 !important;
     border: 1px solid #E2D9CD !important;
     font-weight: 700 !important;
-    font-size: 0.9rem !important;
+    font-size: 0.85rem !important;
     text-decoration: none !important;
     transition: all 0.18s ease !important;
     cursor: pointer !important;
+    flex-shrink: 0 !important;
+}
+
+.page-link-store.disabled,
+.catalog-pagination span.disabled {
+    background: transparent !important;
+    border-color: transparent !important;
+    color: var(--cano-text-muted) !important;
+    cursor: default !important;
+    min-width: 20px !important;
+    padding: 0 !important;
 }
 
 .page-link-store:hover,

@@ -184,19 +184,36 @@
                     <?php if ($totalPages > 1): ?>
                         <nav class="catalog-pagination mt-4 justify-content-center" aria-label="Paginación">
                             <?php if ($currentPage > 1): ?>
-                                <a class="page-link-store ajax-nav-link" href="<?php echo storefront_escape(storefront_build_url(['page' => $currentPage - 1])); ?>">
+                                <a class="page-link-store ajax-nav-link" href="<?php echo storefront_escape(storefront_build_url(['page' => $currentPage - 1])); ?>" aria-label="Anterior">
                                     <i class="bi bi-chevron-left"></i>
                                 </a>
                             <?php endif; ?>
 
-                            <?php for ($page = 1; $page <= $totalPages; $page++): ?>
-                                <a class="page-link-store ajax-nav-link <?php echo $page === $currentPage ? 'active' : ''; ?>" href="<?php echo storefront_escape(storefront_build_url(['page' => $page])); ?>">
-                                    <?php echo storefront_escape($page); ?>
-                                </a>
-                            <?php endfor; ?>
+                            <?php
+                                $range = 1;
+                                $pagesToShow = [];
+                                for ($i = 1; $i <= $totalPages; $i++) {
+                                    if ($i == 1 || $i == $totalPages || ($i >= $currentPage - $range && $i <= $currentPage + $range)) {
+                                        $pagesToShow[] = $i;
+                                    }
+                                }
+
+                                $lastPage = 0;
+                                foreach ($pagesToShow as $p):
+                                    if ($lastPage > 0 && $p - $lastPage > 1):
+                            ?>
+                                        <span class="page-link-store disabled">...</span>
+                                    <?php endif; ?>
+                                    <a class="page-link-store ajax-nav-link <?php echo $p === $currentPage ? 'active' : ''; ?>" href="<?php echo storefront_escape(storefront_build_url(['page' => $p])); ?>">
+                                        <?php echo storefront_escape($p); ?>
+                                    </a>
+                            <?php
+                                    $lastPage = $p;
+                                endforeach;
+                            ?>
 
                             <?php if ($currentPage < $totalPages): ?>
-                                <a class="page-link-store ajax-nav-link" href="<?php echo storefront_escape(storefront_build_url(['page' => $currentPage + 1])); ?>">
+                                <a class="page-link-store ajax-nav-link" href="<?php echo storefront_escape(storefront_build_url(['page' => $currentPage + 1])); ?>" aria-label="Siguiente">
                                     <i class="bi bi-chevron-right"></i>
                                 </a>
                             <?php endif; ?>

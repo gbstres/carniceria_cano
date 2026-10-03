@@ -75,3 +75,12 @@ Este documento detalla la especificación técnica de la arquitectura de renderi
   - Se reordenó la jerarquía DOM en [storefront_layout.php](file:///c:/xampp/htdocs/carniceriacano/storefront_layout.php#L140-L165), ubicando el elemento `<footer>` de forma semántica antes de `<nav class="mobile-bottom-nav">`.
   - Se configuró `.store-footer-centered` en [css/storefront-shop.css](file:///c:/xampp/htdocs/carniceriacano/css/storefront-shop.css#L528-L535) con un `padding-bottom: 100px !important;` exclusivo para dispositivos móviles, garantizando que al llegar al final del desplazamiento, el logo se posicione con un margen superior libre de 30px por encima de la barra de navegación fija.
 
+---
+
+## 🔢 9. Paginación Inteligente Recortada (Mobile Windowing con `...`)
+
+- **Problema:** Anteriormente, se iteraban todas las páginas existentes (ej. 1, 2, 3, 4, 5, 6, 7, 8, ... 16) en una sola línea. En dispositivos móviles, esto sobrepasaba el ancho de la pantalla generando desbordamiento horizontal.
+- **Solución:**
+  - **Algoritmo de Ventana (PHP):** En [storefront_catalog_view.php](file:///c:/xampp/htdocs/carniceriacano/storefront_catalog_view.php#L184-L215), se implementó una ventana de paginación acotada alrededor de la página activa `$currentPage` con separadores de puntos suspensivos `...` para páginas lejanas (ej. `[<] 1 ... 4 [5] 6 ... 16 [>]`).
+  - **CSS Responsivo Flex:** En [css/storefront-shop.css](file:///c:/xampp/htdocs/carniceriacano/css/storefront-shop.css#L478-L515), se configuró `max-width: 100%`, `overflow-x: auto` y `flex-shrink: 0` para asegurar que el control de paginación jamás desborde ni deforme el layout en ninguna resolución móvil.
+
