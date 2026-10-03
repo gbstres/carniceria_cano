@@ -157,15 +157,27 @@ function cc_sync_enqueue_cierre_movimientos(mysqli $link, int $idSucursal, int $
               AND id_cierre = $idCierre
               AND estatus = $estatus");
     while ($sqlVentasCierre && $rowVenta = mysqli_fetch_assoc($sqlVentasCierre)) {
+        $idVentaInt = (int) $rowVenta['id_venta'];
         cc_sync_enqueue($link, $idSucursal, 'venta_detalle', 'upsert', [
-            'id_venta' => (int) $rowVenta['id_venta'],
+            'id_venta' => $idVentaInt,
         ], [
             'tabla' => 'cc_det_ventas',
             'motivo' => 'cierre',
             'id_cierre' => $idCierre,
         ]);
+        $sqlPartidas = mysqli_query($link, "SELECT id_consecutivo FROM cc_ventas WHERE id_sucursal = $idSucursal AND id_venta = $idVentaInt");
+        while ($sqlPartidas && $rowPartida = mysqli_fetch_assoc($sqlPartidas)) {
+            cc_sync_enqueue($link, $idSucursal, 'venta', 'upsert', [
+                'id_venta' => $idVentaInt,
+                'id_consecutivo' => (int) $rowPartida['id_consecutivo'],
+            ], [
+                'tabla' => 'cc_ventas',
+                'motivo' => 'cierre',
+                'id_cierre' => $idCierre,
+            ]);
+        }
         cc_sync_enqueue($link, $idSucursal, 'venta_pago', 'upsert', [
-            'id_venta' => (int) $rowVenta['id_venta'],
+            'id_venta' => $idVentaInt,
         ], [
             'tabla' => 'cc_ventas_pagos',
             'motivo' => 'cierre',

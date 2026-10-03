@@ -80,14 +80,6 @@ if ($_POST['movimiento'] == 1) {
             if ($id_cliente_int > 0) {
                 mysqli_query($link, "UPDATE cc_det_ventas SET id_cliente = $id_cliente_int WHERE id_sucursal = $id_sucursal AND id_venta = $id_venta");
             }
-            cc_sync_enqueue($link, $id_sucursal, 'venta', 'upsert', [
-                'id_venta' => (int) $id_venta,
-                'id_consecutivo' => (int) $id_consecutivo,
-            ], [
-                'tabla' => 'cc_ventas',
-                'id_cliente' => (int) $id_cliente,
-                'codigo' => (string) $codigo,
-            ]);
             $stockVenta = get_stock_restante_producto_venta($link, $id_sucursal, $codigo, $cantidad);
             $response_array [] = array('id_venta' => $id_venta, 'id_consecutivo' => $id_consecutivo, 'descripcion' => $descripcion, 'id_cliente' => $id_cliente, 'fecha_ingreso' => $fecha_ingreso, 'hora_ingreso' => $hora_ingreso, 'clave_externa' => $clave_externa, 'stock_actual' => $stockVenta['stock_actual'], 'stock_restante' => $stockVenta['stock_restante'], 'limite_stock' => $stockVenta['limite_stock'], 'codigo_inventario' => $stockVenta['codigo_inventario']);
         } else {
