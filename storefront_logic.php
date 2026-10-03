@@ -368,6 +368,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             ];
             $feedback = ['type' => 'success', 'message' => $product['descripcion'] . ' se agrego al carrito.'];
         }
+
+        if (isset($_REQUEST['ajax']) && $_REQUEST['ajax'] == '1') {
+            header('Content-Type: application/json; charset=utf-8');
+            $cartTotals = storefront_cart_totals($_SESSION['store_cart']);
+            echo json_encode([
+                'ok' => $feedback['type'] === 'success',
+                'type' => $feedback['type'],
+                'message' => $feedback['message'],
+                'cartTotals' => $cartTotals,
+            ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            exit;
+        }
     }
 
     if ($action === 'update_cart' && isset($_POST['quantities']) && is_array($_POST['quantities'])) {

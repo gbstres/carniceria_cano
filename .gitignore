@@ -4,3 +4,7 @@ functions/config_2.php
 keys/private_designer2.ppk
 usuarios/config.php
 nbproject/private/
+backups/
+logs/
+scratch/
+
