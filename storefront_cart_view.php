@@ -46,6 +46,11 @@
                                                 <td>
                                                     <strong class="d-block text-dark"><?php echo storefront_escape($item['descripcion']); ?></strong>
                                                     <span class="badge bg-secondary bg-opacity-10 text-secondary"><?php echo storefront_escape($item['categoria']); ?></span>
+                                                    <?php if (!empty($item['comentario'])): ?>
+                                                        <div class="small text-muted mt-1 bg-light p-1 rounded border-start border-warning border-3">
+                                                            <i class="bi bi-chat-left-text-fill text-warning me-1"></i> Nota: <em><?php echo storefront_escape($item['comentario']); ?></em>
+                                                        </div>
+                                                    <?php endif; ?>
                                                 </td>
                                                 <td class="fw-bold text-dark"><?php echo storefront_escape(storefront_money($item['price'])); ?></td>
                                                 <td>

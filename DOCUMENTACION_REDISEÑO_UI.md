@@ -84,3 +84,13 @@ Este documento detalla la especificación técnica de la arquitectura de renderi
   - **Algoritmo de Ventana (PHP):** En [storefront_catalog_view.php](file:///c:/xampp/htdocs/carniceriacano/storefront_catalog_view.php#L184-L215), se implementó una ventana de paginación acotada alrededor de la página activa `$currentPage` con separadores de puntos suspensivos `...` para páginas lejanas (ej. `[<] 1 ... 4 [5] 6 ... 16 [>]`).
   - **CSS Responsivo Flex:** En [css/storefront-shop.css](file:///c:/xampp/htdocs/carniceriacano/css/storefront-shop.css#L478-L515), se configuró `max-width: 100%`, `overflow-x: auto` y `flex-shrink: 0` para asegurar que el control de paginación jamás desborde ni deforme el layout en ninguna resolución móvil.
 
+---
+
+## 👜 10. Feedback Interactivo al Agregar (Botón Verde, Animación Bolsa & Modal Comentarios)
+
+- **Cambio de Color del Botón:** Al presionar "Agregar", el botón de la tarjeta conmuta instantáneamente a verde éxito (`#198754`) mostrando `<i class="bi bi-check-circle-fill"></i> ¡Agregado!` durante 2.5s antes de regresar al color corporativo.
+- **Animación & Crecimiento de la Bolsa 👜:** Todos los contadores (`.cart-items-counter`, `.header-cart-badge`, `.nav-cart-badge`, `.mobile-bottom-cart-badge`) se actualizan en tiempo real sin recargar la página. Los íconos de carrito rebotan con una animación `@keyframes cartBagBounce` simulando el inflado/crecimiento de la bolsa.
+- **Modal de Comentarios de Preparación:**
+  - Al pulsar "Agregar", se despliega el modal `#productCommentModal` con fichas táctiles frecuentes (*🔪 Trozos delgados, 📦 En paq. de 1 kg, 🥩 En paq. de 1/2 kg, 🔥 Para asar, 🧼 Sin grasa, 🧂 Marinado*) y campo de texto libre para indicaciones especiales al carnicero.
+  - Las notas quedan almacenadas en `$_SESSION['store_cart'][$code]['comentario']` y se visualizan en la vista del Carrito ([storefront_cart_view.php](file:///c:/xampp/htdocs/carniceriacano/storefront_cart_view.php#L46-L53)).
+

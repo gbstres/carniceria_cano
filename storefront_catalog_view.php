@@ -225,6 +225,52 @@
     </div>
 </section>
 
+<!-- Modal Interactivo para Comentarios / Notas de Preparación de Carnicería -->
+<div class="modal fade" id="productCommentModal" tabindex="-1" aria-labelledby="productCommentModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden">
+            <div class="modal-header bg-dark text-white border-bottom border-warning py-3">
+                <h5 class="modal-title h6 m-0 font-serif fw-bold text-white d-flex align-items-center" id="productCommentModalLabel">
+                    <i class="bi bi-pencil-square text-warning me-2 fs-5"></i> Notas de preparación para tu corte
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body p-3 p-md-4">
+                <div class="d-flex align-items-center gap-3 mb-3 p-2.5 rounded-3 bg-light border">
+                    <img id="modalProductImg" src="img/logo_1.jpeg" alt="Producto" class="rounded-3 shadow-sm" style="width: 58px; height: 58px; object-fit: cover;">
+                    <div>
+                        <h6 id="modalProductName" class="fw-bold m-0 text-dark font-serif fs-6">Bistec de Cerdo</h6>
+                        <span id="modalProductQty" class="badge bg-danger bg-opacity-10 text-danger fw-bold mt-1">Cantidad: 1.00 kg</span>
+                    </div>
+                </div>
+
+                <label class="form-label small fw-bold text-muted mb-2">Indicaciones frecuentes (toca para añadir):</label>
+                <div class="d-flex flex-wrap gap-2 mb-3">
+                    <button type="button" class="comment-chip-btn" onclick="toggleCommentChip(this)">🔪 Trozos delgados</button>
+                    <button type="button" class="comment-chip-btn" onclick="toggleCommentChip(this)">📦 En paq. de 1 kg</button>
+                    <button type="button" class="comment-chip-btn" onclick="toggleCommentChip(this)">🥩 En paq. de 1/2 kg</button>
+                    <button type="button" class="comment-chip-btn" onclick="toggleCommentChip(this)">🔥 Para asar</button>
+                    <button type="button" class="comment-chip-btn" onclick="toggleCommentChip(this)">🧼 Sin grasa</button>
+                    <button type="button" class="comment-chip-btn" onclick="toggleCommentChip(this)">🧂 Marinado</button>
+                </div>
+
+                <div class="mb-2">
+                    <label for="modalCommentTextarea" class="form-label small fw-bold text-dark mb-1">Comentarios especiales para el carnicero:</label>
+                    <textarea id="modalCommentTextarea" class="form-control rounded-3" rows="2" placeholder="Ej: Empacar por separado, moler dos veces..."></textarea>
+                </div>
+            </div>
+            <div class="modal-footer bg-light p-3 d-flex justify-content-between align-items-center gap-2">
+                <button type="button" id="btnModalSkipComment" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-bold">
+                    Solo Agregar sin Nota
+                </button>
+                <button type="button" id="btnModalSaveComment" class="btn btn-warning btn-sm rounded-pill px-4 fw-bold shadow-sm">
+                    <i class="bi bi-cart-plus-fill me-1"></i> Guardar y Agregar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 function stepQty(inputId, step) {
     var el = document.getElementById(inputId);
@@ -241,8 +287,17 @@ function scrollCategoryCarousel(distance) {
     }
 }
 
-// Arquitectura SPA-Lite / AJAX Fetch Engine
+function toggleCommentChip(btn) {
+    btn.classList.toggle('active');
+}
+
+// Arquitectura SPA-Lite / AJAX Fetch Engine con Modal & Feedback
 document.addEventListener('DOMContentLoaded', function () {
+    var pendingCartForm = null;
+    var pendingSubmitBtn = null;
+    var commentModalEl = document.getElementById('productCommentModal');
+    var commentModal = commentModalEl && typeof bootstrap !== 'undefined' ? new bootstrap.Modal(commentModalEl) : null;
+
     // Interceptor de Navegación AJAX (Categorías, Paginación, Limpiar Filtros)
     document.addEventListener('click', function (e) {
         var link = e.target.closest('.ajax-nav-link');
@@ -301,14 +356,73 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     });
 
-    // Interceptor de Agregar al Carrito por AJAX
+    // Interceptor de Agregar al Carrito: Despliega Modal de Comentarios
     document.addEventListener('submit', function (e) {
         var cartForm = e.target.closest('.ajax-add-cart-form');
         if (!cartForm) return;
 
         e.preventDefault();
+        pendingCartForm = cartForm;
+        pendingSubmitBtn = cartForm.querySelector('button[type="submit"]');
+
+        var card = cartForm.closest('article');
+        var title = card ? (card.querySelector('.product-title-mobile') ? card.querySelector('.product-title-mobile').textContent.trim() : 'Producto') : 'Producto';
+        var img = card ? (card.querySelector('.product-image') ? card.querySelector('.product-image').src : 'img/logo_1.jpeg') : 'img/logo_1.jpeg';
+        var qtyInput = cartForm.querySelector('input[name="quantity"]');
+        var qty = qtyInput ? qtyInput.value : '1';
+
+        // Llenar datos en el Modal
+        document.getElementById('modalProductName').textContent = title;
+        document.getElementById('modalProductQty').textContent = 'Cantidad: ' + qty + ' unidad(es)/kg';
+        document.getElementById('modalProductImg').src = img;
+        document.getElementById('modalCommentTextarea').value = '';
+
+        // Resetear fichas de comentarios
+        var chips = document.querySelectorAll('.comment-chip-btn');
+        chips.forEach(function (c) { c.classList.remove('active'); });
+
+        if (commentModal) {
+            commentModal.show();
+        } else {
+            // Fallback directo si no hay modal Bootstrap
+            executeAddToCart('', pendingCartForm, pendingSubmitBtn);
+        }
+    });
+
+    // Acción del Modal: Guardar y Agregar con Comentario
+    var btnSave = document.getElementById('btnModalSaveComment');
+    if (btnSave) {
+        btnSave.addEventListener('click', function () {
+            var activeChips = document.querySelectorAll('.comment-chip-btn.active');
+            var chipTexts = [];
+            activeChips.forEach(function (c) { chipTexts.push(c.textContent.trim()); });
+
+            var customNote = document.getElementById('modalCommentTextarea').value.trim();
+            var fullComment = chipTexts.concat(customNote ? [customNote] : []).join(' | ');
+
+            if (commentModal) commentModal.hide();
+            executeAddToCart(fullComment, pendingCartForm, pendingSubmitBtn);
+        });
+    }
+
+    // Acción del Modal: Solo Agregar sin Nota
+    var btnSkip = document.getElementById('btnModalSkipComment');
+    if (btnSkip) {
+        btnSkip.addEventListener('click', function () {
+            if (commentModal) commentModal.hide();
+            executeAddToCart('', pendingCartForm, pendingSubmitBtn);
+        });
+    }
+
+    // Función Ejecutora de AJAX Add To Cart & Animaciones
+    function executeAddToCart(commentText, cartForm, submitBtn) {
+        if (!cartForm) return;
+
         var formData = new FormData(cartForm);
         formData.append('ajax', '1');
+        if (commentText) {
+            formData.append('comentario', commentText);
+        }
 
         fetch('index.php', {
             method: 'POST',
@@ -317,13 +431,35 @@ document.addEventListener('DOMContentLoaded', function () {
         .then(function (res) { return res.json(); })
         .then(function (data) {
             if (data && data.ok) {
-                // Actualizar contadores del carrito
-                var counters = document.querySelectorAll('.nav-cart-badge, .cart-items-counter');
+                // 1. Actualizar Contadores del Carrito (Header, Navbar, Subheader, Bottom Bar)
+                var counters = document.querySelectorAll('.cart-items-counter, .nav-cart-badge, .header-cart-badge, .mobile-bottom-cart-badge');
                 counters.forEach(function (c) {
                     c.textContent = data.cartTotals.items;
+                    c.classList.remove('d-none');
                 });
 
-                // Mostrar Toast de Notificación
+                // 2. Animación de Crecimiento / Rebote en la Bolsa 👜 y Badges
+                var cartIcons = document.querySelectorAll('.btn-quick-cart-header, .nav-link-cart i, .mobile-bottom-nav a[href="carrito.php"] i, .cart-items-counter');
+                cartIcons.forEach(function (icon) {
+                    icon.classList.remove('bag-bounce-anim');
+                    void icon.offsetWidth; // Reflow
+                    icon.classList.add('bag-bounce-anim');
+                    setTimeout(function () { icon.classList.remove('bag-bounce-anim'); }, 700);
+                });
+
+                // 3. Cambio de Color del Botón Agregar -> Verde "¡Agregado!"
+                if (submitBtn) {
+                    submitBtn.classList.add('btn-added-success');
+                    var originalHtml = submitBtn.innerHTML;
+                    submitBtn.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> ¡Agregado!';
+
+                    setTimeout(function () {
+                        submitBtn.classList.remove('btn-added-success');
+                        submitBtn.innerHTML = originalHtml;
+                    }, 2500);
+                }
+
+                // 4. Notificación Toast Sutil
                 var toast = document.getElementById('ajax-toast');
                 var toastMsg = document.getElementById('toast-message');
                 if (toast && toastMsg) {
@@ -334,13 +470,13 @@ document.addEventListener('DOMContentLoaded', function () {
                     setTimeout(function () {
                         toast.classList.remove('d-flex');
                         toast.classList.add('d-none');
-                    }, 3000);
+                    }, 2800);
                 }
             }
         })
         .catch(function (err) {
             cartForm.submit();
         });
-    });
+    }
 });
 </script>

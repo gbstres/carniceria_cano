@@ -349,13 +349,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     if ($action === 'add_to_cart') {
         $productCode = isset($_POST['product_code']) ? trim($_POST['product_code']) : '';
         $quantity = storefront_normalize_quantity(isset($_POST['quantity']) ? $_POST['quantity'] : 1);
+        $comentario = isset($_POST['comentario']) ? trim((string)$_POST['comentario']) : '';
 
         if (!isset($products[$productCode])) {
-            $feedback = ['type' => 'danger', 'message' => 'El producto seleccionado ya no esta disponible.'];
+            $feedback = ['type' => 'danger', 'message' => 'El producto seleccionado ya no está disponible.'];
         } else {
             $product = $products[$productCode];
             if (isset($_SESSION['store_cart'][$productCode])) {
                 $quantity += (float) $_SESSION['store_cart'][$productCode]['quantity'];
+                if ($comentario !== '') {
+                    $existingNotes = isset($_SESSION['store_cart'][$productCode]['comentario']) ? $_SESSION['store_cart'][$productCode]['comentario'] : '';
+                    $comentario = $existingNotes !== '' ? $existingNotes . ' | ' . $comentario : $comentario;
+                } else if (isset($_SESSION['store_cart'][$productCode]['comentario'])) {
+                    $comentario = $_SESSION['store_cart'][$productCode]['comentario'];
+                }
             }
 
             $_SESSION['store_cart'][$productCode] = [
@@ -365,8 +372,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 'price' => (float) $product['precio_venta'],
                 'quantity' => $quantity,
                 'subtotal' => round($quantity * (float) $product['precio_venta'], 2),
+                'comentario' => $comentario,
             ];
-            $feedback = ['type' => 'success', 'message' => $product['descripcion'] . ' se agrego al carrito.'];
+            $feedback = ['type' => 'success', 'message' => $product['descripcion'] . ' se agregó al carrito.'];
         }
 
         if (isset($_REQUEST['ajax']) && $_REQUEST['ajax'] == '1') {

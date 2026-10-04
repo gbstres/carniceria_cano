@@ -41,11 +41,9 @@ function storefront_render_header($title, $currentPage, array $cartTotals)
                         <!-- Carrito en Header Móvil -->
                         <a href="carrito.php" class="btn-quick-cart-header position-relative d-lg-none" aria-label="Ver carrito">
                             <i class="bi bi-bag-fill fs-5 text-white"></i>
-                            <?php if ($cartCount > 0): ?>
-                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger shadow-sm">
-                                    <?php echo storefront_escape($cartCount); ?>
-                                </span>
-                            <?php endif; ?>
+                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger shadow-sm header-cart-badge cart-items-counter <?php echo $cartCount > 0 ? '' : 'd-none'; ?>">
+                                <?php echo storefront_escape($cartCount); ?>
+                            </span>
                         </a>
 
                         <button class="navbar-toggler border-0 text-white p-1" type="button" data-bs-toggle="collapse" data-bs-target="#storefrontNav" aria-controls="storefrontNav" aria-expanded="false" aria-label="Abrir menú">
@@ -63,9 +61,7 @@ function storefront_render_header($title, $currentPage, array $cartTotals)
                             <li class="nav-item">
                                 <a class="nav-link storefront-menu-link nav-link-cart <?php echo $currentPage === 'carrito' ? 'active' : ''; ?>" href="carrito.php">
                                     <i class="bi bi-cart3 me-1"></i> Carrito
-                                    <?php if ($cartCount > 0): ?>
-                                        <span class="nav-cart-badge"><?php echo storefront_escape($cartCount); ?></span>
-                                    <?php endif; ?>
+                                    <span class="nav-cart-badge cart-items-counter <?php echo $cartCount > 0 ? '' : 'd-none'; ?>"><?php echo storefront_escape($cartCount); ?></span>
                                 </a>
                             </li>
                             <li class="nav-item">
@@ -159,6 +155,9 @@ function storefront_render_footer()
             <a href="carrito.php" class="mobile-nav-item position-relative">
                 <i class="bi bi-cart-fill"></i>
                 <span>Carrito</span>
+                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger shadow-sm cart-items-counter mobile-bottom-cart-badge <?php echo $cartCount > 0 ? '' : 'd-none'; ?>">
+                    <?php echo storefront_escape($cartCount); ?>
+                </span>
             </a>
             <a href="pedido.php" class="mobile-nav-item">
                 <i class="bi bi-bag-check-fill"></i>
