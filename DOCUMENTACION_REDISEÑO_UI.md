@@ -104,8 +104,18 @@ Este documento detalla la especificación técnica de la arquitectura de renderi
   - Cálculo de distancia por la fórmula de Haversine hacia la Sucursal seleccionada. Si la ubicación supera los 5 km para entrega a domicilio, se despliega una alerta preventiva y se bloquea el envío hasta seleccionar Recolección o cambiar de Sucursal.
 - **Detalle de Dirección & Referencias Obligatorias:**
   - Campo de referencias de ubicación (`referencias_ubicacion`) obligatorio para detallar color de fachada, entre calles o puntos clave para el repartidor.
-- **Métodos de Pago:**
-  - **Efectivo:** Muestra opción para ingresar con cuánto billete pagará el cliente (para llevar cambio exacto).
-  - **Transferencia SPEI:** Despliega datos bancarios oficiales (Banco, CLABE, Beneficiario).
 - **Limpieza de Formulario:** Se retiró el cuadro general de indicaciones para el carnicero del checkout, ya que las notas se capturan individualmente por producto.
+
+---
+
+## 🗺️ 12. Mapa Interactivo de Sucursales & Cobertura de 5 km (Leaflet.js)
+
+- **Mapa Interactivo:** Integración de Leaflet.js + OpenStreetMap en [storefront_checkout_view.php](file:///c:/xampp/htdocs/carniceriacano/storefront_checkout_view.php#L80-L130).
+- **Pines y Coordenadas de Sucursales:**
+  - **Sucursal 1 (San Cristóbal Centro):** C. Miguel Hidalgo 19, San Cristóbal Centro, 55000 Ecatepec de Morelos (`lat: 19.6015, lng: -99.0519`). Incluye botón directo a [Google Maps](https://maps.google.com/?q=Carniceria%20%22Cano%22,%20C.%20Miguel%20Hidalgo%2019,%20San%20Crist%C3%B3bal%20Centro,%2055000%20Ecatepec%20de%20Morelos,%20M%C3%A9x.).
+  - **Sucursal 2 (La Principal / Matriz):** Av. Central / Vía Morelos (`lat: 19.5826, lng: -99.0359`).
+- **Visualización del Radio de 5 km:**
+  - Se dibuja un círculo dinámico de 5,000 metros alrededor de la Sucursal seleccionada.
+  - El círculo conmuta a **Verde (`#198754`)** si la ubicación del cliente está dentro de la cobertura, o a **Rojo (`#DC3545`)** si sobrepasa los 5 km.
+  - Marcador de cliente azul deslizable (*draggable pin*) que permite ajustar manualmente el punto exacto de entrega haciendo clic o arrastrando el pin en el mapa.
 

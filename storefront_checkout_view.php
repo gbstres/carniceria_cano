@@ -14,7 +14,7 @@
                 <span class="eyebrow-badge text-success mb-1">¡Pedido Registrado con Éxito!</span>
                 <h2 class="h3 fw-bold text-dark font-serif">Gracias por tu compra, <?php echo storefront_escape($orderSuccess['name']); ?></h2>
                 <p class="mb-0 text-muted fs-6">Tu pedido quedó guardado con el folio <strong class="text-dark">#<?php echo storefront_escape($orderSuccess['id']); ?></strong> por un total de <strong class="text-danger"><?php echo storefront_escape(storefront_money($orderSuccess['total'])); ?></strong>.</p>
-                <div class="mt-3 d-flex justify-content-center gap-2">
+                <div class="mt-3 d-flex justify-content-center gap-2 flex-wrap">
                     <a href="index.php" class="btn btn-success px-4 rounded-pill fw-bold"><i class="bi bi-shop me-1"></i> Volver a la Tienda</a>
                     <a href="https://wa.me/?text=Hola%20Carnicer%C3%ADa%20Cano,%20acabo%20de%20realizar%20el%20pedido%20%23<?php echo storefront_escape($orderSuccess['id']); ?>" target="_blank" rel="noopener" class="btn btn-outline-success px-4 rounded-pill fw-bold"><i class="bi bi-whatsapp me-1"></i> Contactar por WhatsApp</a>
                 </div>
@@ -25,7 +25,7 @@
         <div class="page-header-banner">
             <span class="eyebrow-badge"><i class="bi bi-clipboard-check-fill me-1"></i> Datos de Entrega y Pago</span>
             <h2 class="results-heading">Confirma tu Pedido</h2>
-            <p class="mb-0">Elige tu sucursal, geolocalización o dirección de entrega y método de pago (Efectivo o Transferencia SPEI).</p>
+            <p class="mb-0">Consulta la ubicación de nuestras Sucursales en el mapa interactivo, valida el radio de 5 km de entrega a domicilio y elige tu método de pago.</p>
         </div>
 
         <div class="row g-4 align-items-start">
@@ -57,9 +57,9 @@
                             <!-- Sucursal & Opción de Entrega -->
                             <div class="col-md-6">
                                 <label class="form-label fw-bold text-dark small" for="id_sucursal"><i class="bi bi-shop text-warning me-1"></i> Sucursal para Reparto / Recolección *</label>
-                                <select class="form-select fw-semibold" id="id_sucursal" name="id_sucursal" onchange="validateBranchDistance()">
-                                    <option value="1" <?php echo $formData['id_sucursal'] === '1' ? 'selected' : ''; ?>>Sucursal 1 (Horario: 7:30 AM - 3:30 PM)</option>
-                                    <option value="2" <?php echo $formData['id_sucursal'] === '2' ? 'selected' : ''; ?>>Sucursal 2 (Horario: 8:00 AM - 4:00 PM)</option>
+                                <select class="form-select fw-semibold" id="id_sucursal" name="id_sucursal" onchange="selectBranchFromSelect()">
+                                    <option value="1" <?php echo $formData['id_sucursal'] === '1' ? 'selected' : ''; ?>>Sucursal 1 (San Cristóbal Centro: 7:30 AM - 3:30 PM)</option>
+                                    <option value="2" <?php echo $formData['id_sucursal'] === '2' ? 'selected' : ''; ?>>Sucursal 2 (La Principal: 8:00 AM - 4:00 PM)</option>
                                 </select>
                             </div>
 
@@ -71,21 +71,52 @@
                                 </select>
                             </div>
 
-                            <!-- Panel de Dirección & Geolocalización (Solo si Entrega a Domicilio) -->
+                            <!-- Panel de Dirección, Geolocalización & Mapa Interactivo -->
                             <div id="deliveryFieldsPanel" class="col-12 <?php echo $formData['tipo_entrega'] === 'domicilio' ? '' : 'd-none'; ?>">
                                 <div class="p-3 bg-light rounded-4 border border-secondary border-opacity-25 my-2">
                                     <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
                                         <div>
-                                            <strong class="d-block text-dark small"><i class="bi bi-geo-alt-fill text-danger me-1"></i> Geolocalización GPS (Máximo 5 km de Cobertura)</strong>
-                                            <span class="small text-muted">Habilita tu GPS para verificar que estés dentro del radio de 5 km de la Sucursal elegida.</span>
+                                            <strong class="d-block text-dark small"><i class="bi bi-geo-alt-fill text-danger me-1"></i> Cobertura y Geolocalización (Máximo 5 km)</strong>
+                                            <span class="small text-muted">Usa tu GPS o haz clic en el mapa para marcar tu ubicación exacta de entrega.</span>
                                         </div>
                                         <button type="button" class="btn btn-outline-danger btn-sm rounded-pill fw-bold" onclick="getGpsLocation()">
-                                            <i class="bi bi-crosshair me-1"></i> Usar mi Ubicación Actual
+                                            <i class="bi bi-crosshair me-1"></i> Usar mi Ubicación GPS
                                         </button>
                                     </div>
-                                    <div id="gpsAlertBox" class="d-none alert p-2.5 small mb-2"></div>
+                                    <div id="gpsAlertBox" class="d-none alert p-2.5 small mb-3"></div>
 
-                                    <div class="row g-3 mt-1">
+                                    <!-- Mapa Interactivo Leaflet -->
+                                    <div class="mb-3">
+                                        <div id="storefrontMap"></div>
+                                        <div class="row g-2 mt-2">
+                                            <div class="col-md-6">
+                                                <div class="map-branch-card active d-flex align-items-center justify-content-between" id="cardBranch1" onclick="selectBranchFromMap('1')">
+                                                    <div>
+                                                        <strong class="d-block small text-dark"><i class="bi bi-geo-alt-fill text-danger me-1"></i> Sucursal 1 (Ecatepec Centro)</strong>
+                                                        <span class="small text-muted d-block" style="font-size: 0.75rem;">C. Miguel Hidalgo 19, San Cristóbal Centro</span>
+                                                        <span class="badge bg-warning text-dark mt-1" style="font-size: 0.68rem;">Horario: 7:30 AM - 3:30 PM</span>
+                                                    </div>
+                                                    <a href="https://maps.google.com/?q=Carniceria%20%22Cano%22,%20C.%20Miguel%20Hidalgo%2019,%20San%20Crist%C3%B3bal%20Centro,%2055000%20Ecatepec%20de%20Morelos,%20M%C3%A9x." target="_blank" rel="noopener" class="btn btn-outline-danger btn-sm p-1 px-2 ms-2" title="Abrir en Google Maps" onclick="event.stopPropagation();">
+                                                        <i class="bi bi-box-arrow-up-right"></i>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                            <div class="col-md-6">
+                                                <div class="map-branch-card d-flex align-items-center justify-content-between" id="cardBranch2" onclick="selectBranchFromMap('2')">
+                                                    <div>
+                                                        <strong class="d-block small text-dark"><i class="bi bi-geo-alt-fill text-danger me-1"></i> Sucursal 2 (La Principal)</strong>
+                                                        <span class="small text-muted d-block" style="font-size: 0.75rem;">Av. Central / Vía Morelos</span>
+                                                        <span class="badge bg-warning text-dark mt-1" style="font-size: 0.68rem;">Horario: 8:00 AM - 4:00 PM</span>
+                                                    </div>
+                                                    <a href="https://maps.google.com/?q=Carniceria+Cano+Ecatepec" target="_blank" rel="noopener" class="btn btn-outline-danger btn-sm p-1 px-2 ms-2" title="Abrir en Google Maps" onclick="event.stopPropagation();">
+                                                        <i class="bi bi-box-arrow-up-right"></i>
+                                                    </a>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="row g-3">
                                         <div class="col-12">
                                             <label class="form-label fw-bold text-dark small" for="direccion_entrega"><i class="bi bi-house-door-fill text-secondary me-1"></i> Dirección Completa (Calle y Número) *</label>
                                             <input class="form-control" type="text" id="direccion_entrega" name="direccion_entrega" value="<?php echo storefront_escape($formData['direccion_entrega']); ?>" placeholder="Ej: Av. Juárez #123, Int 4B, Col. Centro">
@@ -168,9 +199,158 @@
 
 <script>
 const BRANCH_COORDS = {
-    '1': { lat: 19.432608, lng: -99.133209, name: 'Sucursal 1' },
-    '2': { lat: 19.427000, lng: -99.140000, name: 'Sucursal 2' }
+    '1': { 
+        lat: 19.6015, 
+        lng: -99.0519, 
+        name: 'Sucursal 1 - Ecatepec Centro', 
+        address: 'C. Miguel Hidalgo 19, San Cristóbal Centro, 55000 Ecatepec de Morelos, Méx.',
+        hours: '7:30 AM - 3:30 PM',
+        gmaps: 'https://maps.google.com/?q=Carniceria%20%22Cano%22,%20C.%20Miguel%20Hidalgo%2019,%20San%20Crist%C3%B3bal%20Centro,%2055000%20Ecatepec%20de%20Morelos,%20M%C3%A9x.'
+    },
+    '2': { 
+        lat: 19.5826, 
+        lng: -99.0359, 
+        name: 'Sucursal 2 - La Principal / Matriz', 
+        address: 'Av. Central / Vía Morelos, Ecatepec de Morelos, Méx.',
+        hours: '8:00 AM - 4:00 PM',
+        gmaps: 'https://maps.google.com/?q=Carniceria+Cano+Ecatepec'
+    }
 };
+
+var map = null;
+var branchMarkers = {};
+var userMarker = null;
+var radiusCircle = null;
+
+function initStorefrontMap() {
+    var mapContainer = document.getElementById('storefrontMap');
+    if (!mapContainer || map !== null) return;
+
+    // Crear mapa Leaflet centrado en Ecatepec
+    map = L.map('storefrontMap').setView([19.5920, -99.0439], 13);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a>'
+    }).addTo(map);
+
+    // Agregar marcadores para Sucursal 1 y 2
+    Object.keys(BRANCH_COORDS).forEach(function (key) {
+        var b = BRANCH_COORDS[key];
+        var iconHtml = '<div class="custom-map-icon" style="width: 32px; height: 32px;"><i class="bi bi-shop"></i></div>';
+        var customIcon = L.divIcon({
+            html: iconHtml,
+            className: '',
+            iconSize: [32, 32],
+            iconAnchor: [16, 16]
+        });
+
+        var marker = L.marker([b.lat, b.lng], { icon: customIcon }).addTo(map);
+        marker.bindPopup(
+            '<div style="font-family: sans-serif; padding: 2px;">' +
+                '<strong style="color:#7E1414; font-weight:800; display:block;">' + b.name + '</strong>' +
+                '<small style="color:#555; display:block; margin:2px 0 4px;">' + b.address + '</small>' +
+                '<span class="badge bg-warning text-dark" style="font-size:0.7rem;">Horario: ' + b.hours + '</span><br>' +
+                '<a href="' + b.gmaps + '" target="_blank" class="btn btn-outline-danger btn-sm text-decoration-none mt-2 p-1 px-2 fw-bold" style="font-size:0.75rem;">' +
+                    '<i class="bi bi-box-arrow-up-right"></i> Abrir en Google Maps' +
+                '</a>' +
+            '</div>'
+        );
+
+        branchMarkers[key] = marker;
+    });
+
+    // Permite al usuario hacer clic en cualquier parte del mapa para marcar su casa
+    map.on('click', function (e) {
+        setUserLocationOnMap(e.latlng.lat, e.latlng.lng);
+    });
+
+    updateMapVisuals();
+}
+
+function updateMapVisuals() {
+    if (!map) return;
+
+    var branchId = document.getElementById('id_sucursal').value;
+    var branch = BRANCH_COORDS[branchId] || BRANCH_COORDS['1'];
+
+    // Dibujar o mover el Círculo de 5 km de Cobertura
+    var lat = parseFloat(document.getElementById('latitud').value);
+    var lng = parseFloat(document.getElementById('longitud').value);
+    var hasUserLoc = !isNaN(lat) && !isNaN(lng);
+
+    var isWithin = true;
+    if (hasUserLoc) {
+        var dist = calculateDistance(lat, lng, branch.lat, branch.lng);
+        isWithin = dist <= 5.0;
+    }
+
+    var circleColor = isWithin ? '#198754' : '#DC3545';
+
+    if (radiusCircle) {
+        radiusCircle.setLatLng([branch.lat, branch.lng]);
+        radiusCircle.setStyle({ color: circleColor, fillColor: circleColor });
+    } else {
+        radiusCircle = L.circle([branch.lat, branch.lng], {
+            color: circleColor,
+            fillColor: circleColor,
+            fillOpacity: 0.15,
+            radius: 5000 // 5 km en metros
+        }).addTo(map);
+    }
+
+    // Actualizar clase activa en fichas de sucursales
+    document.getElementById('cardBranch1').classList.toggle('active', branchId === '1');
+    document.getElementById('cardBranch2').classList.toggle('active', branchId === '2');
+}
+
+function setUserLocationOnMap(userLat, userLng) {
+    document.getElementById('latitud').value = userLat;
+    document.getElementById('longitud').value = userLng;
+
+    if (!map) return;
+
+    if (userMarker) {
+        userMarker.setLatLng([userLat, userLng]);
+    } else {
+        var userIconHtml = '<div class="custom-map-icon" style="background:#0D6EFD; width: 34px; height: 34px;"><i class="bi bi-house-door-fill"></i></div>';
+        var userIcon = L.divIcon({
+            html: userIconHtml,
+            className: '',
+            iconSize: [34, 34],
+            iconAnchor: [17, 17]
+        });
+
+        userMarker = L.marker([userLat, userLng], { icon: userIcon, draggable: true }).addTo(map);
+        userMarker.bindPopup('<strong>Tu Ubicación de Entrega</strong><br><small>Puedes arrastrar el pin si es necesario</small>').openPopup();
+
+        userMarker.on('dragend', function (event) {
+            var position = userMarker.getLatLng();
+            setUserLocationOnMap(position.lat, position.lng);
+        });
+    }
+
+    map.setView([userLat, userLng], 14);
+    validateBranchDistance();
+}
+
+function selectBranchFromMap(branchId) {
+    document.getElementById('id_sucursal').value = branchId;
+    selectBranchFromSelect();
+}
+
+function selectBranchFromSelect() {
+    var branchId = document.getElementById('id_sucursal').value;
+    var branch = BRANCH_COORDS[branchId];
+    if (map && branch) {
+        map.panTo([branch.lat, branch.lng]);
+        if (branchMarkers[branchId]) {
+            branchMarkers[branchId].openPopup();
+        }
+    }
+    updateMapVisuals();
+    validateBranchDistance();
+}
 
 function toggleDeliveryFields() {
     var tipo = document.getElementById('tipo_entrega').value;
@@ -182,6 +362,11 @@ function toggleDeliveryFields() {
         panel.classList.remove('d-none');
         if (dirInput) dirInput.required = true;
         if (refInput) refInput.required = true;
+
+        setTimeout(function () {
+            initStorefrontMap();
+            if (map) map.invalidateSize();
+        }, 150);
     } else {
         panel.classList.add('d-none');
         if (dirInput) dirInput.required = false;
@@ -219,32 +404,25 @@ function getGpsLocation() {
     var gpsBox = document.getElementById('gpsAlertBox');
     if (!navigator.geolocation) {
         if (gpsBox) {
-            gpsBox.className = 'mt-2 alert alert-warning p-2.5 small';
+            gpsBox.className = 'mt-2 alert alert-warning p-2.5 small d-block';
             gpsBox.textContent = 'Tu dispositivo o navegador no soporta geolocalización GPS.';
-            gpsBox.classList.remove('d-none');
         }
         return;
     }
 
     if (gpsBox) {
-        gpsBox.className = 'mt-2 alert alert-info p-2.5 small';
+        gpsBox.className = 'mt-2 alert alert-info p-2.5 small d-block';
         gpsBox.textContent = 'Obteniendo tu ubicación GPS actual... Por favor acepta los permisos.';
-        gpsBox.classList.remove('d-none');
     }
 
     navigator.geolocation.getCurrentPosition(function (pos) {
         var userLat = pos.coords.latitude;
         var userLng = pos.coords.longitude;
-
-        document.getElementById('latitud').value = userLat;
-        document.getElementById('longitud').value = userLng;
-
-        validateBranchDistance();
+        setUserLocationOnMap(userLat, userLng);
     }, function (err) {
         if (gpsBox) {
-            gpsBox.className = 'mt-2 alert alert-danger p-2.5 small';
-            gpsBox.textContent = 'No se pudo obtener la ubicación GPS automáticamente (' + err.message + '). Captura la dirección y referencias manualmente.';
-            gpsBox.classList.remove('d-none');
+            gpsBox.className = 'mt-2 alert alert-danger p-2.5 small d-block';
+            gpsBox.textContent = 'No se pudo obtener la ubicación GPS automáticamente (' + err.message + '). Puedes hacer clic directamente en el mapa o ingresar tu dirección manualmente.';
         }
     }, { enableHighAccuracy: true, timeout: 10000 });
 }
@@ -263,6 +441,10 @@ function validateBranchDistance() {
     }
 
     if (isNaN(lat) || isNaN(lng) || !BRANCH_COORDS[branchId]) {
+        if (gpsBox && gpsBox.classList.contains('d-none')) {
+            gpsBox.className = 'mt-2 alert alert-info p-2.5 small d-block';
+            gpsBox.innerHTML = '<i class="bi bi-info-circle-fill me-1"></i> Usa el botón <strong>"Usar mi Ubicación GPS"</strong> o haz clic en el mapa para verificar tu cobertura de 5 km.';
+        }
         return;
     }
 
@@ -283,6 +465,8 @@ function validateBranchDistance() {
         }
         if (btnSubmit) btnSubmit.disabled = false;
     }
+
+    updateMapVisuals();
 }
 
 document.addEventListener('DOMContentLoaded', function () {

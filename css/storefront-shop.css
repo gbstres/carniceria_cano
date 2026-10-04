@@ -678,3 +678,49 @@ html, body, body.mobile-first-app {
     border-color: var(--cano-red) !important;
     box-shadow: 0 3px 8px rgba(126, 20, 20, 0.3) !important;
 }
+
+/* ==========================================================================
+   Mapa Interactivo de Sucursales & Radio de Cobertura (5 km)
+   ========================================================================== */
+#storefrontMap {
+    width: 100%;
+    height: 320px;
+    border-radius: 16px;
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
+    z-index: 1;
+    border: 2px solid var(--cano-gold);
+}
+
+.map-branch-card {
+    background: #FFFFFF;
+    border: 1px solid #E2D9CD;
+    border-radius: 12px;
+    padding: 0.6rem 0.85rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.map-branch-card:hover,
+.map-branch-card.active {
+    border-color: var(--cano-red);
+    background: #FDF9F5;
+    box-shadow: 0 4px 12px rgba(126, 20, 20, 0.15);
+}
+
+.leaflet-popup-content-wrapper {
+    border-radius: 12px !important;
+    padding: 0.2rem !important;
+    box-shadow: 0 8px 20px rgba(0,0,0,0.2) !important;
+}
+
+.custom-map-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: var(--cano-red);
+    color: #FFFFFF;
+    border: 2px solid #FFFFFF;
+    border-radius: 50%;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+    font-size: 1.1rem;
+}
