@@ -19,8 +19,8 @@ function storefront_render_header($title, $currentPage, array $cartTotals)
     <body class="mobile-first-app">
         <!-- Top Bar Informativo y Horarios -->
         <div class="marketing-urgency-bar py-1 px-3 text-center text-white small">
-            <span class="badge bg-warning text-dark fw-bold me-1"><i class="bi bi-clock-history"></i> HORARIO ATENCIÓN</span>
-            <span>Lun - Sáb: 7:00 AM - 7:00 PM | Dom: 7:00 AM - 3:00 PM • <strong>Entregas y Recolección el mismo día</strong></span>
+            <span class="badge bg-warning text-dark fw-bold me-1"><i class="bi bi-clock-history"></i> HORARIOS DE ATENCIÓN</span>
+            <span><strong>Sucursal 1:</strong> 7:30 AM - 3:30 PM | <strong>Sucursal 2:</strong> 8:00 AM - 4:00 PM • <strong>Reparto a Domicilio (Máx. 5 km)</strong></span>
         </div>
 
         <!-- Sticky Header Principal -->
@@ -91,7 +91,7 @@ function storefront_render_header($title, $currentPage, array $cartTotals)
                                 <i class="bi bi-patch-check-fill text-warning me-1"></i> Cortes Frescos Seleccionados Diariamente
                             </div>
                             <h1 class="hero-marketing-title">
-                                Carnes frescas de Res, Cerdo, Pollo y Parrilla a tu mesa
+                                Carnes frescas de Res, Cerdo y Parrilla a tu mesa
                             </h1>
                             <p class="hero-marketing-subtitle">
                                 Elige la cantidad exacta que necesites en kilos o piezas. Te ofrecemos atención personalizada, limpieza y productos frescos en cada pedido.

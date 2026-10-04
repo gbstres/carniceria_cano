@@ -17,10 +17,16 @@ $formData = [
     'cliente_nombre' => '',
     'cliente_telefono' => '',
     'cliente_email' => '',
+    'id_sucursal' => '1',
     'tipo_entrega' => 'recoger',
     'direccion_entrega' => '',
-    'notas' => '',
+    'referencias_ubicacion' => '',
+    'latitud' => '',
+    'longitud' => '',
+    'distancia_km' => '0',
     'metodo_pago' => 'efectivo',
+    'monto_pago_efectivo' => '',
+    'notas' => '',
 ];
 
 function storefront_escape($value)
@@ -172,17 +178,35 @@ function storefront_product_url($productCode)
     return 'producto.php?codigo=' . urlencode((string) $productCode);
 }
 
+function storefront_calculate_distance($lat1, $lon1, $lat2, $lon2)
+{
+    $earthRadius = 6371;
+    $dLat = deg2rad((float)$lat2 - (float)$lat1);
+    $dLon = deg2rad((float)$lon2 - (float)$lon1);
+    $a = sin($dLat / 2) * sin($dLat / 2) +
+         cos(deg2rad((float)$lat1)) * cos(deg2rad((float)$lat2)) *
+         sin($dLon / 2) * sin($dLon / 2);
+    $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+    return round($earthRadius * $c, 2);
+}
+
 function storefront_ensure_order_tables(mysqli $link)
 {
     $createOrders = "CREATE TABLE IF NOT EXISTS cc_pedidos_web (
         id_pedido INT NOT NULL AUTO_INCREMENT,
+        id_sucursal INT NOT NULL DEFAULT 1,
         cliente_nombre VARCHAR(150) NOT NULL,
         cliente_telefono VARCHAR(40) NOT NULL,
         cliente_email VARCHAR(120) NOT NULL DEFAULT '',
         tipo_entrega VARCHAR(20) NOT NULL DEFAULT 'recoger',
         direccion_entrega VARCHAR(255) NOT NULL DEFAULT '',
-        notas TEXT NULL,
+        referencias_ubicacion TEXT NULL,
+        latitud DECIMAL(10,8) NULL,
+        longitud DECIMAL(11,8) NULL,
+        distancia_km DECIMAL(5,2) NULL,
         metodo_pago VARCHAR(30) NOT NULL DEFAULT 'efectivo',
+        monto_pago_efectivo VARCHAR(50) NULL,
+        notas TEXT NULL,
         subtotal DECIMAL(10,2) NOT NULL DEFAULT 0.00,
         total DECIMAL(10,2) NOT NULL DEFAULT 0.00,
         estatus VARCHAR(30) NOT NULL DEFAULT 'nuevo',
@@ -198,6 +222,7 @@ function storefront_ensure_order_tables(mysqli $link)
         precio_unitario DECIMAL(10,2) NOT NULL DEFAULT 0.00,
         cantidad DECIMAL(10,2) NOT NULL DEFAULT 0.00,
         subtotal DECIMAL(10,2) NOT NULL DEFAULT 0.00,
+        comentario TEXT NULL,
         PRIMARY KEY (id_detalle),
         KEY idx_pedido (id_pedido),
         CONSTRAINT fk_det_pedido_web FOREIGN KEY (id_pedido)
@@ -211,6 +236,28 @@ function storefront_ensure_order_tables(mysqli $link)
     if (!mysqli_query($link, $createOrderItems)) {
         return mysqli_error($link);
     }
+
+    $columnsNeeded = [
+        'id_sucursal' => "ALTER TABLE cc_pedidos_web ADD COLUMN id_sucursal INT NOT NULL DEFAULT 1",
+        'referencias_ubicacion' => "ALTER TABLE cc_pedidos_web ADD COLUMN referencias_ubicacion TEXT NULL",
+        'latitud' => "ALTER TABLE cc_pedidos_web ADD COLUMN latitud DECIMAL(10,8) NULL",
+        'longitud' => "ALTER TABLE cc_pedidos_web ADD COLUMN longitud DECIMAL(11,8) NULL",
+        'distancia_km' => "ALTER TABLE cc_pedidos_web ADD COLUMN distancia_km DECIMAL(5,2) NULL",
+        'monto_pago_efectivo' => "ALTER TABLE cc_pedidos_web ADD COLUMN monto_pago_efectivo VARCHAR(50) NULL",
+    ];
+
+    foreach ($columnsNeeded as $col => $alterSql) {
+        $check = mysqli_query($link, "SHOW COLUMNS FROM cc_pedidos_web LIKE '$col'");
+        if ($check && mysqli_num_rows($check) === 0) {
+            mysqli_query($link, $alterSql);
+        }
+    }
+
+    $checkItemCol = mysqli_query($link, "SHOW COLUMNS FROM cc_det_pedidos_web LIKE 'comentario'");
+    if ($checkItemCol && mysqli_num_rows($checkItemCol) === 0) {
+        mysqli_query($link, "ALTER TABLE cc_det_pedidos_web ADD COLUMN comentario TEXT NULL");
+    }
+
     return true;
 }
 
@@ -410,13 +457,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         }
 
         $cartTotals = storefront_cart_totals($_SESSION['store_cart']);
+        $distancia = (float) $formData['distancia_km'];
 
         if (empty($_SESSION['store_cart'])) {
-            $feedback = ['type' => 'danger', 'message' => 'Tu carrito esta vacio.'];
+            $feedback = ['type' => 'danger', 'message' => 'Tu carrito está vacío.'];
         } elseif ($formData['cliente_nombre'] === '' || $formData['cliente_telefono'] === '') {
-            $feedback = ['type' => 'danger', 'message' => 'Nombre y telefono son obligatorios para registrar el pedido.'];
+            $feedback = ['type' => 'danger', 'message' => 'Nombre y teléfono son obligatorios para registrar el pedido.'];
         } elseif ($formData['tipo_entrega'] === 'domicilio' && $formData['direccion_entrega'] === '') {
-            $feedback = ['type' => 'danger', 'message' => 'La direccion es obligatoria para entrega a domicilio.'];
+            $feedback = ['type' => 'danger', 'message' => 'La dirección es obligatoria para entrega a domicilio.'];
+        } elseif ($formData['tipo_entrega'] === 'domicilio' && $formData['referencias_ubicacion'] === '') {
+            $feedback = ['type' => 'danger', 'message' => 'Las referencias de ubicación (fachada, entre calles) son obligatorias para el repartidor.'];
+        } elseif ($formData['tipo_entrega'] === 'domicilio' && $distancia > 5.0) {
+            $feedback = ['type' => 'danger', 'message' => 'La ubicación se encuentra a ' . $distancia . ' km de la Sucursal seleccionada. El límite máximo para entrega a domicilio es de 5 km. Elige Recoger en Sucursal.'];
         } else {
             $tableStatus = storefront_ensure_order_tables($link);
             if ($tableStatus !== true) {
@@ -425,20 +477,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 mysqli_begin_transaction($link);
                 try {
                     $orderStmt = mysqli_prepare($link, "INSERT INTO cc_pedidos_web (
-                        cliente_nombre, cliente_telefono, cliente_email, tipo_entrega, direccion_entrega, notas, metodo_pago, subtotal, total, estatus
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'nuevo')");
+                        id_sucursal, cliente_nombre, cliente_telefono, cliente_email, tipo_entrega, direccion_entrega, referencias_ubicacion, latitud, longitud, distancia_km, metodo_pago, monto_pago_efectivo, notas, subtotal, total, estatus
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'nuevo')");
                     if (!$orderStmt) {
                         throw new Exception(mysqli_error($link));
                     }
 
-                    mysqli_stmt_bind_param($orderStmt, 'sssssssdd',
+                    $idSucursalInt = (int) $formData['id_sucursal'];
+                    $latVal = $formData['latitud'] !== '' ? (float)$formData['latitud'] : null;
+                    $lngVal = $formData['longitud'] !== '' ? (float)$formData['longitud'] : null;
+
+                    mysqli_stmt_bind_param($orderStmt, 'issssssdddsssdd',
+                        $idSucursalInt,
                         $formData['cliente_nombre'],
                         $formData['cliente_telefono'],
                         $formData['cliente_email'],
                         $formData['tipo_entrega'],
                         $formData['direccion_entrega'],
-                        $formData['notas'],
+                        $formData['referencias_ubicacion'],
+                        $latVal,
+                        $lngVal,
+                        $distancia,
                         $formData['metodo_pago'],
+                        $formData['monto_pago_efectivo'],
+                        $formData['notas'],
                         $cartTotals['subtotal'],
                         $cartTotals['total']
                     );
@@ -449,8 +511,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     $orderId = mysqli_insert_id($link);
                     $itemStmt = mysqli_prepare($link, "INSERT INTO cc_det_pedidos_web (
-                        id_pedido, codigo, descripcion, precio_unitario, cantidad, subtotal
-                    ) VALUES (?, ?, ?, ?, ?, ?)");
+                        id_pedido, codigo, descripcion, precio_unitario, cantidad, subtotal, comentario
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)");
                     if (!$itemStmt) {
                         throw new Exception(mysqli_error($link));
                     }
@@ -459,7 +521,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $price = (float) $item['price'];
                         $quantity = (float) $item['quantity'];
                         $subtotal = (float) $item['subtotal'];
-                        mysqli_stmt_bind_param($itemStmt, 'issddd', $orderId, $item['codigo'], $item['descripcion'], $price, $quantity, $subtotal);
+                        $itemComment = isset($item['comentario']) ? $item['comentario'] : '';
+                        mysqli_stmt_bind_param($itemStmt, 'issddds', $orderId, $item['codigo'], $item['descripcion'], $price, $quantity, $subtotal, $itemComment);
                         if (!mysqli_stmt_execute($itemStmt)) {
                             throw new Exception(mysqli_stmt_error($itemStmt));
                         }
@@ -469,9 +532,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $orderSuccess = ['id' => $orderId, 'name' => $formData['cliente_nombre'], 'total' => $cartTotals['total']];
                     $_SESSION['store_cart'] = [];
                     foreach ($formData as $key => $value) {
-                        $formData[$key] = $key === 'tipo_entrega' ? 'recoger' : ($key === 'metodo_pago' ? 'efectivo' : '');
+                        $formData[$key] = $key === 'id_sucursal' ? '1' : ($key === 'tipo_entrega' ? 'recoger' : ($key === 'metodo_pago' ? 'efectivo' : ''));
                     }
-                    $feedback = ['type' => 'success', 'message' => 'Pedido registrado correctamente con folio #' . $orderId . '.'];
+                    $feedback = ['type' => 'success', 'message' => '¡Pedido registrado correctamente con folio #' . $orderId . '!'];
                 } catch (Exception $exception) {
                     mysqli_rollback($link);
                     $feedback = ['type' => 'danger', 'message' => 'No se pudo guardar el pedido: ' . $exception->getMessage()];

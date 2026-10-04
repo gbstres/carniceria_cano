@@ -90,7 +90,22 @@ Este documento detalla la especificación técnica de la arquitectura de renderi
 
 - **Cambio de Color del Botón:** Al presionar "Agregar", el botón de la tarjeta conmuta instantáneamente a verde éxito (`#198754`) mostrando `<i class="bi bi-check-circle-fill"></i> ¡Agregado!` durante 2.5s antes de regresar al color corporativo.
 - **Animación & Crecimiento de la Bolsa 👜:** Todos los contadores (`.cart-items-counter`, `.header-cart-badge`, `.nav-cart-badge`, `.mobile-bottom-cart-badge`) se actualizan en tiempo real sin recargar la página. Los íconos de carrito rebotan con una animación `@keyframes cartBagBounce` simulando el inflado/crecimiento de la bolsa.
-- **Modal de Comentarios de Preparación:**
-  - Al pulsar "Agregar", se despliega el modal `#productCommentModal` con fichas táctiles frecuentes (*🔪 Trozos delgados, 📦 En paq. de 1 kg, 🥩 En paq. de 1/2 kg, 🔥 Para asar, 🧼 Sin grasa, 🧂 Marinado*) y campo de texto libre para indicaciones especiales al carnicero.
   - Las notas quedan almacenadas en `$_SESSION['store_cart'][$code]['comentario']` y se visualizan en la vista del Carrito ([storefront_cart_view.php](file:///c:/xampp/htdocs/carniceriacano/storefront_cart_view.php#L46-L53)).
+
+---
+
+## 📍 11. Sucursales 1 y 2, Geolocalización GPS (Máx. 5 km), Referencias & Métodos de Pago
+
+- **Ajustes de Portada & Horarios:**
+  - Se eliminó "Pollo" del titular principal en [storefront_layout.php](file:///c:/xampp/htdocs/carniceriacano/storefront_layout.php#L90-L95) (*"Carnes frescas de Res, Cerdo y Parrilla a tu mesa"*).
+  - Se actualizaron los horarios diferenciados en la barra superior: **Sucursal 1:** 7:30 AM - 3:30 PM | **Sucursal 2:** 8:00 AM - 4:00 PM.
+- **Geolocalización GPS & Radio Máximo de Reparto (5 km):**
+  - Botón interactivo `📍 Usar mi ubicación actual (GPS)` mediante HTML5 Geolocation API en [storefront_checkout_view.php](file:///c:/xampp/htdocs/carniceriacano/storefront_checkout_view.php#L50-L75).
+  - Cálculo de distancia por la fórmula de Haversine hacia la Sucursal seleccionada. Si la ubicación supera los 5 km para entrega a domicilio, se despliega una alerta preventiva y se bloquea el envío hasta seleccionar Recolección o cambiar de Sucursal.
+- **Detalle de Dirección & Referencias Obligatorias:**
+  - Campo de referencias de ubicación (`referencias_ubicacion`) obligatorio para detallar color de fachada, entre calles o puntos clave para el repartidor.
+- **Métodos de Pago:**
+  - **Efectivo:** Muestra opción para ingresar con cuánto billete pagará el cliente (para llevar cambio exacto).
+  - **Transferencia SPEI:** Despliega datos bancarios oficiales (Banco, CLABE, Beneficiario).
+- **Limpieza de Formulario:** Se retiró el cuadro general de indicaciones para el carnicero del checkout, ya que las notas se capturan individualmente por producto.
 
