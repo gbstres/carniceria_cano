@@ -15,8 +15,17 @@ function storefront_render_header($title, $currentPage, array $cartTotals)
         <link href="css/storefront.css" rel="stylesheet">
         <link href="css/storefront-shop.css" rel="stylesheet">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-        <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+        <?php $googleApiKey = defined('GOOGLE_MAPS_API_KEY') ? GOOGLE_MAPS_API_KEY : ''; ?>
+        <script src="https://maps.googleapis.com/maps/api/js?key=<?php echo storefront_escape($googleApiKey); ?>&libraries=places,geometry&callback=onGoogleMapsLoaded" async defer></script>
+        <script>
+            window.googleMapsReady = false;
+            function onGoogleMapsLoaded() {
+                window.googleMapsReady = true;
+                if (typeof initStorefrontMap === 'function') {
+                    initStorefrontMap();
+                }
+            }
+        </script>
     </head>
     <body class="mobile-first-app">
         <!-- Top Bar Informativo y Horarios -->

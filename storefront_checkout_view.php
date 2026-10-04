@@ -221,51 +221,83 @@ var map = null;
 var branchMarkers = {};
 var userMarker = null;
 var radiusCircle = null;
+var autocomplete = null;
 
 function initStorefrontMap() {
     var mapContainer = document.getElementById('storefrontMap');
     if (!mapContainer || map !== null) return;
+    if (typeof google === 'undefined' || typeof google.maps === 'undefined') return;
 
-    // Crear mapa Leaflet centrado en Ecatepec
-    map = L.map('storefrontMap').setView([19.5920, -99.0439], 13);
+    // Crear mapa oficial de Google Maps centrado en Ecatepec
+    map = new google.maps.Map(mapContainer, {
+        center: { lat: 19.5950, lng: -99.0410 },
+        zoom: 13,
+        mapTypeId: google.maps.MapTypeId.ROADMAP,
+        streetViewControl: false,
+        mapTypeControl: true,
+        fullscreenControl: true,
+        zoomControl: true
+    });
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; <a href="https://openstreetmap.org">OpenStreetMap</a>'
-    }).addTo(map);
-
-    // Agregar marcadores para Sucursal 1 y 2
+    // Agregar marcadores oficiales de Google para Sucursal 1 y 2
     Object.keys(BRANCH_COORDS).forEach(function (key) {
         var b = BRANCH_COORDS[key];
-        var iconHtml = '<div class="custom-map-icon" style="width: 32px; height: 32px;"><i class="bi bi-shop"></i></div>';
-        var customIcon = L.divIcon({
-            html: iconHtml,
-            className: '',
-            iconSize: [32, 32],
-            iconAnchor: [16, 16]
+        
+        var marker = new google.maps.Marker({
+            position: { lat: b.lat, lng: b.lng },
+            map: map,
+            title: b.name,
+            icon: {
+                url: 'https://maps.google.com/mapfiles/ms/icons/red-dot.png'
+            }
         });
 
-        var marker = L.marker([b.lat, b.lng], { icon: customIcon }).addTo(map);
-        marker.bindPopup(
-            '<div style="font-family: sans-serif; padding: 2px;">' +
-                '<strong style="color:#7E1414; font-weight:800; display:block;">' + b.name + '</strong>' +
-                '<small style="color:#555; display:block; margin:2px 0 4px;">' + b.address + '</small>' +
+        var infoWindow = new google.maps.InfoWindow({
+            content: '<div style="font-family: sans-serif; padding: 4px; max-width: 220px;">' +
+                '<strong style="color:#7E1414; font-weight:800; display:block; margin-bottom:2px;">' + b.name + '</strong>' +
+                '<small style="color:#555; display:block; margin-bottom:4px;">' + b.address + '</small>' +
                 '<span class="badge bg-warning text-dark" style="font-size:0.7rem;">Horario: ' + b.hours + '</span><br>' +
                 '<a href="' + b.gmaps + '" target="_blank" class="btn btn-outline-danger btn-sm text-decoration-none mt-2 p-1 px-2 fw-bold" style="font-size:0.75rem;">' +
                     '<i class="bi bi-box-arrow-up-right"></i> Abrir en Google Maps' +
                 '</a>' +
             '</div>'
-        );
+        });
 
-        branchMarkers[key] = marker;
+        marker.addListener('click', function () {
+            infoWindow.open(map, marker);
+        });
+
+        branchMarkers[key] = { marker: marker, infoWindow: infoWindow };
     });
 
-    // Permite al usuario hacer clic en cualquier parte del mapa para marcar su casa
-    map.on('click', function (e) {
-        setUserLocationOnMap(e.latlng.lat, e.latlng.lng);
+    // Clic en el mapa para marcar ubicación del cliente
+    map.addListener('click', function (e) {
+        setUserLocationOnMap(e.latLng.lat(), e.latLng.lng());
     });
+
+    // Activar Autocompletado de Google Places en el campo de dirección
+    initAddressAutocomplete();
 
     updateMapVisuals();
+}
+
+function initAddressAutocomplete() {
+    var input = document.getElementById('direccion_entrega');
+    if (!input || autocomplete !== null) return;
+    if (typeof google === 'undefined' || typeof google.maps === 'undefined' || typeof google.maps.places === 'undefined') return;
+
+    autocomplete = new google.maps.places.Autocomplete(input, {
+        componentRestrictions: { country: 'mx' }
+    });
+
+    autocomplete.addListener('place_changed', function () {
+        var place = autocomplete.getPlace();
+        if (place.geometry && place.geometry.location) {
+            var lat = place.geometry.location.lat();
+            var lng = place.geometry.location.lng();
+            setUserLocationOnMap(lat, lng);
+        }
+    });
 }
 
 function updateMapVisuals() {
@@ -274,7 +306,6 @@ function updateMapVisuals() {
     var branchId = document.getElementById('id_sucursal').value;
     var branch = BRANCH_COORDS[branchId] || BRANCH_COORDS['1'];
 
-    // Dibujar o mover el Círculo de 5 km de Cobertura
     var lat = parseFloat(document.getElementById('latitud').value);
     var lng = parseFloat(document.getElementById('longitud').value);
     var hasUserLoc = !isNaN(lat) && !isNaN(lng);
@@ -288,18 +319,27 @@ function updateMapVisuals() {
     var circleColor = isWithin ? '#198754' : '#DC3545';
 
     if (radiusCircle) {
-        radiusCircle.setLatLng([branch.lat, branch.lng]);
-        radiusCircle.setStyle({ color: circleColor, fillColor: circleColor });
+        radiusCircle.setCenter({ lat: branch.lat, lng: branch.lng });
+        radiusCircle.setOptions({
+            strokeColor: circleColor,
+            fillColor: circleColor,
+            strokeOpacity: 0.8,
+            strokeWeight: 2,
+            fillOpacity: 0.15
+        });
     } else {
-        radiusCircle = L.circle([branch.lat, branch.lng], {
-            color: circleColor,
+        radiusCircle = new google.maps.Circle({
+            strokeColor: circleColor,
+            strokeOpacity: 0.8,
+            strokeWeight: 2,
             fillColor: circleColor,
             fillOpacity: 0.15,
+            map: map,
+            center: { lat: branch.lat, lng: branch.lng },
             radius: 5000 // 5 km en metros
-        }).addTo(map);
+        });
     }
 
-    // Actualizar clase activa en fichas de sucursales
     document.getElementById('cardBranch1').classList.toggle('active', branchId === '1');
     document.getElementById('cardBranch2').classList.toggle('active', branchId === '2');
 }
@@ -310,27 +350,28 @@ function setUserLocationOnMap(userLat, userLng) {
 
     if (!map) return;
 
+    var pos = { lat: userLat, lng: userLng };
+
     if (userMarker) {
-        userMarker.setLatLng([userLat, userLng]);
+        userMarker.setPosition(pos);
     } else {
-        var userIconHtml = '<div class="custom-map-icon" style="background:#0D6EFD; width: 34px; height: 34px;"><i class="bi bi-house-door-fill"></i></div>';
-        var userIcon = L.divIcon({
-            html: userIconHtml,
-            className: '',
-            iconSize: [34, 34],
-            iconAnchor: [17, 17]
+        userMarker = new google.maps.Marker({
+            position: pos,
+            map: map,
+            title: 'Tu Ubicación de Entrega',
+            draggable: true,
+            icon: {
+                url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png'
+            }
         });
 
-        userMarker = L.marker([userLat, userLng], { icon: userIcon, draggable: true }).addTo(map);
-        userMarker.bindPopup('<strong>Tu Ubicación de Entrega</strong><br><small>Puedes arrastrar el pin si es necesario</small>').openPopup();
-
-        userMarker.on('dragend', function (event) {
-            var position = userMarker.getLatLng();
-            setUserLocationOnMap(position.lat, position.lng);
+        userMarker.addListener('dragend', function (e) {
+            setUserLocationOnMap(e.latLng.lat(), e.latLng.lng());
         });
     }
 
-    map.setView([userLat, userLng], 14);
+    map.setCenter(pos);
+    map.setZoom(14);
     validateBranchDistance();
 }
 
@@ -343,9 +384,9 @@ function selectBranchFromSelect() {
     var branchId = document.getElementById('id_sucursal').value;
     var branch = BRANCH_COORDS[branchId];
     if (map && branch) {
-        map.panTo([branch.lat, branch.lng]);
-        if (branchMarkers[branchId]) {
-            branchMarkers[branchId].openPopup();
+        map.panTo({ lat: branch.lat, lng: branch.lng });
+        if (branchMarkers[branchId] && branchMarkers[branchId].infoWindow) {
+            branchMarkers[branchId].infoWindow.open(map, branchMarkers[branchId].marker);
         }
     }
     updateMapVisuals();
@@ -365,7 +406,9 @@ function toggleDeliveryFields() {
 
         setTimeout(function () {
             initStorefrontMap();
-            if (map) map.invalidateSize();
+            if (map && window.google && window.google.maps) {
+                google.maps.event.trigger(map, 'resize');
+            }
         }, 150);
     } else {
         panel.classList.add('d-none');

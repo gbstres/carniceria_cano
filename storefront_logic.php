@@ -7,6 +7,10 @@ if (!defined('STOREFRONT_SUCURSAL_ID')) {
     define('STOREFRONT_SUCURSAL_ID', 9);
 }
 
+if (!defined('GOOGLE_MAPS_API_KEY')) {
+    define('GOOGLE_MAPS_API_KEY', '');
+}
+
 if (!isset($_SESSION['store_cart']) || !is_array($_SESSION['store_cart'])) {
     $_SESSION['store_cart'] = [];
 }
