@@ -295,7 +295,7 @@ function initAddressAutocomplete() {
         if (place.geometry && place.geometry.location) {
             var lat = place.geometry.location.lat();
             var lng = place.geometry.location.lng();
-            setUserLocationOnMap(lat, lng);
+            setUserLocationOnMap(lat, lng, true);
         }
     });
 }
@@ -344,35 +344,59 @@ function updateMapVisuals() {
     document.getElementById('cardBranch2').classList.toggle('active', branchId === '2');
 }
 
-function setUserLocationOnMap(userLat, userLng) {
+var geocoder = null;
+
+function setUserLocationOnMap(userLat, userLng, skipReverseGeocode) {
     document.getElementById('latitud').value = userLat;
     document.getElementById('longitud').value = userLng;
 
-    if (!map) return;
+    if (map) {
+        var pos = { lat: userLat, lng: userLng };
 
-    var pos = { lat: userLat, lng: userLng };
+        if (userMarker) {
+            userMarker.setPosition(pos);
+        } else {
+            userMarker = new google.maps.Marker({
+                position: pos,
+                map: map,
+                title: 'Tu Ubicación de Entrega',
+                draggable: true,
+                icon: {
+                    url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png'
+                }
+            });
 
-    if (userMarker) {
-        userMarker.setPosition(pos);
-    } else {
-        userMarker = new google.maps.Marker({
-            position: pos,
-            map: map,
-            title: 'Tu Ubicación de Entrega',
-            draggable: true,
-            icon: {
-                url: 'https://maps.google.com/mapfiles/ms/icons/blue-dot.png'
-            }
-        });
+            userMarker.addListener('dragend', function (e) {
+                setUserLocationOnMap(e.latLng.lat(), e.latLng.lng());
+            });
+        }
 
-        userMarker.addListener('dragend', function (e) {
-            setUserLocationOnMap(e.latLng.lat(), e.latLng.lng());
-        });
+        map.setCenter(pos);
+        map.setZoom(15);
     }
 
-    map.setCenter(pos);
-    map.setZoom(14);
+    if (!skipReverseGeocode) {
+        reverseGeocodeAddress(userLat, userLng);
+    }
+
     validateBranchDistance();
+}
+
+function reverseGeocodeAddress(userLat, userLng) {
+    var dirInput = document.getElementById('direccion_entrega');
+    if (!dirInput) return;
+
+    if (typeof google !== 'undefined' && typeof google.maps !== 'undefined' && google.maps.Geocoder) {
+        if (!geocoder) {
+            geocoder = new google.maps.Geocoder();
+        }
+
+        geocoder.geocode({ location: { lat: userLat, lng: userLng } }, function (results, status) {
+            if (status === 'OK' && results && results[0]) {
+                dirInput.value = results[0].formatted_address;
+            }
+        });
+    }
 }
 
 function selectBranchFromMap(branchId) {
