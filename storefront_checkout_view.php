@@ -96,7 +96,7 @@
                                                         <span class="small text-muted d-block" style="font-size: 0.75rem;">C. Miguel Hidalgo 19, San Cristóbal Centro</span>
                                                         <span class="badge bg-warning text-dark mt-1" style="font-size: 0.68rem;">Horario: 7:30 AM - 3:30 PM</span>
                                                     </div>
-                                                    <a href="https://maps.google.com/?q=Carniceria%20%22Cano%22,%20C.%20Miguel%20Hidalgo%2019,%20San%20Crist%C3%B3bal%20Centro,%2055000%20Ecatepec%20de%20Morelos,%20M%C3%A9x." target="_blank" rel="noopener" class="btn btn-outline-danger btn-sm p-1 px-2 ms-2" title="Abrir en Google Maps" onclick="event.stopPropagation();">
+                                                    <a href="https://www.google.com/maps/place/Carniceria+%22Cano%22/@19.6021539,-99.0451077,17z" target="_blank" rel="noopener" class="btn btn-outline-danger btn-sm p-1 px-2 ms-2" title="Abrir en Google Maps" onclick="event.stopPropagation();">
                                                         <i class="bi bi-box-arrow-up-right"></i>
                                                     </a>
                                                 </div>
@@ -108,7 +108,7 @@
                                                         <span class="small text-muted d-block" style="font-size: 0.75rem;">Nezahualcóyotl 1-Int 1, Olímpica Jajalpa</span>
                                                         <span class="badge bg-warning text-dark mt-1" style="font-size: 0.68rem;">Horario: 8:00 AM - 4:00 PM</span>
                                                     </div>
-                                                    <a href="https://maps.app.goo.gl/dgjuf9vQxBcRJWJC8" target="_blank" rel="noopener" class="btn btn-outline-danger btn-sm p-1 px-2 ms-2" title="Abrir en Google Maps" onclick="event.stopPropagation();">
+                                                    <a href="https://www.google.com/maps/place/Carniceria+LA+PRINCIPAL/@19.588193,-99.0366936,17z" target="_blank" rel="noopener" class="btn btn-outline-danger btn-sm p-1 px-2 ms-2" title="Abrir en Google Maps" onclick="event.stopPropagation();">
                                                         <i class="bi bi-box-arrow-up-right"></i>
                                                     </a>
                                                 </div>
@@ -200,20 +200,20 @@
 <script>
 const BRANCH_COORDS = {
     '1': { 
-        lat: 19.6015, 
-        lng: -99.0519, 
+        lat: 19.6021539, 
+        lng: -99.0451077, 
         name: 'Sucursal 1 - Ecatepec Centro', 
         address: 'C. Miguel Hidalgo 19, San Cristóbal Centro, 55000 Ecatepec de Morelos, Méx.',
         hours: '7:30 AM - 3:30 PM',
-        gmaps: 'https://maps.google.com/?q=Carniceria%20%22Cano%22,%20C.%20Miguel%20Hidalgo%2019,%20San%20Crist%C3%B3bal%20Centro,%2055000%20Ecatepec%20de%20Morelos,%20M%C3%A9x.'
+        gmaps: 'https://www.google.com/maps/place/Carniceria+%22Cano%22/@19.6021539,-99.0451077,17z'
     },
     '2': { 
-        lat: 19.5817, 
-        lng: -99.0416, 
+        lat: 19.588193, 
+        lng: -99.0366936, 
         name: 'Sucursal 2 - La Principal / Matriz', 
         address: 'Nezahualcóyotl 1-Interior 1, Olímpica Jajalpa, 55090 Ecatepec de Morelos, Méx.',
         hours: '8:00 AM - 4:00 PM',
-        gmaps: 'https://maps.app.goo.gl/dgjuf9vQxBcRJWJC8'
+        gmaps: 'https://www.google.com/maps/place/Carniceria+LA+PRINCIPAL/@19.588193,-99.0366936,17z'
     }
 };
 
