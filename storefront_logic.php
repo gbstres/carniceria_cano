@@ -8,7 +8,7 @@ if (!defined('STOREFRONT_SUCURSAL_ID')) {
 }
 
 if (!defined('GOOGLE_MAPS_API_KEY')) {
-    define('GOOGLE_MAPS_API_KEY', '');
+    define('GOOGLE_MAPS_API_KEY', 'AIzaSyB-jThQ4lE-c3yQioTDBQDvcifleiXfvZg');
 }
 
 if (!isset($_SESSION['store_cart']) || !is_array($_SESSION['store_cart'])) {
