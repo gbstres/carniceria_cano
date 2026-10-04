@@ -105,10 +105,10 @@
                                                 <div class="map-branch-card d-flex align-items-center justify-content-between" id="cardBranch2" onclick="selectBranchFromMap('2')">
                                                     <div>
                                                         <strong class="d-block small text-dark"><i class="bi bi-geo-alt-fill text-danger me-1"></i> Sucursal 2 (La Principal)</strong>
-                                                        <span class="small text-muted d-block" style="font-size: 0.75rem;">Av. Central / Vía Morelos</span>
+                                                        <span class="small text-muted d-block" style="font-size: 0.75rem;">Nezahualcóyotl 1-Int 1, Olímpica Jajalpa</span>
                                                         <span class="badge bg-warning text-dark mt-1" style="font-size: 0.68rem;">Horario: 8:00 AM - 4:00 PM</span>
                                                     </div>
-                                                    <a href="https://maps.google.com/?q=Carniceria+Cano+Ecatepec" target="_blank" rel="noopener" class="btn btn-outline-danger btn-sm p-1 px-2 ms-2" title="Abrir en Google Maps" onclick="event.stopPropagation();">
+                                                    <a href="https://maps.app.goo.gl/dgjuf9vQxBcRJWJC8" target="_blank" rel="noopener" class="btn btn-outline-danger btn-sm p-1 px-2 ms-2" title="Abrir en Google Maps" onclick="event.stopPropagation();">
                                                         <i class="bi bi-box-arrow-up-right"></i>
                                                     </a>
                                                 </div>
@@ -208,12 +208,12 @@ const BRANCH_COORDS = {
         gmaps: 'https://maps.google.com/?q=Carniceria%20%22Cano%22,%20C.%20Miguel%20Hidalgo%2019,%20San%20Crist%C3%B3bal%20Centro,%2055000%20Ecatepec%20de%20Morelos,%20M%C3%A9x.'
     },
     '2': { 
-        lat: 19.5826, 
-        lng: -99.0359, 
+        lat: 19.5817, 
+        lng: -99.0416, 
         name: 'Sucursal 2 - La Principal / Matriz', 
-        address: 'Av. Central / Vía Morelos, Ecatepec de Morelos, Méx.',
+        address: 'Nezahualcóyotl 1-Interior 1, Olímpica Jajalpa, 55090 Ecatepec de Morelos, Méx.',
         hours: '8:00 AM - 4:00 PM',
-        gmaps: 'https://maps.google.com/?q=Carniceria+Cano+Ecatepec'
+        gmaps: 'https://maps.app.goo.gl/dgjuf9vQxBcRJWJC8'
     }
 };
 
