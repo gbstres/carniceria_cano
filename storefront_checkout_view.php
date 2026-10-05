@@ -33,6 +33,11 @@
                 <div class="checkout-panel p-4 bg-white rounded-4 shadow-sm border">
                     <form method="post" class="checkout-form" id="checkoutForm">
                         <input type="hidden" name="action" value="checkout">
+                        <input type="hidden" name="csrf_token" value="<?php echo storefront_escape($_SESSION['csrf_token'] ?? ''); ?>">
+                        <!-- Campo Trampa Honeypot Anti-Bots (invisible para clientes reales) -->
+                        <div style="display:none !important; opacity:0; position:absolute; left:-9999px;" aria-hidden="true">
+                            <input type="text" name="website_trap" value="" tabindex="-1" autocomplete="off">
+                        </div>
                         <input type="hidden" id="latitud" name="latitud" value="<?php echo storefront_escape($formData['latitud']); ?>">
                         <input type="hidden" id="longitud" name="longitud" value="<?php echo storefront_escape($formData['longitud']); ?>">
                         <input type="hidden" id="distancia_km" name="distancia_km" value="<?php echo storefront_escape($formData['distancia_km']); ?>">

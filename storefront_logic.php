@@ -15,6 +15,14 @@ if (!isset($_SESSION['store_cart']) || !is_array($_SESSION['store_cart'])) {
     $_SESSION['store_cart'] = [];
 }
 
+if (empty($_SESSION['csrf_token'])) {
+    if (function_exists('random_bytes')) {
+        $_SESSION['csrf_token'] = bin2hex(random_bytes(32));
+    } else {
+        $_SESSION['csrf_token'] = md5(uniqid((string)mt_rand(), true));
+    }
+}
+
 $feedback = ['type' => '', 'message' => ''];
 $orderSuccess = null;
 $formData = [
@@ -454,6 +462,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     }
 
     if ($action === 'checkout') {
+        $honeypot = trim((string)($_POST['website_trap'] ?? ''));
+        $postedCsrf = trim((string)($_POST['csrf_token'] ?? ''));
+        $lastOrderTime = (int)($_SESSION['last_order_time'] ?? 0);
+
         foreach ($formData as $key => $value) {
             if (isset($_POST[$key])) {
                 $formData[$key] = trim((string) $_POST[$key]);
@@ -462,11 +474,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $cartTotals = storefront_cart_totals($_SESSION['store_cart']);
         $distancia = (float) $formData['distancia_km'];
+        $cleanPhone = preg_replace('/[^0-9]/', '', $formData['cliente_telefono']);
 
-        if (empty($_SESSION['store_cart'])) {
+        if (!empty($honeypot)) {
+            $feedback = ['type' => 'danger', 'message' => 'Solicitud rechazada por seguridad (Trampa Anti-Bot activa).'];
+        } elseif (!hash_equals($_SESSION['csrf_token'] ?? '', $postedCsrf)) {
+            $feedback = ['type' => 'danger', 'message' => 'Token de sesión expirado. Por favor recarga la página.'];
+        } elseif (time() - $lastOrderTime < 8) {
+            $feedback = ['type' => 'warning', 'message' => 'Por favor espera unos segundos antes de enviar otro pedido.'];
+        } elseif (empty($_SESSION['store_cart'])) {
             $feedback = ['type' => 'danger', 'message' => 'Tu carrito está vacío.'];
-        } elseif ($formData['cliente_nombre'] === '' || $formData['cliente_telefono'] === '') {
-            $feedback = ['type' => 'danger', 'message' => 'Nombre y teléfono son obligatorios para registrar el pedido.'];
+        } elseif ($formData['cliente_nombre'] === '' || strlen($cleanPhone) < 10) {
+            $feedback = ['type' => 'danger', 'message' => 'Ingresa un nombre y un número de teléfono válido a 10 dígitos.'];
         } elseif ($formData['tipo_entrega'] === 'domicilio' && $formData['direccion_entrega'] === '') {
             $feedback = ['type' => 'danger', 'message' => 'La dirección es obligatoria para entrega a domicilio.'];
         } elseif ($formData['tipo_entrega'] === 'domicilio' && $formData['referencias_ubicacion'] === '') {
@@ -533,6 +552,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     }
 
                     mysqli_commit($link);
+                    $_SESSION['last_order_time'] = time();
                     $orderSuccess = ['id' => $orderId, 'name' => $formData['cliente_nombre'], 'total' => $cartTotals['total']];
                     $_SESSION['store_cart'] = [];
                     foreach ($formData as $key => $value) {
