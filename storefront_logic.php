@@ -10,6 +10,15 @@ if (!defined('STOREFRONT_SUCURSAL_ID')) {
 if (!defined('GOOGLE_MAPS_API_KEY')) {
     define('GOOGLE_MAPS_API_KEY', '');
 }
+if (!defined('EVOLUTION_API_URL')) {
+    define('EVOLUTION_API_URL', '');
+}
+if (!defined('EVOLUTION_API_KEY')) {
+    define('EVOLUTION_API_KEY', '');
+}
+if (!defined('EVOLUTION_INSTANCE_NAME')) {
+    define('EVOLUTION_INSTANCE_NAME', '');
+}
 
 if (!isset($_SESSION['store_cart']) || !is_array($_SESSION['store_cart'])) {
     $_SESSION['store_cart'] = [];
@@ -470,11 +479,21 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $_SESSION['otp_code'] = $code;
         $_SESSION['otp_phone'] = $cleanPhone;
 
+        $sentViaEvolution = storefront_send_evolution_whatsapp_otp($cleanPhone, $code);
+
         $branchPhone = '525512345678';
         $text = urlencode("Hola Carnicería Cano, mi código de verificación para mi pedido online es: CANO-" . $code);
         $waUrl = "https://api.whatsapp.com/send?phone=" . $branchPhone . "&text=" . $text;
 
-        echo json_encode(['ok' => true, 'code' => $code, 'wa_url' => $waUrl]);
+        echo json_encode([
+            'ok' => true, 
+            'code' => $code, 
+            'wa_url' => $waUrl,
+            'auto_sent' => $sentViaEvolution,
+            'message' => $sentViaEvolution 
+                ? '¡Te enviamos un código de 4 dígitos a tu WhatsApp por Evolution Manager! Ingrésalo a continuación.' 
+                : 'Código generado. Envía tu código por WhatsApp o ingresa los 4 dígitos.'
+        ]);
         exit;
     }
 
@@ -873,4 +892,52 @@ function storefront_mark_phone_as_verified(mysqli $link, string $phone): bool
 
     return true;
 }
+
+function storefront_send_evolution_whatsapp_otp(string $phone, string $code): bool
+{
+    $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+    if (strlen($cleanPhone) === 10) {
+        $cleanPhone = '521' . $cleanPhone;
+    } elseif (strlen($cleanPhone) === 12 && strpos($cleanPhone, '52') === 0 && strpos($cleanPhone, '521') !== 0) {
+        $cleanPhone = '521' . substr($cleanPhone, 2);
+    }
+
+    $apiUrl = defined('EVOLUTION_API_URL') ? rtrim(EVOLUTION_API_URL, '/') : '';
+    $apiKey = defined('EVOLUTION_API_KEY') ? EVOLUTION_API_KEY : '';
+    $instance = defined('EVOLUTION_INSTANCE_NAME') ? EVOLUTION_INSTANCE_NAME : '';
+
+    if (empty($apiUrl) || empty($apiKey) || empty($instance)) {
+        return false;
+    }
+
+    $endpoint = $apiUrl . '/message/sendText/' . $instance;
+    $messageText = "🥩 *Carnicería Cano*\n\nTu código de verificación de pedido es: *{$code}*\n\nPor favor ingresa este código de 4 dígitos en la pantalla para confirmar tu pedido.";
+
+    $data = [
+        'number' => $cleanPhone,
+        'options' => [
+            'delay' => 1000,
+            'presence' => 'composing'
+        ],
+        'textMessage' => [
+            'text' => $messageText
+        ]
+    ];
+
+    $ch = curl_init($endpoint);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_POST, true);
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data, JSON_UNESCAPED_UNICODE));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'apikey: ' . $apiKey
+    ]);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 8);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    return ($httpCode === 200 || $httpCode === 201);
+}
+
 

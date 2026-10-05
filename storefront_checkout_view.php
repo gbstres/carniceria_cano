@@ -673,8 +673,19 @@ function startWhatsAppVerification() {
 
             if (data.ok) {
                 var btnMsg = document.getElementById('btnSendWaMsg');
+                var otpNoticeText = document.getElementById('otpNoticeText');
                 if (btnMsg) btnMsg.href = data.wa_url;
                 
+                if (otpNoticeText) {
+                    if (data.auto_sent) {
+                        otpNoticeText.innerHTML = '<div class="alert alert-success p-2 small mb-3"><i class="bi bi-check-circle-fill me-1"></i> <strong>¡Código enviado a tu WhatsApp!</strong> Revisa tu aplicación de WhatsApp e ingresa los 4 dígitos a continuación:</div>';
+                        if (btnMsg) btnMsg.classList.add('d-none');
+                    } else {
+                        otpNoticeText.innerHTML = 'Para confirmar que tu número es real y evitar pedidos falsos, envía tu código por WhatsApp (sin costo):';
+                        if (btnMsg) btnMsg.classList.remove('d-none');
+                    }
+                }
+
                 var modalEl = document.getElementById('otpModal');
                 if (modalEl) {
                     var modal = new bootstrap.Modal(modalEl);
@@ -741,7 +752,7 @@ document.addEventListener('DOMContentLoaded', function () {
         <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
       </div>
       <div class="modal-body p-4 text-center">
-        <p class="text-dark small mb-3">Para confirmar que tu número es real y evitar pedidos falsos, envía tu código por WhatsApp (sin ningún costo):</p>
+        <p class="text-dark small mb-3" id="otpNoticeText">Para confirmar que tu número es real y evitar pedidos falsos, envía tu código por WhatsApp (sin ningún costo):</p>
         
         <a id="btnSendWaMsg" href="#" target="_blank" class="btn btn-success btn-lg fw-bold w-100 mb-3 shadow-sm">
           <i class="bi bi-whatsapp me-2"></i> Enviar Código a la Carnicería
