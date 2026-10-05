@@ -204,8 +204,37 @@ function storefront_calculate_distance($lat1, $lon1, $lat2, $lon2)
 
 function storefront_ensure_order_tables(mysqli $link)
 {
+    $createWebClientes = "CREATE TABLE IF NOT EXISTS cc_web_clientes (
+        id_cliente_web INT NOT NULL AUTO_INCREMENT,
+        nombre VARCHAR(150) NOT NULL,
+        telefono VARCHAR(40) NOT NULL,
+        email VARCHAR(120) NOT NULL DEFAULT '',
+        fecha_registro DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id_cliente_web),
+        UNIQUE KEY idx_telefono (telefono)
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+
+    $createWebDirecciones = "CREATE TABLE IF NOT EXISTS cc_web_direcciones (
+        id_direccion INT NOT NULL AUTO_INCREMENT,
+        id_cliente_web INT NOT NULL,
+        alias VARCHAR(50) NOT NULL DEFAULT 'Principal',
+        direccion_completa VARCHAR(255) NOT NULL,
+        referencias_ubicacion TEXT NULL,
+        latitud DECIMAL(10,8) NULL,
+        longitud DECIMAL(11,8) NULL,
+        distancia_km DECIMAL(5,2) NULL,
+        fecha_creacion DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        PRIMARY KEY (id_direccion),
+        KEY idx_cliente_web (id_cliente_web),
+        CONSTRAINT fk_web_dir_cliente FOREIGN KEY (id_cliente_web)
+            REFERENCES cc_web_clientes(id_cliente_web)
+            ON DELETE CASCADE
+    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+
     $createOrders = "CREATE TABLE IF NOT EXISTS cc_pedidos_web (
         id_pedido INT NOT NULL AUTO_INCREMENT,
+        id_cliente_web INT NULL,
+        id_direccion INT NULL,
         id_sucursal INT NOT NULL DEFAULT 1,
         cliente_nombre VARCHAR(150) NOT NULL,
         cliente_telefono VARCHAR(40) NOT NULL,
@@ -242,6 +271,12 @@ function storefront_ensure_order_tables(mysqli $link)
             ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
 
+    if (!mysqli_query($link, $createWebClientes)) {
+        return mysqli_error($link);
+    }
+    if (!mysqli_query($link, $createWebDirecciones)) {
+        return mysqli_error($link);
+    }
     if (!mysqli_query($link, $createOrders)) {
         return mysqli_error($link);
     }
@@ -250,6 +285,8 @@ function storefront_ensure_order_tables(mysqli $link)
     }
 
     $columnsNeeded = [
+        'id_cliente_web' => "ALTER TABLE cc_pedidos_web ADD COLUMN id_cliente_web INT NULL",
+        'id_direccion' => "ALTER TABLE cc_pedidos_web ADD COLUMN id_direccion INT NULL",
         'id_sucursal' => "ALTER TABLE cc_pedidos_web ADD COLUMN id_sucursal INT NOT NULL DEFAULT 1",
         'referencias_ubicacion' => "ALTER TABLE cc_pedidos_web ADD COLUMN referencias_ubicacion TEXT NULL",
         'latitud' => "ALTER TABLE cc_pedidos_web ADD COLUMN latitud DECIMAL(10,8) NULL",
@@ -499,18 +536,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             } else {
                 mysqli_begin_transaction($link);
                 try {
-                    $orderStmt = mysqli_prepare($link, "INSERT INTO cc_pedidos_web (
-                        id_sucursal, cliente_nombre, cliente_telefono, cliente_email, tipo_entrega, direccion_entrega, referencias_ubicacion, latitud, longitud, distancia_km, metodo_pago, monto_pago_efectivo, notas, subtotal, total, estatus
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'nuevo')");
-                    if (!$orderStmt) {
-                        throw new Exception(mysqli_error($link));
-                    }
-
                     $idSucursalInt = (int) $formData['id_sucursal'];
                     $latVal = $formData['latitud'] !== '' ? (float)$formData['latitud'] : null;
                     $lngVal = $formData['longitud'] !== '' ? (float)$formData['longitud'] : null;
 
-                    mysqli_stmt_bind_param($orderStmt, 'issssssdddsssdd',
+                    $idClientWeb = storefront_find_or_create_web_customer($link, $formData['cliente_nombre'], $formData['cliente_telefono'], $formData['cliente_email']);
+                    $idDireccionWeb = storefront_find_or_create_web_address($link, $idClientWeb, $formData['direccion_entrega'], $formData['referencias_ubicacion'], $latVal, $lngVal, $distancia);
+
+                    $orderStmt = mysqli_prepare($link, "INSERT INTO cc_pedidos_web (
+                        id_cliente_web, id_direccion, id_sucursal, cliente_nombre, cliente_telefono, cliente_email, tipo_entrega, direccion_entrega, referencias_ubicacion, latitud, longitud, distancia_km, metodo_pago, monto_pago_efectivo, notas, subtotal, total, estatus
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'nuevo')");
+                    if (!$orderStmt) {
+                        throw new Exception(mysqli_error($link));
+                    }
+
+                    mysqli_stmt_bind_param($orderStmt, 'iiissssssdddsssdd',
+                        $idClientWeb,
+                        $idDireccionWeb,
                         $idSucursalInt,
                         $formData['cliente_nombre'],
                         $formData['cliente_telefono'],
@@ -521,6 +563,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $latVal,
                         $lngVal,
                         $distancia,
+                        $formData['metodo_pago'],
+                        $formData['monto_pago_efectivo'],
+                        $formData['notas'],
+                        $cartTotals['subtotal'],
+                        $cartTotals['total']
+                    );
                         $formData['metodo_pago'],
                         $formData['monto_pago_efectivo'],
                         $formData['notas'],
@@ -675,5 +723,48 @@ function storefront_process_order_and_deduct_stock(mysqli $link, int $orderId, i
         mysqli_rollback($link);
         return ['success' => false, 'message' => $e->getMessage()];
     }
+}
+
+function storefront_find_or_create_web_customer(mysqli $link, string $nombre, string $telefono, string $email): int
+{
+    $cleanPhone = preg_replace('/[^0-9]/', '', $telefono);
+    $telefonoSql = mysqli_real_escape_string($link, $cleanPhone);
+    $nombreSql = mysqli_real_escape_string($link, $nombre);
+    $emailSql = mysqli_real_escape_string($link, $email);
+
+    $check = mysqli_query($link, "SELECT id_cliente_web FROM cc_web_clientes WHERE telefono = '$telefonoSql' LIMIT 1");
+    if ($check && $row = mysqli_fetch_assoc($check)) {
+        $idClient = (int) $row['id_cliente_web'];
+        mysqli_query($link, "UPDATE cc_web_clientes SET nombre = '$nombreSql', email = '$emailSql' WHERE id_cliente_web = $idClient");
+        return $idClient;
+    }
+
+    mysqli_query($link, "INSERT INTO cc_web_clientes (nombre, telefono, email) VALUES ('$nombreSql', '$telefonoSql', '$emailSql')");
+    return (int) mysqli_insert_id($link);
+}
+
+function storefront_find_or_create_web_address(mysqli $link, int $idClientWeb, string $direccion, string $referencias, ?float $lat, ?float $lng, ?float $distancia): int
+{
+    $idClientWeb = (int) $idClientWeb;
+    $dirSql = mysqli_real_escape_string($link, trim($direccion));
+    $refSql = mysqli_real_escape_string($link, trim($referencias));
+    $latSql = $lat !== null ? (float)$lat : "NULL";
+    $lngSql = $lng !== null ? (float)$lng : "NULL";
+    $distSql = $distancia !== null ? (float)$distancia : "NULL";
+
+    if ($dirSql === '') {
+        return 0;
+    }
+
+    $check = mysqli_query($link, "SELECT id_direccion FROM cc_web_direcciones 
+        WHERE id_cliente_web = $idClientWeb AND direccion_completa = '$dirSql' LIMIT 1");
+    if ($check && $row = mysqli_fetch_assoc($check)) {
+        return (int) $row['id_direccion'];
+    }
+
+    $sql = "INSERT INTO cc_web_direcciones (id_cliente_web, alias, direccion_completa, referencias_ubicacion, latitud, longitud, distancia_km) 
+        VALUES ($idClientWeb, 'Domicilio', '$dirSql', '$refSql', $latSql, $lngSql, $distSql)";
+    mysqli_query($link, $sql);
+    return (int) mysqli_insert_id($link);
 }
 
