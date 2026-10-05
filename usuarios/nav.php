@@ -11,6 +11,9 @@
                 <li class="nav-item">
                     <a class="nav-link active" aria-current="page" href="../index.php">Inicio</a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link fw-bold text-danger" href="../admin_pedidos_web.php"><i class="bi bi-basket-fill me-1"></i> Pedidos Web</a>
+                </li>
                 <li class="nav-item dropdown">
                     <a class="nav-link dropdown-toggle" href="#" data-bs-toggle="dropdown" aria-expanded="false">Mantenimientos</a>
                     <ul class="dropdown-menu">

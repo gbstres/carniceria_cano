@@ -596,3 +596,64 @@ if ($currentPage > $totalPages) {
 
 $offset = ($currentPage - 1) * $productsPerPage;
 $paginatedProducts = array_slice($filteredProducts, $offset, $productsPerPage);
+
+function storefront_process_order_and_deduct_stock(mysqli $link, int $orderId, int $idSucursal, int $userId = 1): array
+{
+    $orderId = (int) $orderId;
+    $idSucursal = (int) $idSucursal;
+    $userId = (int) $userId;
+
+    $orderResult = mysqli_query($link, "SELECT * FROM cc_pedidos_web WHERE id_pedido = $orderId LIMIT 1");
+    if (!$orderResult || !($order = mysqli_fetch_assoc($orderResult))) {
+        return ['success' => false, 'message' => 'Pedido no encontrado.'];
+    }
+
+    if ($order['estatus'] === 'completado') {
+        return ['success' => false, 'message' => 'El pedido ya habia sido completado previamente.'];
+    }
+
+    date_default_timezone_set("America/Mexico_City");
+    mysqli_begin_transaction($link);
+    try {
+        $updateOrder = mysqli_query($link, "UPDATE cc_pedidos_web SET estatus = 'completado' WHERE id_pedido = $orderId");
+        if (!$updateOrder) {
+            throw new Exception("Error actualizando estatus del pedido: " . mysqli_error($link));
+        }
+
+        $itemsResult = mysqli_query($link, "SELECT * FROM cc_det_pedidos_web WHERE id_pedido = $orderId");
+        if ($itemsResult) {
+            $fecha_act = date('Y-m-d');
+            $hora_act = date('H:i:s');
+            while ($item = mysqli_fetch_assoc($itemsResult)) {
+                $codigoSql = mysqli_real_escape_string($link, $item['codigo']);
+                $cantidad = (float) $item['cantidad'];
+
+                $updateStock = mysqli_query($link, "UPDATE cc_productos 
+                    SET almacen = almacen - $cantidad, 
+                        fecha_act = '$fecha_act', 
+                        hora_act = '$hora_act', 
+                        id_usuario_act = $userId 
+                    WHERE id_sucursal = $idSucursal AND codigo = '$codigoSql'");
+
+                if (!$updateStock) {
+                    throw new Exception("Error al descontar stock del producto $codigoSql: " . mysqli_error($link));
+                }
+
+                if (function_exists('cc_sync_enqueue')) {
+                    cc_sync_enqueue($link, $idSucursal, 'producto', 'upsert', ['codigo' => $codigoSql], [
+                        'motivo' => 'venta_pedido_web',
+                        'id_pedido' => $orderId
+                    ]);
+                }
+            }
+            mysqli_free_result($itemsResult);
+        }
+
+        mysqli_commit($link);
+        return ['success' => true, 'message' => "Pedido #$orderId procesado correctamente y stock descontado en Sucursal $idSucursal."];
+    } catch (Exception $e) {
+        mysqli_rollback($link);
+        return ['success' => false, 'message' => $e->getMessage()];
+    }
+}
+
