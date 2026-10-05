@@ -443,6 +443,8 @@ function storefront_build_url(array $params = [])
     return 'index.php' . ($queryString !== '' ? '?' . $queryString : '') . '#catalogo';
 }
 
+storefront_ensure_order_tables($link);
+
 $products = storefront_fetch_products($link);
 $showAll = isset($_GET['mostrar']) && trim((string) $_GET['mostrar']) === 'todos';
 $selectedCategory = isset($_GET['categoria']) ? trim((string) $_GET['categoria']) : '';
@@ -642,13 +644,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $formData['monto_pago_efectivo'],
                         $formData['notas'],
                         $cartTotals['subtotal'],
-                        $cartTotals['total']
-                    );
-                        $formData['metodo_pago'],
-                        $formData['monto_pago_efectivo'],
-                        $formData['notas'],
-                        $cartTotals['subtotal'],
-                        $cartTotals['total']
                     );
 
                     if (!mysqli_stmt_execute($orderStmt)) {
@@ -862,6 +857,7 @@ function storefront_is_phone_verified(mysqli $link, string $phone): bool
     }
 
     // 3. Verificar en BD (cc_web_clientes)
+    storefront_ensure_order_tables($link);
     $phoneSql = mysqli_real_escape_string($link, $cleanPhone);
     $check = mysqli_query($link, "SELECT verificado FROM cc_web_clientes WHERE telefono = '$phoneSql' AND verificado = 1 LIMIT 1");
     if ($check && mysqli_num_rows($check) > 0) {
