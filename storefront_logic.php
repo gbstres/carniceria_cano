@@ -209,6 +209,7 @@ function storefront_ensure_order_tables(mysqli $link)
         nombre VARCHAR(150) NOT NULL,
         telefono VARCHAR(40) NOT NULL,
         email VARCHAR(120) NOT NULL DEFAULT '',
+        verificado INT NOT NULL DEFAULT 0,
         fecha_registro DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
         PRIMARY KEY (id_cliente_web),
         UNIQUE KEY idx_telefono (telefono)
@@ -442,6 +443,59 @@ $currentPage = isset($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $action = isset($_POST['action']) ? $_POST['action'] : '';
 
+    if ($action === 'check_phone_verification') {
+        header('Content-Type: application/json; charset=utf-8');
+        $phone = $_POST['phone'] ?? '';
+        $isVerified = storefront_is_phone_verified($link, $phone);
+        echo json_encode(['verified' => $isVerified]);
+        exit;
+    }
+
+    if ($action === 'send_whatsapp_otp') {
+        header('Content-Type: application/json; charset=utf-8');
+        $phone = trim((string)($_POST['phone'] ?? ''));
+        $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+
+        if (strlen($cleanPhone) < 10) {
+            echo json_encode(['ok' => false, 'message' => 'Ingresa un teléfono válido de al menos 10 dígitos.']);
+            exit;
+        }
+
+        if (storefront_is_phone_verified($link, $cleanPhone)) {
+            echo json_encode(['ok' => true, 'already_verified' => true, 'message' => 'Este número ya fue verificado previamente.']);
+            exit;
+        }
+
+        $code = (string) rand(1000, 9999);
+        $_SESSION['otp_code'] = $code;
+        $_SESSION['otp_phone'] = $cleanPhone;
+
+        $branchPhone = '525512345678';
+        $text = urlencode("Hola Carnicería Cano, mi código de verificación para mi pedido online es: CANO-" . $code);
+        $waUrl = "https://api.whatsapp.com/send?phone=" . $branchPhone . "&text=" . $text;
+
+        echo json_encode(['ok' => true, 'code' => $code, 'wa_url' => $waUrl]);
+        exit;
+    }
+
+    if ($action === 'verify_whatsapp_otp') {
+        header('Content-Type: application/json; charset=utf-8');
+        $userCode = trim((string)($_POST['code'] ?? ''));
+        $phone = trim((string)($_POST['phone'] ?? ''));
+        $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+
+        $sessCode = (string)($_SESSION['otp_code'] ?? '');
+        $sessPhone = (string)($_SESSION['otp_phone'] ?? '');
+
+        if ($userCode !== '' && $sessCode !== '' && $userCode === $sessCode) {
+            storefront_mark_phone_as_verified($link, $cleanPhone);
+            echo json_encode(['ok' => true, 'message' => '¡Teléfono verificado correctamente!']);
+        } else {
+            echo json_encode(['ok' => false, 'message' => 'Código de verificación incorrecto. Intenta de nuevo.']);
+        }
+        exit;
+    }
+
     if ($action === 'add_to_cart') {
         $productCode = isset($_POST['product_code']) ? trim($_POST['product_code']) : '';
         $quantity = storefront_normalize_quantity(isset($_POST['quantity']) ? $_POST['quantity'] : 1);
@@ -529,6 +583,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $feedback = ['type' => 'danger', 'message' => 'Las referencias de ubicación (fachada, entre calles) son obligatorias para el repartidor.'];
         } elseif ($formData['tipo_entrega'] === 'domicilio' && $distancia > 5.0) {
             $feedback = ['type' => 'danger', 'message' => 'La ubicación se encuentra a ' . $distancia . ' km de la Sucursal seleccionada. El límite máximo para entrega a domicilio es de 5 km. Elige Recoger en Sucursal.'];
+        } elseif (!storefront_is_phone_verified($link, $cleanPhone)) {
+            $feedback = ['type' => 'warning', 'message' => 'Por favor verifica tu número telefónico haciendo clic en el botón verde de "Verificar ($0)" antes de finalizar tu pedido.'];
         } else {
             $tableStatus = storefront_ensure_order_tables($link);
             if ($tableStatus !== true) {
@@ -766,5 +822,55 @@ function storefront_find_or_create_web_address(mysqli $link, int $idClientWeb, s
         VALUES ($idClientWeb, 'Domicilio', '$dirSql', '$refSql', $latSql, $lngSql, $distSql)";
     mysqli_query($link, $sql);
     return (int) mysqli_insert_id($link);
+}
+
+function storefront_is_phone_verified(mysqli $link, string $phone): bool
+{
+    $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+    if (strlen($cleanPhone) < 10) {
+        return false;
+    }
+
+    // 1. Verificar Cookie de Memoria en el celular (180 Días)
+    $cookieName = 'cano_ver_' . substr(md5($cleanPhone), 0, 8);
+    if (isset($_COOKIE[$cookieName]) && $_COOKIE[$cookieName] === sha1($cleanPhone . '_cano_verified_salt')) {
+        return true;
+    }
+
+    // 2. Verificar Sesión activa
+    if (isset($_SESSION['verified_phones'][$cleanPhone]) && $_SESSION['verified_phones'][$cleanPhone] === true) {
+        return true;
+    }
+
+    // 3. Verificar en BD (cc_web_clientes)
+    $phoneSql = mysqli_real_escape_string($link, $cleanPhone);
+    $check = mysqli_query($link, "SELECT verificado FROM cc_web_clientes WHERE telefono = '$phoneSql' AND verificado = 1 LIMIT 1");
+    if ($check && mysqli_num_rows($check) > 0) {
+        return true;
+    }
+
+    return false;
+}
+
+function storefront_mark_phone_as_verified(mysqli $link, string $phone): bool
+{
+    $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+    if (strlen($cleanPhone) < 10) {
+        return false;
+    }
+
+    if (!isset($_SESSION['verified_phones'])) {
+        $_SESSION['verified_phones'] = [];
+    }
+    $_SESSION['verified_phones'][$cleanPhone] = true;
+
+    $cookieName = 'cano_ver_' . substr(md5($cleanPhone), 0, 8);
+    $cookieValue = sha1($cleanPhone . '_cano_verified_salt');
+    setcookie($cookieName, $cookieValue, time() + (180 * 86400), '/');
+
+    $phoneSql = mysqli_real_escape_string($link, $cleanPhone);
+    mysqli_query($link, "UPDATE cc_web_clientes SET verificado = 1 WHERE telefono = '$phoneSql'");
+
+    return true;
 }
 

@@ -49,8 +49,16 @@
                                 <input class="form-control" type="text" id="cliente_nombre" name="cliente_nombre" value="<?php echo storefront_escape($formData['cliente_nombre']); ?>" placeholder="Ej: Juan Pérez" required>
                             </div>
                             <div class="col-md-6">
-                                <label class="form-label fw-bold text-dark small" for="cliente_telefono"><i class="bi bi-telephone-fill text-danger me-1"></i> Teléfono de Contacto *</label>
-                                <input class="form-control" type="text" id="cliente_telefono" name="cliente_telefono" value="<?php echo storefront_escape($formData['cliente_telefono']); ?>" placeholder="Ej: 55 1234 5678" required>
+                                <div class="d-flex align-items-center justify-content-between mb-1">
+                                    <label class="form-label fw-bold text-dark small m-0" for="cliente_telefono"><i class="bi bi-telephone-fill text-danger me-1"></i> Teléfono de Contacto *</label>
+                                    <div id="phoneVerificationBadge"></div>
+                                </div>
+                                <div class="input-group">
+                                    <input class="form-control" type="text" id="cliente_telefono" name="cliente_telefono" value="<?php echo storefront_escape($formData['cliente_telefono']); ?>" placeholder="Ej: 55 1234 5678" oninput="checkPhoneStatus()" required>
+                                    <button class="btn btn-outline-success fw-bold d-none" type="button" id="btnVerifyWa" onclick="startWhatsAppVerification()">
+                                        <i class="bi bi-whatsapp me-1"></i> Verificar ($0)
+                                    </button>
+                                </div>
                             </div>
                             <div class="col-md-12">
                                 <label class="form-label fw-bold text-dark small" for="cliente_email"><i class="bi bi-envelope-fill me-1"></i> Correo Electrónico (Opcional)</label>
@@ -599,8 +607,157 @@ function validateBranchDistance() {
     updateMapVisuals();
 }
 
+var isPhoneVerified = false;
+var checkPhoneTimer = null;
+
+function checkPhoneStatus() {
+    clearTimeout(checkPhoneTimer);
+    checkPhoneTimer = setTimeout(function () {
+        var phoneInput = document.getElementById('cliente_telefono');
+        if (!phoneInput) return;
+        var phone = phoneInput.value.replace(/[^0-9]/g, '');
+        var badge = document.getElementById('phoneVerificationBadge');
+        var btnWa = document.getElementById('btnVerifyWa');
+
+        if (phone.length < 10) {
+            if (badge) badge.innerHTML = '';
+            if (btnWa) btnWa.classList.add('d-none');
+            isPhoneVerified = false;
+            return;
+        }
+
+        var formData = new FormData();
+        formData.append('action', 'check_phone_verification');
+        formData.append('phone', phone);
+
+        fetch('index.php', { method: 'POST', body: formData })
+            .then(res => res.json())
+            .then(data => {
+                if (data.verified) {
+                    isPhoneVerified = true;
+                    if (badge) badge.innerHTML = '<span class="badge bg-success small"><i class="bi bi-shield-check me-1"></i> Verificado</span>';
+                    if (btnWa) btnWa.classList.add('d-none');
+                } else {
+                    isPhoneVerified = false;
+                    if (badge) badge.innerHTML = '<span class="badge bg-warning text-dark small"><i class="bi bi-shield-exclamation me-1"></i> Sin verificar</span>';
+                    if (btnWa) btnWa.classList.remove('d-none');
+                }
+            })
+            .catch(err => console.log(err));
+    }, 400);
+}
+
+function startWhatsAppVerification() {
+    var phoneInput = document.getElementById('cliente_telefono');
+    if (!phoneInput) return;
+    var phone = phoneInput.value.replace(/[^0-9]/g, '');
+
+    if (phone.length < 10) {
+        alert('Ingresa un número telefónico de 10 dígitos.');
+        return;
+    }
+
+    var formData = new FormData();
+    formData.append('action', 'send_whatsapp_otp');
+    formData.append('phone', phone);
+
+    fetch('index.php', { method: 'POST', body: formData })
+        .then(res => res.json())
+        .then(data => {
+            if (data.already_verified) {
+                isPhoneVerified = true;
+                checkPhoneStatus();
+                alert('Este número ya está verificado.');
+                return;
+            }
+
+            if (data.ok) {
+                var btnMsg = document.getElementById('btnSendWaMsg');
+                if (btnMsg) btnMsg.href = data.wa_url;
+                
+                var modalEl = document.getElementById('otpModal');
+                if (modalEl) {
+                    var modal = new bootstrap.Modal(modalEl);
+                    modal.show();
+                }
+            } else {
+                alert(data.message);
+            }
+        })
+        .catch(err => console.log(err));
+}
+
+function submitOtpCode() {
+    var phoneInput = document.getElementById('cliente_telefono');
+    var codeInput = document.getElementById('otp_input_code');
+    var alertBox = document.getElementById('otpAlertBox');
+    if (!phoneInput || !codeInput) return;
+
+    var phone = phoneInput.value.replace(/[^0-9]/g, '');
+    var code = codeInput.value.trim();
+
+    if (code.length !== 4) {
+        if (alertBox) alertBox.innerHTML = '<div class="alert alert-danger p-2 small">Ingresa los 4 dígitos del código.</div>';
+        return;
+    }
+
+    var formData = new FormData();
+    formData.append('action', 'verify_whatsapp_otp');
+    formData.append('phone', phone);
+    formData.append('code', code);
+
+    fetch('index.php', { method: 'POST', body: formData })
+        .then(res => res.json())
+        .then(data => {
+            if (data.ok) {
+                isPhoneVerified = true;
+                checkPhoneStatus();
+                var modalEl = document.getElementById('otpModal');
+                if (modalEl) {
+                    var modal = bootstrap.Modal.getInstance(modalEl);
+                    if (modal) modal.hide();
+                }
+                alert('¡Teléfono verificado con éxito!');
+            } else {
+                if (alertBox) alertBox.innerHTML = '<div class="alert alert-danger p-2 small">' + data.message + '</div>';
+            }
+        })
+        .catch(err => console.log(err));
+}
+
 document.addEventListener('DOMContentLoaded', function () {
     toggleDeliveryFields();
     togglePaymentFields();
+    checkPhoneStatus();
 });
 </script>
+
+<!-- Modal de Verificación WhatsApp OTP ($0 Costo) -->
+<div class="modal fade" id="otpModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content rounded-4 border-0 shadow">
+      <div class="modal-header bg-success text-white">
+        <h5 class="modal-title fw-bold"><i class="bi bi-shield-check me-1"></i> Verificación de Teléfono ($0 Costo)</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body p-4 text-center">
+        <p class="text-dark small mb-3">Para confirmar que tu número es real y evitar pedidos falsos, envía tu código por WhatsApp (sin ningún costo):</p>
+        
+        <a id="btnSendWaMsg" href="#" target="_blank" class="btn btn-success btn-lg fw-bold w-100 mb-3 shadow-sm">
+          <i class="bi bi-whatsapp me-2"></i> Enviar Código a la Carnicería
+        </a>
+
+        <hr class="my-3 text-muted">
+        <label class="form-label fw-bold small text-dark">Ingresa los 4 dígitos del código enviado:</label>
+        <div class="d-flex justify-content-center gap-2 mb-3">
+          <input type="text" id="otp_input_code" class="form-control text-center fw-bold fs-4" style="max-width: 160px; letter-spacing: 4px;" maxlength="4" placeholder="0000">
+        </div>
+        <button type="button" onclick="submitOtpCode()" class="btn btn-danger px-4 fw-bold">
+          Confirmar Código
+        </button>
+        <div id="otpAlertBox" class="mt-3"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
