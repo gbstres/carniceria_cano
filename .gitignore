@@ -1,10 +1,11 @@
 functions/config.php
 functions/config_1.php
 functions/config_2.php
+functions/zoho_config.php
 keys/private_designer2.ppk
 usuarios/config.php
-nbproject/private/
 backups/
 logs/
 scratch/
+
 
