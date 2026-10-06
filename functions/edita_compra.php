@@ -191,29 +191,32 @@ else if ($_POST['movimiento'] == 5) {
     $id_empleado = $_POST['id_empleado'];
     //$importe_recibido = $_POST['importe_recibido'];
     $tipo_pago = $_POST['tipo_pago'];
-    $update1 = mysqli_query($link, "UPDATE cc_det_compras SET estatus=1, id_empleado = $id_empleado, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act='$id_usuario_act', tipo_pago='$tipo_pago' WHERE id_sucursal='$id_sucursal' and id_compra='$id_compra'")
-            or die(mysqli_error());
-    if ($update1) {
-        $row_det_compra = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM `cc_det_compras` WHERE id_sucursal = '$id_sucursal' and id_compra = $id_compra"));
-        cc_sync_enqueue($link, $id_sucursal, 'compra_detalle', 'close', [
-            'id_compra' => (int) $id_compra,
-        ], [
-            'tabla' => 'cc_det_compras',
-            'tipo_pago' => (int) $tipo_pago,
-            'id_empleado' => (int) $id_empleado,
-        ]);
-        cc_sync_enqueue($link, $id_sucursal, 'compra', 'upsert', [
-            'id_compra' => (int) $id_compra,
-        ], [
-            'tabla' => 'cc_compras',
-            'motivo' => 'cierre',
-        ]);
-        $response_array [] = array('id_compra' => $id_compra, 'fecha_ingreso' => $row_det_compra['fecha_ingreso'], 'hora_ingreso' => $row_det_compra['hora_ingreso']);
-        if ($row_det_compra['id_proveedor'] <> 0) {
-            $id_proveedor = $row_det_compra['id_proveedor'];
-            recalcula($link, $id_sucursal, $id_compra, $id_proveedor, $fecha_act, $hora_act, $id_usuario_act);
+    $update1 = mysqli_query($link, "UPDATE cc_det_compras SET estatus=1, id_empleado = $id_empleado, fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act='$id_usuario_act', tipo_pago='$tipo_pago' WHERE id_sucursal='$id_sucursal' and id_compra='$id_compra' and estatus=0")
+            or die(mysqli_error($link));
+    $filas_afectadas = mysqli_affected_rows($link);
+    $row_det_compra = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM `cc_det_compras` WHERE id_sucursal = '$id_sucursal' and id_compra = $id_compra"));
+    if ($row_det_compra) {
+        if ($filas_afectadas > 0) {
+            cc_sync_enqueue($link, $id_sucursal, 'compra_detalle', 'close', [
+                'id_compra' => (int) $id_compra,
+            ], [
+                'tabla' => 'cc_det_compras',
+                'tipo_pago' => (int) $tipo_pago,
+                'id_empleado' => (int) $id_empleado,
+            ]);
+            cc_sync_enqueue($link, $id_sucursal, 'compra', 'upsert', [
+                'id_compra' => (int) $id_compra,
+            ], [
+                'tabla' => 'cc_compras',
+                'motivo' => 'cierre',
+            ]);
+            if ($row_det_compra['id_proveedor'] <> 0) {
+                $id_proveedor = $row_det_compra['id_proveedor'];
+                recalcula($link, $id_sucursal, $id_compra, $id_proveedor, $fecha_act, $hora_act, $id_usuario_act);
+            }
+            recalcula_almacen_compra($link, $id_sucursal, $id_compra, $fecha_act, $hora_act, $id_usuario_act);
         }
-        recalcula_almacen_compra($link,$id_sucursal, $id_compra, $fecha_act, $hora_act, $id_usuario_act);
+        $response_array [] = array('id_compra' => $id_compra, 'fecha_ingreso' => $row_det_compra['fecha_ingreso'], 'hora_ingreso' => $row_det_compra['hora_ingreso']);
     } else {
         echo '<div class="alert alert-danger alert-dismissable"><button type="button" class="close" data-dismiss="alert" aria-hidden="true">&times;</button>Error, no se pudo guardar el producto.</div>';
     }

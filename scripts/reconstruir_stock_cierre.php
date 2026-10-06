@@ -61,7 +61,7 @@ echo "=========================================================\n\n";
 // 1. Recalcular Stock de Productos (centralizar_almacen = 1)
 $sqlProd = "
 UPDATE cc_productos p
-INNER JOIN cc_cierre_stock cs 
+LEFT JOIN cc_cierre_stock cs 
     ON p.id_sucursal = cs.id_sucursal 
    AND p.codigo = cs.codigo COLLATE utf8_spanish_ci 
    AND cs.id_cierre = $id_cierre 
@@ -90,7 +90,7 @@ LEFT JOIN (
       AND estatus <> 2
     GROUP BY codigo
 ) e ON p.codigo = e.codigo COLLATE utf8_spanish_ci
-SET p.almacen = ROUND(cs.stock + COALESCE(c.cant_comprada, 0) + COALESCE(e.cant_entrada, 0) - COALESCE(v.cant_vendida, 0), 3)
+SET p.almacen = ROUND(COALESCE(cs.stock, 0) + COALESCE(c.cant_comprada, 0) + COALESCE(e.cant_entrada, 0) - COALESCE(v.cant_vendida, 0), 3)
 WHERE p.id_sucursal = $id_sucursal;
 ";
 
@@ -103,7 +103,7 @@ echo "[OK] Productos actualizados correctamente.\n";
 // 2. Recalcular Stock de Categorías Centralizadas (centralizar_almacen = 2)
 $sqlCat = "
 UPDATE cc_categorias cat
-INNER JOIN cc_cierre_stock cs 
+LEFT JOIN cc_cierre_stock cs 
     ON cat.id_sucursal = cs.id_sucursal 
    AND CAST(cat.id_categoria AS CHAR) = cs.codigo COLLATE utf8_spanish_ci 
    AND cs.id_cierre = $id_cierre 
@@ -128,7 +128,7 @@ LEFT JOIN (
       AND p.centralizar_almacen = 2
     GROUP BY p.id_categoria
 ) c ON cat.id_categoria = c.id_categoria
-SET cat.almacen = ROUND(cs.stock + COALESCE(c.cant_comprada, 0) - COALESCE(v.cant_vendida, 0), 3)
+SET cat.almacen = ROUND(COALESCE(cs.stock, 0) + COALESCE(c.cant_comprada, 0) - COALESCE(v.cant_vendida, 0), 3)
 WHERE cat.id_sucursal = $id_sucursal;
 ";
 

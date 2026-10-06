@@ -38,9 +38,9 @@ if (isset($_POST['movimiento'])) {
     $update1 = mysqli_query($link, "UPDATE cc_compras SET "
                     . "estatus='$movimiento', "
                     . "fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act='$id_usuario_act' "
-                    . "WHERE id_sucursal='$id_sucursal' and id_compra = '$id_compra' and id_consecutivo = '$id_consecutivo'")
-            or die(mysqli_error());
-    if ($update1) {
+                    . "WHERE id_sucursal='$id_sucursal' and id_compra = '$id_compra' and id_consecutivo = '$id_consecutivo' and estatus <> '$movimiento'")
+            or die(mysqli_error($link));
+    if ($update1 && mysqli_affected_rows($link) > 0) {
         if ($id_proveedor != 0) {
             $row_importe = mysqli_fetch_assoc(mysqli_query($link, "SELECT sum(cantidad * precio_compra) as 'importe' FROM `cc_compras` WHERE id_sucursal = '$id_sucursal' and id_compra = $id_compra and id_consecutivo = '$id_consecutivo'"));
             $importe = $row_importe['importe'];
