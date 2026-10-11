@@ -242,6 +242,23 @@ $qr_precio = file_exists(__DIR__ . '/../img/qr_precios_sucursal_' . $id_sucursal
         <main>
             <div class="container">
                 <?php require_once "../components/nav.php" ?>
+                <!-- Alerta en Vivo para Pedidos Web de la Sucursal -->
+                <div id="mainWebOrdersAlert" class="alert alert-danger shadow-sm border border-danger d-none my-3 p-3 rounded-3" role="alert">
+                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                        <div class="d-flex align-items-center">
+                            <span class="spinner-grow text-danger me-3" role="status" style="width: 1.5rem; height: 1.5rem;"></span>
+                            <div>
+                                <h4 class="fw-bold text-dark m-0"><i class="bi bi-bell-fill text-danger me-1"></i> ¡TIENES PEDIDOS WEB NUEVOS!</h4>
+                                <div class="text-secondary small mt-1">Hay <strong id="mainWebOrdersCount" class="text-danger fs-5">0</strong> pedidos online pendientes de atención para esta sucursal.</div>
+                            </div>
+                        </div>
+                        <div>
+                            <a href="../admin_pedidos_web.php?sucursal=<?php echo (int)($id_sucursal ?? 1); ?>" class="btn btn-danger btn-lg fw-bold shadow-sm px-4">
+                                <i class="bi bi-journal-check me-1"></i> Ver e Imprimir Pedidos
+                            </a>
+                        </div>
+                    </div>
+                </div>
                 <div>
                     <div class="bg-light p-2 rounded text-center">
                         <div class="col-sm-8 mx-auto">
@@ -1647,6 +1664,50 @@ if ($descripcion_corta == 1) {
                                         calculacambio();
                                     });
 
+    var alertBranchId = <?php echo (int)($id_sucursal ?? 1); ?>;
+    var alertLastCount = 0;
+
+    function checkWebOrdersAlert() {
+        fetch('../api_sync_pedidos.php?action=get_orders&id_sucursal=' + alertBranchId + '&estatus=nuevo')
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    var count = data.count || 0;
+                    var alertBox = document.getElementById('mainWebOrdersAlert');
+                    var countSpan = document.getElementById('mainWebOrdersCount');
+
+                    if (count > 0) {
+                        if (countSpan) countSpan.textContent = count;
+                        if (alertBox) alertBox.classList.remove('d-none');
+
+                        if (count > alertLastCount) {
+                            playAlertBeep();
+                        }
+                    } else {
+                        if (alertBox) alertBox.classList.add('d-none');
+                    }
+                    alertLastCount = count;
+                }
+            })
+            .catch(function(err) { console.log('Error consulta pedidos web: ' + err); });
+    }
+
+    function playAlertBeep() {
+        try {
+            var ctx = new (window.AudioContext || window.webkitAudioContext)();
+            var osc = ctx.createOscillator();
+            osc.type = 'sine';
+            osc.frequency.value = 880;
+            osc.connect(ctx.destination);
+            osc.start();
+            setTimeout(function() { osc.stop(); }, 400);
+        } catch (e) {}
+    }
+
+    $(document).ready(function() {
+        checkWebOrdersAlert();
+        setInterval(checkWebOrdersAlert, 5000);
+    });
     </script>      
 </body>
 </html>

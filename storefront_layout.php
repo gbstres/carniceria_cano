@@ -2,6 +2,11 @@
 function storefront_render_header($title, $currentPage, array $cartTotals)
 {
     $cartCount = !empty($cartTotals['items']) ? (int)$cartTotals['items'] : 0;
+    global $storefrontBranches, $link;
+    if (!isset($storefrontBranches) && isset($link) && $link instanceof mysqli) {
+        $storefrontBranches = storefront_fetch_active_branches($link);
+    }
+    $headerBranches = is_array($storefrontBranches ?? null) ? $storefrontBranches : [];
     ?>
 <!doctype html>
 <html lang="es">
@@ -17,16 +22,7 @@ function storefront_render_header($title, $currentPage, array $cartTotals)
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
         <?php $googleApiKey = defined('GOOGLE_MAPS_API_KEY') ? trim(GOOGLE_MAPS_API_KEY) : ''; ?>
         <?php if (!empty($googleApiKey)): ?>
-            <script src="https://maps.googleapis.com/maps/api/js?key=<?php echo storefront_escape($googleApiKey); ?>&libraries=places,geometry&callback=onGoogleMapsLoaded" async defer></script>
-            <script>
-                window.googleMapsReady = false;
-                function onGoogleMapsLoaded() {
-                    window.googleMapsReady = true;
-                    if (typeof initStorefrontMap === 'function') {
-                        initStorefrontMap();
-                    }
-                }
-            </script>
+            <script src="https://maps.googleapis.com/maps/api/js?key=<?php echo storefront_escape($googleApiKey); ?>&libraries=geometry"></script>
         <?php else: ?>
             <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
             <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
@@ -36,7 +32,18 @@ function storefront_render_header($title, $currentPage, array $cartTotals)
         <!-- Top Bar Informativo y Horarios -->
         <div class="marketing-urgency-bar py-1 px-3 text-center text-white small">
             <span class="badge bg-warning text-dark fw-bold me-1"><i class="bi bi-clock-history"></i> HORARIOS DE ATENCIÓN</span>
-            <span><strong>Sucursal 1:</strong> 7:30 AM - 3:30 PM | <strong>Sucursal 2:</strong> 8:00 AM - 4:00 PM • <strong>Reparto a Domicilio (Máx. 5 km)</strong></span>
+            <?php if (!empty($headerBranches)): ?>
+                <span class="branch-hours-carousel" aria-label="Sucursales, horarios y ubicaciones">
+                    <span class="branch-hours-track">
+                        <?php for ($copy = 0; $copy < 2; $copy++): ?>
+                            <?php foreach ($headerBranches as $branch): ?>
+                                <span class="branch-hours-item"><strong><?php echo storefront_escape($branch['desc_sucursal']); ?>:</strong> <?php echo storefront_escape($branch['horario']); ?> · <?php echo storefront_escape($branch['direccion']); ?></span>
+                            <?php endforeach; ?>
+                        <?php endfor; ?>
+                    </span>
+                </span>
+            <?php endif; ?>
+            <span class="delivery-radius-note">• <strong>Reparto a Domicilio (Máx. 5 km)</strong></span>
         </div>
 
         <!-- Sticky Header Principal -->
@@ -72,6 +79,11 @@ function storefront_render_header($title, $currentPage, array $cartTotals)
                             <li class="nav-item">
                                 <a class="nav-link storefront-menu-link <?php echo $currentPage === 'catalogo' ? 'active' : ''; ?>" href="index.php">
                                     <i class="bi bi-grid-fill me-1"></i> Catálogo
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link storefront-menu-link <?php echo $currentPage === 'mis_pedidos' ? 'active' : ''; ?>" href="mis_pedidos.php">
+                                    <i class="bi bi-clock-history me-1"></i> Mis Pedidos
                                 </a>
                             </li>
                             <li class="nav-item">
@@ -148,6 +160,7 @@ function storefront_render_header($title, $currentPage, array $cartTotals)
 
 function storefront_render_footer()
 {
+    $cartCount = !empty($_SESSION['store_cart']) ? count($_SESSION['store_cart']) : 0;
     ?>
         </main>
         

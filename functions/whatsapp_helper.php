@@ -4,7 +4,7 @@
  */
 
 if (!defined('WA_API_URL')) {
-    define('WA_API_URL', 'http://34.172.184.194:8080');
+    define('WA_API_URL', 'https://wa.abstrings.com');
 }
 if (!defined('WA_API_KEY')) {
     define('WA_API_KEY', 'CarniceriaCano2026ClaveSegura');

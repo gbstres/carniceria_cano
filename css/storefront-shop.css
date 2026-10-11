@@ -90,6 +90,43 @@ html, body, body.mobile-first-app {
     padding: 0.4rem 0.75rem !important;
 }
 
+.branch-hours-carousel {
+    display: inline-block;
+    height: 1.2rem;
+    max-width: min(70vw, 760px);
+    overflow: hidden;
+    vertical-align: middle;
+}
+
+.branch-hours-track {
+    display: flex;
+    flex-direction: column;
+    animation: branch-hours-up 12s linear infinite;
+}
+
+.branch-hours-item {
+    display: block;
+    height: 1.2rem;
+    line-height: 1.2rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.branch-hours-carousel:hover .branch-hours-track {
+    animation-play-state: paused;
+}
+
+@keyframes branch-hours-up {
+    from { transform: translateY(0); }
+    to { transform: translateY(-50%); }
+}
+
+@media (max-width: 575.98px) {
+    .branch-hours-carousel { max-width: 58vw; }
+    .delivery-radius-note { display: block; }
+}
+
 /* Header & Navbar Unificados */
 .store-header {
     background: #1A0909;

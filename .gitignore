@@ -7,5 +7,4 @@ usuarios/config.php
 backups/
 logs/
 scratch/
-
-
+nbproject/private/

@@ -10,6 +10,12 @@ if (!defined('STOREFRONT_SUCURSAL_ID')) {
 if (!defined('GOOGLE_MAPS_API_KEY')) {
     define('GOOGLE_MAPS_API_KEY', '');
 }
+if (!defined('STOREFRONT_MIN_DELIVERY_AMOUNT')) {
+    define('STOREFRONT_MIN_DELIVERY_AMOUNT', 200.00);
+}
+if (!defined('STOREFRONT_DELIVERY_COST')) {
+    define('STOREFRONT_DELIVERY_COST', 60.00);
+}
 if (!defined('EVOLUTION_API_URL')) {
     define('EVOLUTION_API_URL', '');
 }
@@ -281,6 +287,8 @@ function storefront_ensure_order_tables(mysqli $link)
             ON DELETE CASCADE
     ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
 
+    mysqli_set_charset($link, 'utf8mb4');
+
     if (!mysqli_query($link, $createWebClientes)) {
         return mysqli_error($link);
     }
@@ -294,6 +302,12 @@ function storefront_ensure_order_tables(mysqli $link)
         return mysqli_error($link);
     }
 
+    // Asegurar codificación utf8mb4 en las columnas de las tablas para emojis
+    @mysqli_query($link, "ALTER TABLE cc_pedidos_web CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+    @mysqli_query($link, "ALTER TABLE cc_det_pedidos_web CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+    @mysqli_query($link, "ALTER TABLE cc_web_clientes CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+    @mysqli_query($link, "ALTER TABLE cc_web_direcciones CONVERT TO CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci");
+
     $columnsNeeded = [
         'id_cliente_web' => "ALTER TABLE cc_pedidos_web ADD COLUMN id_cliente_web INT NULL",
         'id_direccion' => "ALTER TABLE cc_pedidos_web ADD COLUMN id_direccion INT NULL",
@@ -303,6 +317,7 @@ function storefront_ensure_order_tables(mysqli $link)
         'longitud' => "ALTER TABLE cc_pedidos_web ADD COLUMN longitud DECIMAL(11,8) NULL",
         'distancia_km' => "ALTER TABLE cc_pedidos_web ADD COLUMN distancia_km DECIMAL(5,2) NULL",
         'monto_pago_efectivo' => "ALTER TABLE cc_pedidos_web ADD COLUMN monto_pago_efectivo VARCHAR(50) NULL",
+        'costo_envio' => "ALTER TABLE cc_pedidos_web ADD COLUMN costo_envio DECIMAL(10,2) NOT NULL DEFAULT 0.00",
     ];
 
     foreach ($columnsNeeded as $col => $alterSql) {
@@ -403,15 +418,48 @@ function storefront_fetch_branch_name(mysqli $link, $idSucursal)
     return 'Sucursal ' . $idSucursal;
 }
 
-function storefront_cart_totals(array $cart)
+function storefront_fetch_active_branches(mysqli $link): array
 {
-    $totals = ['items' => 0, 'subtotal' => 0.0, 'total' => 0.0];
+    $branches = [];
+    $result = mysqli_query($link, "SELECT id_sucursal, desc_sucursal, direccion, latitud, longitud, horario, whatsapp
+        FROM cc_sucursales
+        WHERE activo = 1
+          AND TRIM(COALESCE(desc_sucursal, '')) <> ''
+          AND TRIM(COALESCE(direccion, '')) <> ''
+          AND TRIM(COALESCE(horario, '')) <> ''
+          AND latitud IS NOT NULL
+          AND longitud IS NOT NULL
+        ORDER BY desc_sucursal ASC, id_sucursal ASC");
+    if ($result) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            $branches[(int)$row['id_sucursal']] = $row;
+        }
+        mysqli_free_result($result);
+    }
+    return $branches;
+}
+
+function storefront_cart_totals(array $cart, string $tipoEntrega = 'recoger')
+{
+    $totals = [
+        'items' => 0,
+        'subtotal' => 0.0,
+        'costo_envio' => 0.0,
+        'total' => 0.0,
+    ];
     foreach ($cart as $item) {
         $totals['items']++;
         $totals['subtotal'] += (float) $item['subtotal'];
     }
     $totals['subtotal'] = round($totals['subtotal'], 2);
-    $totals['total'] = $totals['subtotal'];
+    $costoEnvio = defined('STOREFRONT_DELIVERY_COST') ? (float)STOREFRONT_DELIVERY_COST : 60.00;
+    if ($tipoEntrega === 'domicilio') {
+        $totals['costo_envio'] = $costoEnvio;
+        $totals['total'] = round($totals['subtotal'] + $costoEnvio, 2);
+    } else {
+        $totals['costo_envio'] = 0.0;
+        $totals['total'] = $totals['subtotal'];
+    }
     return $totals;
 }
 
@@ -446,25 +494,114 @@ function storefront_build_url(array $params = [])
 storefront_ensure_order_tables($link);
 
 $products = storefront_fetch_products($link);
+$storefrontBranches = storefront_fetch_active_branches($link);
+if (!empty($storefrontBranches) && !isset($storefrontBranches[(int) $formData['id_sucursal']])) {
+    $formData['id_sucursal'] = (string) array_key_first($storefrontBranches);
+}
 $showAll = isset($_GET['mostrar']) && trim((string) $_GET['mostrar']) === 'todos';
 $selectedCategory = isset($_GET['categoria']) ? trim((string) $_GET['categoria']) : '';
 $searchTerm = isset($_GET['buscar']) ? trim((string) $_GET['buscar']) : '';
 $currentPage = isset($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
     $action = isset($_POST['action']) ? $_POST['action'] : '';
 
     if ($action === 'check_phone_verification') {
         header('Content-Type: application/json; charset=utf-8');
         $phone = $_POST['phone'] ?? '';
-        $isVerified = storefront_is_phone_verified($link, $phone);
+        $direccion = $_POST['direccion'] ?? '';
+        $tipoEntrega = $_POST['tipo_entrega'] ?? 'recoger';
+        $isVerified = storefront_is_phone_verified($link, $phone, $direccion, $tipoEntrega);
         echo json_encode(['verified' => $isVerified]);
+        exit;
+    }
+
+    if ($action === 'google_places_autocomplete') {
+        header('Content-Type: application/json; charset=utf-8');
+        $query = trim((string)($_POST['query'] ?? ''));
+        $apiKey = defined('GOOGLE_MAPS_API_KEY') ? trim(GOOGLE_MAPS_API_KEY) : '';
+        if ($query === '' || $apiKey === '') {
+            echo json_encode(['success' => false, 'suggestions' => []]);
+            exit;
+        }
+
+        $ch = curl_init('https://places.googleapis.com/v1/places:autocomplete');
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'X-Goog-Api-Key: ' . $apiKey
+        ]);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+            'input' => $query,
+            'includedRegionCodes' => ['mx']
+        ]));
+        $raw = curl_exec($ch);
+        curl_close($ch);
+
+        $data = json_decode($raw, true);
+        $suggestions = [];
+        if (!empty($data['suggestions'])) {
+            foreach ($data['suggestions'] as $s) {
+                if (empty($s['placePrediction'])) continue;
+                $p = $s['placePrediction'];
+                $suggestions[] = [
+                    'place_id' => $p['placeId'] ?? '',
+                    'full_text' => $p['text']['text'] ?? '',
+                    'main_text' => $p['structuredFormat']['mainText']['text'] ?? '',
+                    'secondary_text' => $p['structuredFormat']['secondaryText']['text'] ?? '',
+                ];
+            }
+        }
+
+        echo json_encode(['success' => true, 'suggestions' => $suggestions]);
+        exit;
+    }
+
+    if ($action === 'google_geocode_place') {
+        header('Content-Type: application/json; charset=utf-8');
+        $placeId = trim((string)($_POST['place_id'] ?? ''));
+        $address = trim((string)($_POST['address'] ?? ''));
+        $apiKey = defined('GOOGLE_MAPS_API_KEY') ? trim(GOOGLE_MAPS_API_KEY) : '';
+
+        if ($apiKey === '') {
+            echo json_encode(['success' => false]);
+            exit;
+        }
+
+        $param = $placeId !== '' ? ('place_id=' . urlencode($placeId)) : ('address=' . urlencode($address));
+        $url = 'https://maps.googleapis.com/maps/api/geocode/json?' . $param . '&key=' . $apiKey;
+
+        $ch = curl_init($url);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        $raw = curl_exec($ch);
+        curl_close($ch);
+
+        $data = json_decode($raw, true);
+        if (!empty($data['results'][0]['geometry']['location'])) {
+            $loc = $data['results'][0]['geometry']['location'];
+            $fmt = $data['results'][0]['formatted_address'] ?? '';
+            echo json_encode([
+                'success' => true,
+                'lat' => (float)$loc['lat'],
+                'lng' => (float)$loc['lng'],
+                'formatted_address' => $fmt
+            ]);
+            exit;
+        }
+
+        echo json_encode(['success' => false]);
         exit;
     }
 
     if ($action === 'send_whatsapp_otp') {
         header('Content-Type: application/json; charset=utf-8');
         $phone = trim((string)($_POST['phone'] ?? ''));
+        $direccion = trim((string)($_POST['direccion'] ?? ''));
+        $tipoEntrega = trim((string)($_POST['tipo_entrega'] ?? 'recoger'));
+        $idSucursal = (int)($_POST['id_sucursal'] ?? 1);
         $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
 
         if (strlen($cleanPhone) < 10) {
@@ -472,18 +609,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             exit;
         }
 
-        if (storefront_is_phone_verified($link, $cleanPhone)) {
-            echo json_encode(['ok' => true, 'already_verified' => true, 'message' => 'Este número ya fue verificado previamente.']);
+        if (storefront_is_phone_verified($link, $cleanPhone, $direccion, $tipoEntrega)) {
+            echo json_encode(['ok' => true, 'already_verified' => true, 'message' => 'Este número y dirección ya están verificados previamente.']);
             exit;
         }
 
         $code = (string) rand(1000, 9999);
         $_SESSION['otp_code'] = $code;
         $_SESSION['otp_phone'] = $cleanPhone;
+        $_SESSION['otp_address'] = $direccion;
+        $_SESSION['otp_id_sucursal'] = $idSucursal;
 
-        $sentViaEvolution = storefront_send_evolution_whatsapp_otp($cleanPhone, $code);
+        $sentViaEvolution = storefront_send_evolution_whatsapp_otp($cleanPhone, $code, $idSucursal, $link);
 
-        $branchPhone = '525512345678';
+        $branchPhone = '525514345414';
+        if ($link instanceof mysqli && $idSucursal > 0) {
+            $resSuc = mysqli_query($link, "SELECT whatsapp FROM cc_sucursales WHERE id_sucursal = " . (int)$idSucursal);
+            if ($resSuc && $rowSuc = mysqli_fetch_assoc($resSuc)) {
+                $bWa = preg_replace('/[^0-9]/', '', (string)($rowSuc['whatsapp'] ?? ''));
+                if (!empty($bWa)) {
+                    $branchPhone = (strlen($bWa) === 10) ? '52' . $bWa : $bWa;
+                }
+            }
+        }
         $text = urlencode("Hola Carnicería Cano, mi código de verificación para mi pedido online es: CANO-" . $code);
         $waUrl = "https://api.whatsapp.com/send?phone=" . $branchPhone . "&text=" . $text;
 
@@ -503,14 +651,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         header('Content-Type: application/json; charset=utf-8');
         $userCode = trim((string)($_POST['code'] ?? ''));
         $phone = trim((string)($_POST['phone'] ?? ''));
+        $direccion = trim((string)($_POST['direccion'] ?? ''));
         $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
 
         $sessCode = (string)($_SESSION['otp_code'] ?? '');
         $sessPhone = (string)($_SESSION['otp_phone'] ?? '');
 
         if ($userCode !== '' && $sessCode !== '' && $userCode === $sessCode) {
-            storefront_mark_phone_as_verified($link, $cleanPhone);
-            echo json_encode(['ok' => true, 'message' => '¡Teléfono verificado correctamente!']);
+            storefront_mark_phone_as_verified($link, $cleanPhone, $direccion);
+            echo json_encode(['ok' => true, 'message' => '¡Teléfono y dirección verificados correctamente!']);
         } else {
             echo json_encode(['ok' => false, 'message' => 'Código de verificación incorrecto. Intenta de nuevo.']);
         }
@@ -584,9 +733,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             }
         }
 
-        $cartTotals = storefront_cart_totals($_SESSION['store_cart']);
+        $formData['tipo_entrega'] = trim((string)($_POST['tipo_entrega'] ?? 'recoger'));
+        $minDeliveryAmount = defined('STOREFRONT_MIN_DELIVERY_AMOUNT') ? (float)STOREFRONT_MIN_DELIVERY_AMOUNT : 200.00;
+        $cartTotals = storefront_cart_totals($_SESSION['store_cart'], $formData['tipo_entrega']);
         $distancia = (float) $formData['distancia_km'];
         $cleanPhone = preg_replace('/[^0-9]/', '', $formData['cliente_telefono']);
+
+        // Regla: Para entrega a domicilio el método de pago es exclusivamente SPEI y no se requiere campo de cambio
+        if ($formData['tipo_entrega'] === 'domicilio') {
+            $formData['metodo_pago'] = 'transferencia';
+            $formData['monto_pago_efectivo'] = '';
+        } else {
+            $formData['monto_pago_efectivo'] = '';
+        }
 
         if (!empty($honeypot)) {
             $feedback = ['type' => 'danger', 'message' => 'Solicitud rechazada por seguridad (Trampa Anti-Bot activa).'];
@@ -598,14 +757,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $feedback = ['type' => 'danger', 'message' => 'Tu carrito está vacío.'];
         } elseif ($formData['cliente_nombre'] === '' || strlen($cleanPhone) < 10) {
             $feedback = ['type' => 'danger', 'message' => 'Ingresa un nombre y un número de teléfono válido a 10 dígitos.'];
+        } elseif ($formData['tipo_entrega'] === 'domicilio' && $cartTotals['subtotal'] < $minDeliveryAmount) {
+            $feedback = ['type' => 'danger', 'message' => 'El monto mínimo de compra para entrega a domicilio es de ' . storefront_money($minDeliveryAmount) . '. Tu subtotal actual es de ' . storefront_money($cartTotals['subtotal']) . '. Agrega más productos a tu carrito o selecciona Recoger en Sucursal.'];
         } elseif ($formData['tipo_entrega'] === 'domicilio' && $formData['direccion_entrega'] === '') {
             $feedback = ['type' => 'danger', 'message' => 'La dirección es obligatoria para entrega a domicilio.'];
         } elseif ($formData['tipo_entrega'] === 'domicilio' && $formData['referencias_ubicacion'] === '') {
             $feedback = ['type' => 'danger', 'message' => 'Las referencias de ubicación (fachada, entre calles) son obligatorias para el repartidor.'];
         } elseif ($formData['tipo_entrega'] === 'domicilio' && $distancia > 5.0) {
             $feedback = ['type' => 'danger', 'message' => 'La ubicación se encuentra a ' . $distancia . ' km de la Sucursal seleccionada. El límite máximo para entrega a domicilio es de 5 km. Elige Recoger en Sucursal.'];
-        } elseif (!storefront_is_phone_verified($link, $cleanPhone)) {
-            $feedback = ['type' => 'warning', 'message' => 'Por favor verifica tu número telefónico haciendo clic en el botón verde de "Verificar ($0)" antes de finalizar tu pedido.'];
+        } elseif (!storefront_is_phone_verified($link, $cleanPhone, $formData['direccion_entrega'], $formData['tipo_entrega'])) {
+            $feedback = ['type' => 'warning', 'message' => 'Se ha detectado una nueva ubicación o falta de verificación. Por favor presiona "Enviar Código" para validar tus 4 dígitos en WhatsApp.'];
         } else {
             $tableStatus = storefront_ensure_order_tables($link);
             if ($tableStatus !== true) {
@@ -621,13 +782,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                     $idDireccionWeb = storefront_find_or_create_web_address($link, $idClientWeb, $formData['direccion_entrega'], $formData['referencias_ubicacion'], $latVal, $lngVal, $distancia);
 
                     $orderStmt = mysqli_prepare($link, "INSERT INTO cc_pedidos_web (
-                        id_cliente_web, id_direccion, id_sucursal, cliente_nombre, cliente_telefono, cliente_email, tipo_entrega, direccion_entrega, referencias_ubicacion, latitud, longitud, distancia_km, metodo_pago, monto_pago_efectivo, notas, subtotal, total, estatus
-                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'nuevo')");
+                        id_cliente_web, id_direccion, id_sucursal, cliente_nombre, cliente_telefono, cliente_email, tipo_entrega, direccion_entrega, referencias_ubicacion, latitud, longitud, distancia_km, metodo_pago, monto_pago_efectivo, notas, subtotal, costo_envio, total, estatus
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'nuevo')");
                     if (!$orderStmt) {
                         throw new Exception(mysqli_error($link));
                     }
 
-                    mysqli_stmt_bind_param($orderStmt, 'iiissssssdddsssdd',
+                    mysqli_stmt_bind_param($orderStmt, 'iiissssssdddsssddd',
                         $idClientWeb,
                         $idDireccionWeb,
                         $idSucursalInt,
@@ -644,6 +805,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                         $formData['monto_pago_efectivo'],
                         $formData['notas'],
                         $cartTotals['subtotal'],
+                        $cartTotals['costo_envio'],
+                        $cartTotals['total']
                     );
 
                     if (!mysqli_stmt_execute($orderStmt)) {
@@ -671,7 +834,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     mysqli_commit($link);
                     $_SESSION['last_order_time'] = time();
-                    $orderSuccess = ['id' => $orderId, 'name' => $formData['cliente_nombre'], 'total' => $cartTotals['total']];
+                    $orderSuccess = [
+                        'id' => $orderId,
+                        'name' => $formData['cliente_nombre'],
+                        'total' => $cartTotals['total'],
+                        'id_sucursal' => $idSucursalInt,
+                        'tipo_entrega' => $formData['tipo_entrega'],
+                        'metodo_pago' => $formData['metodo_pago'],
+                        'telefono' => $formData['cliente_telefono']
+                    ];
                     $_SESSION['store_cart'] = [];
                     foreach ($formData as $key => $value) {
                         $formData[$key] = $key === 'id_sucursal' ? '1' : ($key === 'tipo_entrega' ? 'recoger' : ($key === 'metodo_pago' ? 'efectivo' : ''));
@@ -695,7 +866,7 @@ if (isset($_GET['remove'])) {
 }
 
 $cart = $_SESSION['store_cart'];
-$cartTotals = storefront_cart_totals($cart);
+$cartTotals = storefront_cart_totals($cart, $formData['tipo_entrega'] ?? 'recoger');
 $categoryCounts = [];
 foreach ($products as $product) {
     if (!isset($categoryCounts[$product['categoria']])) {
@@ -838,36 +1009,69 @@ function storefront_find_or_create_web_address(mysqli $link, int $idClientWeb, s
     return (int) mysqli_insert_id($link);
 }
 
-function storefront_is_phone_verified(mysqli $link, string $phone): bool
+function storefront_is_phone_verified(mysqli $link, string $phone, string $address = '', string $tipoEntrega = 'recoger'): bool
 {
     $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
     if (strlen($cleanPhone) < 10) {
         return false;
     }
 
-    // 1. Verificar Cookie de Memoria en el celular (180 Días)
+    // 1. Verificar si el teléfono ha sido verificado alguna vez en este dispositivo/sesión/BD
     $cookieName = 'cano_ver_' . substr(md5($cleanPhone), 0, 8);
-    if (isset($_COOKIE[$cookieName]) && $_COOKIE[$cookieName] === sha1($cleanPhone . '_cano_verified_salt')) {
-        return true;
-    }
+    $hasPhoneCookie = (isset($_COOKIE[$cookieName]) && $_COOKIE[$cookieName] === sha1($cleanPhone . '_cano_verified_salt'));
+    $hasSession = isset($_SESSION['verified_phones'][$cleanPhone]) && $_SESSION['verified_phones'][$cleanPhone] === true;
 
-    // 2. Verificar Sesión activa
-    if (isset($_SESSION['verified_phones'][$cleanPhone]) && $_SESSION['verified_phones'][$cleanPhone] === true) {
-        return true;
-    }
-
-    // 3. Verificar en BD (cc_web_clientes)
     storefront_ensure_order_tables($link);
     $phoneSql = mysqli_real_escape_string($link, $cleanPhone);
-    $check = mysqli_query($link, "SELECT verificado FROM cc_web_clientes WHERE telefono = '$phoneSql' AND verificado = 1 LIMIT 1");
-    if ($check && mysqli_num_rows($check) > 0) {
+    $hasDbRecord = false;
+    $idClientWeb = 0;
+    $check = mysqli_query($link, "SELECT id_cliente_web FROM cc_web_clientes WHERE telefono = '$phoneSql' AND verificado = 1 LIMIT 1");
+    if ($check && $row = mysqli_fetch_assoc($check)) {
+        $hasDbRecord = true;
+        $idClientWeb = (int)$row['id_cliente_web'];
+    }
+
+    if (!$hasPhoneCookie && !$hasSession && !$hasDbRecord) {
+        return false;
+    }
+
+    // Si la opción elegida es "recoger" (Recoger en Sucursal), el dispositivo verificado se aprueba de inmediato
+    if ($tipoEntrega === 'recoger') {
         return true;
     }
 
+    // Si la opción es "domicilio", validar si la dirección ya fue previamente verificada para este cliente/dispositivo
+    $cleanAddr = trim(mb_strtolower($address));
+    if ($cleanAddr === '') {
+        return false;
+    }
+    $addrHash = md5($cleanAddr);
+
+    // a) Cookie de direcciones guardadas en este dispositivo
+    $dirCookieName = 'cano_dir_' . substr(md5($cleanPhone), 0, 8);
+    if (isset($_COOKIE[$dirCookieName]) && strpos($_COOKIE[$dirCookieName], $addrHash) !== false) {
+        return true;
+    }
+
+    // b) Sesión activa de direcciones verificadas
+    if (isset($_SESSION['verified_addresses'][$cleanPhone][$addrHash])) {
+        return true;
+    }
+
+    // c) Historial de direcciones en BD para este cliente
+    if ($idClientWeb > 0) {
+        $dirSql = mysqli_real_escape_string($link, $cleanAddr);
+        $checkDir = mysqli_query($link, "SELECT id_direccion FROM cc_web_direcciones WHERE id_cliente_web = $idClientWeb AND LOWER(direccion_completa) = '$dirSql' LIMIT 1");
+        if ($checkDir && mysqli_num_rows($checkDir) > 0) {
+            return true;
+        }
+    }
+
+    // Si es una dirección de entrega totalmente nueva, solicitar confirmación por OTP
     return false;
 }
 
-function storefront_mark_phone_as_verified(mysqli $link, string $phone): bool
+function storefront_mark_phone_as_verified(mysqli $link, string $phone, string $address = ''): bool
 {
     $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
     if (strlen($cleanPhone) < 10) {
@@ -883,13 +1087,31 @@ function storefront_mark_phone_as_verified(mysqli $link, string $phone): bool
     $cookieValue = sha1($cleanPhone . '_cano_verified_salt');
     setcookie($cookieName, $cookieValue, time() + (180 * 86400), '/');
 
+    // Registrar dirección como verificada para esta memoria/dispositivo (180 días)
+    $cleanAddr = trim(mb_strtolower($address));
+    if ($cleanAddr !== '') {
+        $addrHash = md5($cleanAddr);
+        if (!isset($_SESSION['verified_addresses'][$cleanPhone])) {
+            $_SESSION['verified_addresses'][$cleanPhone] = [];
+        }
+        $_SESSION['verified_addresses'][$cleanPhone][$addrHash] = true;
+
+        $dirCookieName = 'cano_dir_' . substr(md5($cleanPhone), 0, 8);
+        $existingHashes = isset($_COOKIE[$dirCookieName]) ? explode(',', $_COOKIE[$dirCookieName]) : [];
+        if (!in_array($addrHash, $existingHashes, true)) {
+            $existingHashes[] = $addrHash;
+        }
+        setcookie($dirCookieName, implode(',', $existingHashes), time() + (180 * 86400), '/');
+    }
+
+    storefront_ensure_order_tables($link);
     $phoneSql = mysqli_real_escape_string($link, $cleanPhone);
     mysqli_query($link, "UPDATE cc_web_clientes SET verificado = 1 WHERE telefono = '$phoneSql'");
 
     return true;
 }
 
-function storefront_send_evolution_whatsapp_otp(string $phone, string $code): bool
+function storefront_send_evolution_whatsapp_otp(string $phone, string $code, int $idSucursal = 1, ?mysqli $link = null): bool
 {
     $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
     if (strlen($cleanPhone) === 10) {
@@ -898,42 +1120,124 @@ function storefront_send_evolution_whatsapp_otp(string $phone, string $code): bo
         $cleanPhone = '521' . substr($cleanPhone, 2);
     }
 
-    $apiUrl = defined('EVOLUTION_API_URL') ? rtrim(EVOLUTION_API_URL, '/') : '';
-    $apiKey = defined('EVOLUTION_API_KEY') ? EVOLUTION_API_KEY : '';
-    $instance = defined('EVOLUTION_INSTANCE_NAME') ? EVOLUTION_INSTANCE_NAME : '';
+    $apiUrl = (defined('EVOLUTION_API_URL') && EVOLUTION_API_URL !== '') ? rtrim(EVOLUTION_API_URL, '/') : 'https://wa.abstrings.com';
+    $apiKey = (defined('EVOLUTION_API_KEY') && EVOLUTION_API_KEY !== '') ? EVOLUTION_API_KEY : 'CarniceriaCano2026ClaveSegura';
+    $instance = (defined('EVOLUTION_INSTANCE_NAME') && EVOLUTION_INSTANCE_NAME !== '') ? EVOLUTION_INSTANCE_NAME : 'pruebas';
+    $branchName = 'Carnicería Cano';
+
+    if ($link instanceof mysqli && $idSucursal > 0) {
+        $stmt = mysqli_prepare($link, "SELECT desc_sucursal, whatsapp FROM cc_sucursales WHERE id_sucursal = ? LIMIT 1");
+        if ($stmt) {
+            mysqli_stmt_bind_param($stmt, 'i', $idSucursal);
+            mysqli_stmt_execute($stmt);
+            $res = mysqli_stmt_get_result($stmt);
+            if ($row = mysqli_fetch_assoc($res)) {
+                if (!empty($row['desc_sucursal'])) {
+                    $branchName = 'Carnicería Cano (' . $row['desc_sucursal'] . ')';
+                }
+                $sucWa = preg_replace('/[^0-9]/', '', (string)($row['whatsapp'] ?? ''));
+                if ($idSucursal === 5 || $sucWa === '5565559639') {
+                    $instance = 'test_abstrings';
+                } elseif ($sucWa === '5514345414') {
+                    $instance = 'pruebas';
+                } elseif ($sucWa === '5520612241') {
+                    $instance = 'prod_abstrings';
+                }
+            }
+            mysqli_stmt_close($stmt);
+        }
+    }
 
     if (empty($apiUrl) || empty($apiKey) || empty($instance)) {
         return false;
     }
 
-    $endpoint = $apiUrl . '/message/sendText/' . $instance;
-    $messageText = "🥩 *Carnicería Cano*\n\nTu código de verificación de pedido es: *{$code}*\n\nPor favor ingresa este código de 4 dígitos en la pantalla para confirmar tu pedido.";
+    $endpoint = $apiUrl . '/message/sendText/' . rawurlencode($instance);
+    $messageText = "🥩 *{$branchName}*\n\nTu código de verificación de pedido es: *{$code}*\n\nPor favor ingresa este código de 4 dígitos en la pantalla para confirmar tu pedido.";
 
     $data = [
         'number' => $cleanPhone,
-        'options' => [
-            'delay' => 1000,
-            'presence' => 'composing'
-        ],
-        'textMessage' => [
-            'text' => $messageText
-        ]
+        'text' => $messageText
     ];
 
     $ch = curl_init($endpoint);
     curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
     curl_setopt($ch, CURLOPT_POST, true);
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data, JSON_UNESCAPED_UNICODE));
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         'Content-Type: application/json',
         'apikey: ' . $apiKey
     ]);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 8);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
     $response = curl_exec($ch);
     $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
     curl_close($ch);
 
-    return ($httpCode === 200 || $httpCode === 201);
+    $responseData = json_decode((string)$response, true);
+    if ($httpCode === 200 || $httpCode === 201) {
+        return true;
+    }
+    if (isset($responseData['key']['id']) || (isset($responseData['status']) && $responseData['status'] === 'PENDING')) {
+        return true;
+    }
+
+    return false;
+}
+
+function storefront_fetch_customer_orders(mysqli $link, string $phone, string $filterRange = 'all'): array
+{
+    $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+    if (strlen($cleanPhone) < 10) {
+        return [];
+    }
+
+    storefront_ensure_order_tables($link);
+    $phoneSql = mysqli_real_escape_string($link, $cleanPhone);
+
+    // Filtro por rango de fechas
+    $whereDate = "";
+    if ($filterRange === 'last_30_days') {
+        // Pedidos de los últimos 30 días
+        $whereDate = " AND fecha_ingreso >= DATE_SUB(NOW(), INTERVAL 30 DAY) ";
+    } elseif ($filterRange === 'current_month') {
+        // Pedidos del mes en curso
+        $whereDate = " AND fecha_ingreso >= DATE_FORMAT(CURRENT_DATE, '%Y-%m-01') ";
+    }
+
+    $sql = "SELECT id_pedido, cliente_nombre, cliente_telefono, cliente_email, id_sucursal, 
+                   tipo_entrega, direccion_entrega, referencias_ubicacion, metodo_pago, 
+                   monto_pago_efectivo, notas, subtotal, total, estatus, fecha_ingreso 
+            FROM cc_pedidos_web 
+            WHERE cliente_telefono = '$phoneSql' {$whereDate}
+            ORDER BY id_pedido DESC";
+
+    $res = mysqli_query($link, $sql);
+    if (!$res) {
+        return [];
+    }
+
+    $orders = [];
+    while ($row = mysqli_fetch_assoc($res)) {
+        $orderId = (int) $row['id_pedido'];
+        $row['items'] = [];
+
+        $itemSql = "SELECT codigo, descripcion, precio_unitario, cantidad, subtotal, comentario 
+                    FROM cc_det_pedidos_web 
+                    WHERE id_pedido = $orderId 
+                    ORDER BY id_detalle ASC";
+        $itemRes = mysqli_query($link, $itemSql);
+        if ($itemRes) {
+            while ($item = mysqli_fetch_assoc($itemRes)) {
+                $row['items'][] = $item;
+            }
+        }
+
+        $orders[] = $row;
+    }
+
+    return $orders;
 }
 
 

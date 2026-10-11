@@ -526,8 +526,23 @@ h3,
 
 .checkout-form .form-control,
 .checkout-form .form-select,
+.checkout-form .input-group,
+.checkout-form .input-group > .form-control,
+.checkout-form .input-group > .input-group-text,
+.checkout-form .input-group > .btn,
 .btn-light-dark {
-    min-height: 50px;
+    min-height: 50px !important;
+    height: 50px !important;
+}
+
+.checkout-form .input-group > .input-group-text {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.checkout-form .input-group > .form-control {
+    line-height: normal;
 }
 
 .checkout-form textarea.form-control {
