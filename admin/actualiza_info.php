@@ -26,6 +26,7 @@ $idSucursalOrigen = isset($_POST['id_sucursal_origen'])
     ? (int) $_POST['id_sucursal_origen']
     : (int) $id_sucursal;
 $forzarCatalogo = isset($_POST['forzar_catalogo']) && (string) $_POST['forzar_catalogo'] === '1';
+$sincronizarPedidosWeb = isset($_POST['sincronizar_pedidos_web']) && (string) $_POST['sincronizar_pedidos_web'] === '1';
 
 $sucursalesOrigen = [];
 $rsSucursalesOrigen = mysqli_query($link2, "SELECT id_sucursal, desc_sucursal FROM cc_sucursales ORDER BY desc_sucursal");
@@ -50,7 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     } elseif ($idSucursalOrigen <= 0 || !array_key_exists($idSucursalOrigen, $sucursalesOrigen)) {
         $alertType = "danger";
         $alertMessage = "La sucursal de origen seleccionada no es válida.";
-    } elseif (!$forzarCatalogo && (!isset($_POST['check']) || !is_array($_POST['check']))) {
+    } elseif (!$forzarCatalogo && !$sincronizarPedidosWeb && (!isset($_POST['check']) || !is_array($_POST['check']))) {
         $alertType = "warning";
         $alertMessage = "No se marcó ningún checkbox.";
     } else {
@@ -184,9 +185,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             mysqli_query($link, "SET FOREIGN_KEY_CHECKS=1");
             mysqli_commit($link);
 
+            $msgWeb = "";
+            if ($sincronizarPedidosWeb) {
+                require_once __DIR__ . '/../functions/sync_pedidos_web.php';
+                $resSyncWeb = cc_sync_pedidos_desde_gcp($link, $link2, $idSucursalOrigen);
+                if (!empty($resSyncWeb['success'])) {
+                    $msgWeb = " " . $resSyncWeb['message'];
+                }
+            }
+
             $alertType = "success";
             $nombreSucursalOrigen = $sucursalesOrigen[$idSucursalOrigen] ?? ('Sucursal ' . $idSucursalOrigen);
-            $alertMessage = "Recuperación completada correctamente desde " . $nombreSucursalOrigen . ".";
+            $alertMessage = "Recuperación completada correctamente desde " . $nombreSucursalOrigen . "." . $msgWeb;
 
         } catch (Throwable $e) {
             mysqli_rollback($link);
@@ -292,6 +302,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                                         <input class="form-check-input" type="checkbox" value="1" id="forzar_catalogo" name="forzar_catalogo">
                                         <label class="form-check-label" for="forzar_catalogo">
                                             Forzar actualización completa de categorías, productos, derivados y equivalencias sin filtrar por fecha
+                                        </label>
+                                    </div>
+                                </div>
+                                <div class="col-12">
+                                    <div class="form-check">
+                                        <input class="form-check-input" type="checkbox" value="1" id="sincronizar_pedidos_web" name="sincronizar_pedidos_web" checked>
+                                        <label class="form-check-label fw-bold text-danger" for="sincronizar_pedidos_web">
+                                            <i class="bi bi-globe me-1"></i> Extraer y actualizar pedidos web pendientes de esta sucursal desde GCP
                                         </label>
                                     </div>
                                 </div>

@@ -506,12 +506,14 @@ function storefront_build_url(array $params = [])
     return 'index.php' . ($queryString !== '' ? '?' . $queryString : '') . '#catalogo';
 }
 
-storefront_ensure_order_tables($link);
-
-$products = storefront_fetch_products($link);
-$storefrontBranches = storefront_fetch_active_branches($link);
-if (!empty($storefrontBranches) && !isset($storefrontBranches[(int) $formData['id_sucursal']])) {
-    $formData['id_sucursal'] = (string) array_key_first($storefrontBranches);
+$link = $link ?? ($GLOBALS['link'] ?? null);
+if ($link instanceof mysqli) {
+    storefront_ensure_order_tables($link);
+    $products = storefront_fetch_products($link);
+    $storefrontBranches = storefront_fetch_active_branches($link);
+    if (!empty($storefrontBranches) && !isset($storefrontBranches[(int) ($formData['id_sucursal'] ?? 0)])) {
+        $formData['id_sucursal'] = (string) array_key_first($storefrontBranches);
+    }
 }
 $showAll = isset($_GET['mostrar']) && trim((string) $_GET['mostrar']) === 'todos';
 $selectedCategory = isset($_GET['categoria']) ? trim((string) $_GET['categoria']) : '';

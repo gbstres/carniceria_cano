@@ -560,8 +560,11 @@ $qr_precio = file_exists(__DIR__ . '/../img/qr_precios_sucursal_' . $id_sucursal
                         <br>
                         <br>
                         <br>
-                        <div class="col-sm-8 mx-auto">
-                            <h3>Ventas pendientes</h3>
+                        <div class="col-sm-8 mx-auto d-flex justify-content-between align-items-center mb-2" style="max-width: 65%;">
+                            <h3 class="mb-0">Ventas pendientes</h3>
+                            <button type="button" class="btn btn-outline-danger btn-sm fw-bold shadow-sm" onclick="extraerPedidosGCP()" id="btnSyncGcp" title="Extraer pedidos web desde el servidor central de GCP">
+                                <i class="bi bi-cloud-arrow-down-fill me-1"></i> Extraer de GCP
+                            </button>
                         </div>
                         <div class="table-responsive">
                             <table id="det_ventas" class="table_ventas table-striped table-hover" style="width:65%" >
@@ -614,7 +617,8 @@ $qr_precio = file_exists(__DIR__ . '/../img/qr_precios_sucursal_' . $id_sucursal
                                             <td><span class="badge ' . $badgeClass . ' fw-bold"><i class="bi bi-globe me-1"></i>' . $badgeTxt . '</span></td>
                                             <td align="center">
                                                 <a href="#" onclick="cancelarPedidoWebInicio(' . $roww['id_pedido'] . '); return false;" title="Cancelar pedido web"><img class="imga" src="../img/icons/trash.svg"></a>
-                                                <a href="#" onclick="abrirModalPedidoWeb(' . $roww['id_pedido'] . '); return false;" title="Ver, imprimir y completar pedido online" class="ms-1 text-danger"><i class="bi bi-eye-fill fs-5"></i></a>
+                                                <a href="#" onclick="abrirModalPedidoWeb(' . $roww['id_pedido'] . '); return false;" title="Ver detalle e imprimir" class="ms-1 text-danger"><i class="bi bi-eye-fill fs-5"></i></a>
+                                                <a href="#" onclick="cargarPedidoAPos(' . $roww['id_pedido'] . '); return false;" title="Cargar / Extraer pedido al Punto de Venta" class="ms-1 text-primary"><i class="bi bi-cart-plus-fill fs-5"></i></a>
                                             </td>
                                         </tr>';
                                     }
@@ -1948,6 +1952,10 @@ if ($descripcion_corta == 1) {
                     footerHtml += '<button type="button" class="btn btn-warning text-dark fw-bold" onclick="cambiarEstatusWebInicio(' + order.id_pedido + ', \'en_preparacion\')"><i class="bi bi-clock-history me-1"></i> En Preparación</button>';
                 }
 
+                if (!isSucursal9 && order.estatus !== 'completado' && order.estatus !== 'cancelado') {
+                    footerHtml += '<button type="button" class="btn btn-primary fw-bold" onclick="cargarPedidoAPos(' + order.id_pedido + ')"><i class="bi bi-cart-check me-1"></i> Cargar al Punto de Venta</button>';
+                }
+
                 if (order.estatus !== 'completado' && order.estatus !== 'cancelado') {
                     footerHtml += '<button type="button" class="btn btn-success fw-bold shadow-sm" onclick="aprobarYDescontarStockInicio(' + order.id_pedido + ', ' + order.id_sucursal + ')"><i class="bi bi-check-circle-fill me-1"></i> Aprobar y Descontar Stock</button>';
                 }
@@ -2090,6 +2098,62 @@ if ($descripcion_corta == 1) {
             .catch(function(err) { alert('Error al cancelar pedido.'); });
     }
 
+    function cargarPedidoAPos(orderId) {
+        if (!confirm('¿Deseas extraer y cargar el Pedido Web #' + orderId + ' al Punto de Venta para cobrar o modificar en caja?')) {
+            return;
+        }
+
+        var formData = new FormData();
+        formData.append('action', 'load_to_pos');
+        formData.append('id_pedido', orderId);
+        formData.append('id_sucursal', alertBranchId);
+
+        fetch('../api_sync_pedidos.php', { method: 'POST', body: formData })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.success && data.redirect_url) {
+                    window.location.href = data.redirect_url;
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(function(err) { alert('Error al cargar pedido al POS.'); });
+    }
+
+    function extraerPedidosGCP(silencioso) {
+        var btn = document.getElementById('btnSyncGcp');
+        if (btn && !silencioso) {
+            btn.disabled = true;
+            btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Extrayendo...';
+        }
+
+        fetch('../api_sync_pedidos.php?action=sync_from_gcp&id_sucursal=' + alertBranchId)
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (btn && !silencioso) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-cloud-arrow-down-fill me-1"></i> Extraer de GCP';
+                }
+                if (data.success) {
+                    if (!silencioso) {
+                        alert('✅ ' + data.message);
+                        location.reload();
+                    } else if (data.orders_synced > 0) {
+                        location.reload();
+                    }
+                } else if (!silencioso) {
+                    alert('⚠️ ' + data.message);
+                }
+            })
+            .catch(function(err) {
+                if (btn && !silencioso) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="bi bi-cloud-arrow-down-fill me-1"></i> Extraer de GCP';
+                    alert('Error de conexión al extraer pedidos desde GCP.');
+                }
+            });
+    }
+
     function escapeHtmlInicio(str) {
         if (!str) return '';
         return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
@@ -2100,6 +2164,9 @@ if ($descripcion_corta == 1) {
         setInterval(checkWebOrdersAlert, 5000);
         if (isSucursal9) {
             cargarPedidosSucursal9(true);
+        } else {
+            // En sucursales físicas, sincronizar con GCP en segundo plano cada 20 segundos
+            setInterval(function() { extraerPedidosGCP(true); }, 20000);
         }
     });
     </script>      
