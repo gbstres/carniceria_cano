@@ -50,8 +50,11 @@ if (!isset($branchNames[$idSucursalSel])) {
         <a class="navbar-brand fw-bold d-flex align-items-center" href="admin_pedidos_web.php">
             <i class="bi bi-shop me-2"></i> Carnicería Cano - Panel de Pedidos Web
         </a>
-        <div class="d-flex align-items-center gap-3">
-            <div class="input-group input-group-sm">
+        <div class="d-flex align-items-center gap-2 flex-wrap">
+            <a href="main/inicio.php" class="btn btn-sm btn-outline-light">
+                <i class="bi bi-arrow-left-circle me-1"></i> Punto de Venta
+            </a>
+            <div class="input-group input-group-sm" style="max-width: 280px;">
                 <label class="input-group-text bg-warning text-dark fw-bold" for="sucursalSelect"><i class="bi bi-geo-alt-fill me-1"></i> Sucursal:</label>
                 <select class="form-select fw-bold text-dark" id="sucursalSelect" onchange="changeBranch(this.value)">
                     <option value="0" <?php echo $idSucursalSel === 0 ? 'selected' : ''; ?>>⭐ Todas las Sucursales</option>
@@ -105,6 +108,7 @@ var currentBranch = <?php echo $idSucursalSel; ?>;
 var currentFilter = '';
 var knownOrderCount = 0;
 var isFirstLoad = true;
+var currentOrdersMap = {};
 
 function changeBranch(newBranch) {
     currentBranch = parseInt(newBranch);
@@ -154,6 +158,8 @@ function loadOrders(manualRefresh) {
             }
 
             var orders = data.orders || [];
+            currentOrdersMap = {};
+            orders.forEach(o => { currentOrdersMap[o.id_pedido] = o; });
             
             // Sonido de alerta si hay nuevos pedidos entrantes
             var newCount = orders.filter(o => o.estatus === 'nuevo').length;
@@ -231,9 +237,15 @@ function loadOrders(manualRefresh) {
                     </a>`;
                 }
 
+                var cleanPhone = (order.cliente_telefono || '').replace(/\D/g, '');
+                var waCustomerBtn = cleanPhone ? `<a href="https://wa.me/52${cleanPhone}" target="_blank" class="btn btn-outline-success btn-sm p-0 px-2 ms-2 fw-semibold text-decoration-none" title="Chatear por WhatsApp con el cliente"><i class="bi bi-whatsapp me-1"></i>WhatsApp</a>` : '';
+
                 var actionButtons = '';
                 if (order.estatus !== 'completado' && order.estatus !== 'cancelado') {
                     actionButtons = `
+                        <button onclick="printOrderTicket(${order.id_pedido})" class="btn btn-outline-dark fw-bold">
+                            <i class="bi bi-printer-fill me-1"></i> Imprimir Comanda
+                        </button>
                         <button onclick="processOrder(${order.id_pedido}, 'completado')" class="btn btn-success fw-bold shadow-sm">
                             <i class="bi bi-check-circle-fill me-1"></i> Aprobar y Descontar Stock
                         </button>
@@ -247,7 +259,12 @@ function loadOrders(manualRefresh) {
                         </button>
                     `;
                 } else {
-                    actionButtons = `<span class="text-muted small fw-bold"><i class="bi bi-info-circle me-1"></i> Este pedido ya fue finalizado y su stock fue procesado.</span>`;
+                    actionButtons = `
+                        <button onclick="printOrderTicket(${order.id_pedido})" class="btn btn-outline-dark btn-sm fw-bold me-2">
+                            <i class="bi bi-printer-fill me-1"></i> Imprimir Comanda
+                        </button>
+                        <span class="text-muted small fw-bold"><i class="bi bi-info-circle me-1"></i> Este pedido ya fue finalizado y su stock fue procesado.</span>
+                    `;
                 }
 
                 html += `
@@ -270,7 +287,7 @@ function loadOrders(manualRefresh) {
                                 <div class="col-md-5 border-end">
                                     <h6 class="fw-bold text-dark border-bottom pb-1"><i class="bi bi-person-fill text-danger me-1"></i> Datos del Cliente</h6>
                                     <p class="mb-1 small"><strong>Nombre:</strong> ${escapeHtml(order.cliente_nombre)}</p>
-                                    <p class="mb-1 small"><strong>Teléfono:</strong> <a href="tel:${escapeHtml(order.cliente_telefono)}" class="text-decoration-none fw-bold text-primary"><i class="bi bi-telephone me-1"></i>${escapeHtml(order.cliente_telefono)}</a></p>
+                                    <p class="mb-1 small"><strong>Teléfono:</strong> <a href="tel:${escapeHtml(order.cliente_telefono)}" class="text-decoration-none fw-bold text-primary"><i class="bi bi-telephone me-1"></i>${escapeHtml(order.cliente_telefono)}</a> ${waCustomerBtn}</p>
                                     ${order.cliente_email ? `<p class="mb-1 small"><strong>Email:</strong> ${escapeHtml(order.cliente_email)}</p>` : ''}
                                     
                                     ${order.tipo_entrega === 'domicilio' ? `
@@ -385,6 +402,72 @@ function showAlert(type, msg) {
         <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
     </div>`;
     document.getElementById('alertContainer').innerHTML = alertHtml;
+}
+
+function printOrderTicket(orderId) {
+    var order = (currentOrdersMap || {})[orderId];
+    if (!order) {
+        alert('No se encontró la información del pedido.');
+        return;
+    }
+
+    var itemsRows = (order.items || []).map(function(it) {
+        var note = it.comentario && it.comentario.trim() !== '' ? '<div style="font-size:11px;padding-left:8px;color:#333;">👉 <em>' + escapeHtml(it.comentario) + '</em></div>' : '';
+        return '<div style="margin-bottom:6px;border-bottom:1px dashed #ccc;padding-bottom:4px;">' +
+            '<div style="display:flex;justify-content:space-between;font-weight:bold;">' +
+                '<span>' + parseFloat(it.cantidad).toFixed(2) + ' x ' + escapeHtml(it.descripcion) + '</span>' +
+                '<span>$' + parseFloat(it.subtotal).toFixed(2) + '</span>' +
+            '</div>' +
+            note +
+        '</div>';
+    }).join('');
+
+    var ticketHtml = '<!DOCTYPE html><html><head><title>Comanda #' + order.id_pedido + '</title>' +
+        '<meta charset="utf-8">' +
+        '<style>' +
+        'body{font-family:monospace,sans-serif;margin:0;padding:12px;width:280px;font-size:12px;color:#000;line-height:1.3;}' +
+        '.text-center{text-align:center;}' +
+        '.divider{border-top:1px dashed #000;margin:8px 0;}' +
+        '.fw-bold{font-weight:bold;}' +
+        '@media print { body{width:100%;padding:0;} }' +
+        '</style></head><body>' +
+        '<div class="text-center">' +
+            '<h2 style="margin:0;font-size:17px;">CARNICERÍA CANO</h2>' +
+            '<div style="font-size:12px;font-weight:bold;margin:2px 0;">COMANDA DE PEDIDO ONLINE</div>' +
+            '<div style="font-size:11px;">' + escapeHtml(order.desc_sucursal || ('Sucursal ' + order.id_sucursal)) + '</div>' +
+        '</div>' +
+        '<div class="divider"></div>' +
+        '<div><strong>FOLIO:</strong> #' + order.id_pedido + '</div>' +
+        '<div><strong>FECHA:</strong> ' + escapeHtml(order.fecha_ingreso) + '</div>' +
+        '<div><strong>ENTREGA:</strong> ' + (order.tipo_entrega === 'domicilio' ? 'A DOMICILIO' : 'RECOGER EN SUCURSAL') + '</div>' +
+        '<div><strong>CLIENTE:</strong> ' + escapeHtml(order.cliente_nombre) + '</div>' +
+        '<div><strong>TEL:</strong> ' + escapeHtml(order.cliente_telefono) + '</div>' +
+        (order.tipo_entrega === 'domicilio' ? (
+            '<div style="margin-top:4px;"><strong>DIRECCIÓN:</strong> ' + escapeHtml(order.direccion_entrega) + '</div>' +
+            (order.referencias_ubicacion ? '<div style="font-size:11px;"><strong>REF:</strong> ' + escapeHtml(order.referencias_ubicacion) + '</div>' : '')
+        ) : '') +
+        '<div class="divider"></div>' +
+        '<div class="fw-bold" style="margin-bottom:6px;">PRODUCTOS / INDICACIONES:</div>' +
+        itemsRows +
+        '<div class="divider"></div>' +
+        '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:bold;">' +
+            '<span>TOTAL:</span><span>$' + parseFloat(order.total).toFixed(2) + '</span>' +
+        '</div>' +
+        '<div style="font-size:11px;margin-top:2px;"><strong>PAGO:</strong> ' + (order.metodo_pago === 'efectivo' ? 'Efectivo (' + (order.monto_pago_efectivo || 'Exacto') + ')' : 'Transferencia') + '</div>' +
+        (order.notas ? '<div style="font-size:11px;margin-top:4px;"><strong>NOTAS:</strong> ' + escapeHtml(order.notas) + '</div>' : '') +
+        '<div class="divider"></div>' +
+        '<div class="text-center" style="font-size:10px;">Ticket de preparación / Comanda</div>' +
+        '</body></html>';
+
+    var printWindow = window.open('', '_blank', 'width=380,height=600');
+    if (printWindow) {
+        printWindow.document.write(ticketHtml);
+        printWindow.document.close();
+        printWindow.focus();
+        setTimeout(function() {
+            printWindow.print();
+        }, 300);
+    }
 }
 
 function escapeHtml(str) {
