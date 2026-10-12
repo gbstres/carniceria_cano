@@ -17,7 +17,7 @@ $idSucursal = isset($_REQUEST['id_sucursal']) ? (int)$_REQUEST['id_sucursal'] : 
 
 if ($action === 'get_orders') {
     $statusFilter = isset($_REQUEST['estatus']) ? mysqli_real_escape_string($link, $_REQUEST['estatus']) : '';
-    $where = "WHERE p.id_sucursal = $idSucursal";
+    $where = ($idSucursal > 0) ? "WHERE p.id_sucursal = $idSucursal" : "WHERE 1=1";
     if ($statusFilter !== '') {
         $where .= " AND p.estatus = '$statusFilter'";
     }
@@ -84,7 +84,8 @@ if ($action === 'update_status') {
         exit;
     }
 
-    $upd = mysqli_query($link, "UPDATE cc_pedidos_web SET estatus = '$newStatus' WHERE id_pedido = $orderId AND id_sucursal = $idSucursal");
+    $whereBranch = ($idSucursal > 0) ? "AND id_sucursal = $idSucursal" : "";
+    $upd = mysqli_query($link, "UPDATE cc_pedidos_web SET estatus = '$newStatus' WHERE id_pedido = $orderId $whereBranch");
     if ($upd) {
         echo json_encode(['success' => true, 'message' => "Estatus actualizado a '$newStatus'."]);
     } else {

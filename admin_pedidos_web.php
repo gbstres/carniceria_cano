@@ -7,15 +7,18 @@ if ($link) {
     storefront_ensure_order_tables($link);
 }
 
-$idSucursalSel = isset($_GET['sucursal']) ? (int)$_GET['sucursal'] : 1;
-if (!in_array($idSucursalSel, [1, 2], true)) {
-    $idSucursalSel = 1;
+$branchesQuery = mysqli_query($link, "SELECT id_sucursal, desc_sucursal FROM cc_sucursales WHERE activo = 1 ORDER BY id_sucursal ASC");
+$branchNames = [0 => 'Todas las Sucursales'];
+if ($branchesQuery) {
+    while ($bRow = mysqli_fetch_assoc($branchesQuery)) {
+        $branchNames[(int)$bRow['id_sucursal']] = $bRow['desc_sucursal'];
+    }
 }
 
-$branchNames = [
-    1 => 'Sucursal 1 (San Cristóbal Centro)',
-    2 => 'Sucursal 2 (La Principal / Matriz)'
-];
+$idSucursalSel = isset($_GET['sucursal']) ? (int)$_GET['sucursal'] : 0;
+if (!isset($branchNames[$idSucursalSel])) {
+    $idSucursalSel = 0;
+}
 ?>
 <!doctype html>
 <html lang="es">
@@ -51,8 +54,12 @@ $branchNames = [
             <div class="input-group input-group-sm">
                 <label class="input-group-text bg-warning text-dark fw-bold" for="sucursalSelect"><i class="bi bi-geo-alt-fill me-1"></i> Sucursal:</label>
                 <select class="form-select fw-bold text-dark" id="sucursalSelect" onchange="changeBranch(this.value)">
-                    <option value="1" <?php echo $idSucursalSel === 1 ? 'selected' : ''; ?>>Sucursal 1 - San Cristóbal (7:30 AM - 3:30 PM)</option>
-                    <option value="2" <?php echo $idSucursalSel === 2 ? 'selected' : ''; ?>>Sucursal 2 - La Principal (8:00 AM - 4:00 PM)</option>
+                    <option value="0" <?php echo $idSucursalSel === 0 ? 'selected' : ''; ?>>⭐ Todas las Sucursales</option>
+                    <?php foreach ($branchNames as $bId => $bName): if ($bId === 0) continue; ?>
+                        <option value="<?php echo $bId; ?>" <?php echo $idSucursalSel === $bId ? 'selected' : ''; ?>>
+                            <?php echo storefront_escape($bName); ?>
+                        </option>
+                    <?php endforeach; ?>
                 </select>
             </div>
             <button class="btn btn-sm btn-outline-light" onclick="loadOrders(true)">
@@ -185,6 +192,10 @@ function loadOrders(manualRefresh) {
                     statusText = '⚪ Cancelado';
                 }
 
+                var branchBadge = order.desc_sucursal 
+                    ? '<span class="badge bg-dark text-white"><i class="bi bi-shop me-1"></i>' + escapeHtml(order.desc_sucursal) + '</span>'
+                    : '<span class="badge bg-dark text-white"><i class="bi bi-shop me-1"></i>Sucursal ' + order.id_sucursal + '</span>';
+
                 var deliveryBadge = order.tipo_entrega === 'domicilio' 
                     ? '<span class="badge bg-danger"><i class="bi bi-truck me-1"></i> Entrega a Domicilio</span>'
                     : '<span class="badge bg-primary"><i class="bi bi-bag-check me-1"></i> Recoger en Sucursal</span>';
@@ -249,6 +260,7 @@ function loadOrders(manualRefresh) {
                                     <small class="text-muted"><i class="bi bi-clock me-1"></i>${order.fecha_ingreso}</small>
                                 </div>
                                 <div class="d-flex gap-1 mt-2 mt-md-0">
+                                    ${branchBadge}
                                     ${deliveryBadge}
                                     ${paymentBadge}
                                 </div>
