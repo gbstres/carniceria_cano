@@ -297,13 +297,6 @@ $qr_precio = file_exists(__DIR__ . '/../img/qr_precios_sucursal_' . $id_sucursal
                     </div>
                 </div>
                 <?php endif; ?>
-                        <div>
-                            <a href="../admin_pedidos_web.php?sucursal=<?php echo (int)($id_sucursal ?? 1); ?>" class="btn btn-danger btn-lg fw-bold shadow-sm px-4">
-                                <i class="bi bi-journal-check me-1"></i> Ver e Imprimir Pedidos
-                            </a>
-                        </div>
-                    </div>
-                </div>
                 <div>
                     <div class="bg-light p-2 rounded text-center">
                         <div class="col-sm-8 mx-auto">
@@ -615,8 +608,8 @@ $qr_precio = file_exists(__DIR__ . '/../img/qr_precios_sucursal_' . $id_sucursal
 
                                 // Pedidos online pendientes
                                 $condWeb = ($id_sucursal == 9)
-                                    ? "WHERE estatus IN ('nuevo', 'en_preparacion')"
-                                    : "WHERE id_sucursal = '$id_sucursal' AND estatus IN ('nuevo', 'en_preparacion')";
+                                    ? "WHERE p.estatus IN ('nuevo', 'en_preparacion')"
+                                    : "WHERE p.id_sucursal = '$id_sucursal' AND p.estatus IN ('nuevo', 'en_preparacion')";
                                 $sqlweb = mysqli_query($link, "SELECT p.*, s.desc_sucursal 
                                     FROM cc_pedidos_web p 
                                     LEFT JOIN cc_sucursales s ON p.id_sucursal = s.id_sucursal 
