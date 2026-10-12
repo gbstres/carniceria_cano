@@ -242,6 +242,43 @@ $qr_precio = file_exists(__DIR__ . '/../img/qr_precios_sucursal_' . $id_sucursal
         <main>
             <div class="container">
                 <?php require_once "../components/nav.php" ?>
+                <?php if ($id_sucursal == 9): ?>
+                <!-- Panel Central de Pedidos Web Exclusivo para Sucursal 9: Tienda Online -->
+                <div class="card shadow-sm border-danger my-3">
+                    <div class="card-header bg-danger text-white d-flex align-items-center justify-content-between flex-wrap gap-2 py-2">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-shop fs-4 me-2"></i>
+                            <div>
+                                <h5 class="m-0 fw-bold">Monitor Central de Pedidos Web (Todas las Sucursales)</h5>
+                                <small class="text-white-50">Visualiza y gestiona todos los pedidos online entrantes en tiempo real</small>
+                            </div>
+                        </div>
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-white text-danger fw-bold fs-6" id="badgeTotalOrders9">0 pedidos</span>
+                            <button type="button" class="btn btn-sm btn-light fw-bold" onclick="cargarPedidosSucursal9(true)">
+                                <i class="bi bi-arrow-clockwise me-1"></i> Actualizar
+                            </button>
+                            <a href="../admin_pedidos_web.php" class="btn btn-sm btn-outline-light fw-bold">
+                                <i class="bi bi-box-arrow-up-right me-1"></i> Gestión Completa
+                            </a>
+                        </div>
+                    </div>
+                    <div class="card-body p-3">
+                        <div class="d-flex gap-1 mb-2" id="btnGroupFiltro9">
+                            <button type="button" class="btn btn-outline-secondary btn-sm active" onclick="filtrarPedidos9('')" id="btnF9All">Todos</button>
+                            <button type="button" class="btn btn-outline-danger btn-sm" onclick="filtrarPedidos9('nuevo')" id="btnF9Nuevo">🔴 Nuevos</button>
+                            <button type="button" class="btn btn-outline-warning text-dark btn-sm" onclick="filtrarPedidos9('en_preparacion')" id="btnF9Prep">🟡 En Preparación</button>
+                            <button type="button" class="btn btn-outline-success btn-sm" onclick="filtrarPedidos9('completado')" id="btnF9Comp">🟢 Completados</button>
+                        </div>
+                        <div id="contenedorPedidos9" class="table-responsive" style="max-height: 420px; overflow-y: auto;">
+                            <div class="text-center py-4">
+                                <div class="spinner-border spinner-border-sm text-danger" role="status"></div>
+                                <span class="ms-2 text-muted">Cargando pedidos online...</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <?php else: ?>
                 <!-- Alerta en Vivo para Pedidos Web de la Sucursal -->
                 <div id="mainWebOrdersAlert" class="alert alert-danger shadow-sm border border-danger d-none my-3 p-3 rounded-3" role="alert">
                     <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
@@ -252,6 +289,14 @@ $qr_precio = file_exists(__DIR__ . '/../img/qr_precios_sucursal_' . $id_sucursal
                                 <div class="text-secondary small mt-1">Hay <strong id="mainWebOrdersCount" class="text-danger fs-5">0</strong> pedidos online pendientes de atención para esta sucursal.</div>
                             </div>
                         </div>
+                        <div>
+                            <a href="#det_ventas" class="btn btn-danger btn-lg fw-bold shadow-sm px-4">
+                                <i class="bi bi-arrow-down-circle me-1"></i> Ver en Ventas Pendientes
+                            </a>
+                        </div>
+                    </div>
+                </div>
+                <?php endif; ?>
                         <div>
                             <a href="../admin_pedidos_web.php?sucursal=<?php echo (int)($id_sucursal ?? 1); ?>" class="btn btn-danger btn-lg fw-bold shadow-sm px-4">
                                 <i class="bi bi-journal-check me-1"></i> Ver e Imprimir Pedidos
@@ -543,14 +588,16 @@ $qr_precio = file_exists(__DIR__ . '/../img/qr_precios_sucursal_' . $id_sucursal
                             <h3>Ventas pendientes</h3>
                         </div>
                         <div class="table-responsive">
-                            <table id="det_ventas" class="table_ventas table-striped table-hover" style="width:40%" >
+                            <table id="det_ventas" class="table_ventas table-striped table-hover" style="width:65%" >
                                 <thead>
                                     <tr>
-                                        <th>Id </th>
+                                        <th>Id</th>
                                         <th>Hora</th>
+                                        <th>Online</th>
                                         <th>Acciones</th>
                                     </tr>
                                 </thead>
+                                <tbody>
                                 <?php
                                 $sqldetventas = mysqli_query($link, "select * from cc_det_ventas where id_sucursal = '$id_sucursal' and estatus = 0");
                                 while ($rowv = mysqli_fetch_assoc($sqldetventas)) {
@@ -558,13 +605,46 @@ $qr_precio = file_exists(__DIR__ . '/../img/qr_precios_sucursal_' . $id_sucursal
                                     <tr id="fila' . $rowv['id_venta'] . '">
                                         <td>' . $rowv['id_venta'] . '</td>
                                         <td>' . $rowv['hora_ingreso'] . '</td>
+                                        <td><span class="badge bg-secondary">No</span></td>
                                         <td align="center">
                                             <a href="?accion=delete&id=' . $rowv['id_venta'] . '" title="Eliminar" onclick="return confirm(\'¿Esta seguro de borrar venta ' . $rowv['id_venta'] . '?\')"><img class="imga" src="../img/icons/trash.svg"></a>
                                             <a href="?id_venta=' . $rowv['id_venta'] . '" title="Seleccionar venta"><img class="imga" src="../img/icons/pencil-square.svg"></a>
                                         </td>
                                     </tr>';
                                 }
+
+                                // Pedidos online pendientes
+                                $condWeb = ($id_sucursal == 9)
+                                    ? "WHERE estatus IN ('nuevo', 'en_preparacion')"
+                                    : "WHERE id_sucursal = '$id_sucursal' AND estatus IN ('nuevo', 'en_preparacion')";
+                                $sqlweb = mysqli_query($link, "SELECT p.*, s.desc_sucursal 
+                                    FROM cc_pedidos_web p 
+                                    LEFT JOIN cc_sucursales s ON p.id_sucursal = s.id_sucursal 
+                                    $condWeb ORDER BY p.id_pedido DESC");
+                                if ($sqlweb) {
+                                    while ($roww = mysqli_fetch_assoc($sqlweb)) {
+                                        $horaW = date('H:i:s', strtotime($roww['fecha_ingreso']));
+                                        $isNuevo = ($roww['estatus'] === 'nuevo');
+                                        $badgeClass = $isNuevo ? 'bg-danger text-white' : 'bg-warning text-dark';
+                                        $badgeTxt = $isNuevo ? 'Sí (Nuevo)' : 'Sí (En Prep.)';
+                                        $sucLabel = ($id_sucursal == 9) ? '<small class="text-danger fw-bold d-block">(' . htmlspecialchars($roww['desc_sucursal'] ?? ('Suc. ' . $roww['id_sucursal'])) . ')</small>' : '';
+                                        echo '
+                                        <tr id="fila_web_' . $roww['id_pedido'] . '" class="table-warning">
+                                            <td>
+                                                <strong class="text-danger">#' . $roww['id_pedido'] . '</strong>' . $sucLabel . '
+                                                <small class="text-muted d-block">' . htmlspecialchars($roww['cliente_nombre']) . '</small>
+                                            </td>
+                                            <td>' . $horaW . '</td>
+                                            <td><span class="badge ' . $badgeClass . ' fw-bold"><i class="bi bi-globe me-1"></i>' . $badgeTxt . '</span></td>
+                                            <td align="center">
+                                                <a href="#" onclick="cancelarPedidoWebInicio(' . $roww['id_pedido'] . '); return false;" title="Cancelar pedido web"><img class="imga" src="../img/icons/trash.svg"></a>
+                                                <a href="#" onclick="abrirModalPedidoWeb(' . $roww['id_pedido'] . '); return false;" title="Ver, imprimir y completar pedido online" class="ms-1 text-danger"><i class="bi bi-eye-fill fs-5"></i></a>
+                                            </td>
+                                        </tr>';
+                                    }
+                                }
                                 ?>  
+                                </tbody>
                                 <tfoot>  
                                 </tfoot>
                             </table> 
@@ -651,6 +731,24 @@ $qr_precio = file_exists(__DIR__ . '/../img/qr_precios_sucursal_' . $id_sucursal
                     <button type="submit" class="btn btn-primary" name="editar">Guardar</button>
                 </div>
                 </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal para consultar y procesar Pedido Online -->
+    <div class="modal fade modal-lg" id="modalPedidoWeb" tabindex="-1" aria-labelledby="modalPedidoWebLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+            <div class="modal-content shadow border-0">
+                <div class="modal-header bg-danger text-white py-2">
+                    <h5 class="modal-title fw-bold" id="modalPedidoWebLabel"><i class="bi bi-basket-fill me-2"></i> Detalle de Pedido Online</h5>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-3" id="modalPedidoWebContent">
+                    <div class="text-center py-4"><div class="spinner-border text-danger"></div></div>
+                </div>
+                <div class="modal-footer bg-light py-2" id="modalPedidoWebFooter">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                </div>
             </div>
         </div>
     </div>
@@ -871,7 +969,7 @@ $qr_precio = file_exists(__DIR__ . '/../img/qr_precios_sucursal_' . $id_sucursal
                                                     info: false,
                                                     searching: false,
                                                     columnDefs: [
-                                                        {width: '70px', targets: [2]}, {className: 'dt-left', targets: '_all'}, ],
+                                                        {width: '70px', targets: [3]}, {className: 'dt-left', targets: '_all'}, ],
                                                     language: {zeroRecords: 'Sin Ventas pendientes'}
                                                 }
                                         );
@@ -1664,11 +1762,16 @@ if ($descripcion_corta == 1) {
                                         calculacambio();
                                     });
 
-    var alertBranchId = <?php echo (int)($id_sucursal ?? 1); ?>;
+    var currentActiveWebOrder = null;
+    var cachedWebOrders = {};
+    var currentFilter9 = '';
+    var isSucursal9 = <?php echo ($id_sucursal == 9) ? 'true' : 'false'; ?>;
+    var alertBranchId = <?php echo ($id_sucursal == 9) ? '0' : (int)($id_sucursal ?? 1); ?>;
     var alertLastCount = 0;
 
     function checkWebOrdersAlert() {
-        fetch('../api_sync_pedidos.php?action=get_orders&id_sucursal=' + alertBranchId + '&estatus=nuevo')
+        var url = '../api_sync_pedidos.php?action=get_orders&id_sucursal=' + alertBranchId + '&estatus=nuevo';
+        fetch(url)
             .then(function(res) { return res.json(); })
             .then(function(data) {
                 if (data.success) {
@@ -1690,6 +1793,10 @@ if ($descripcion_corta == 1) {
                 }
             })
             .catch(function(err) { console.log('Error consulta pedidos web: ' + err); });
+
+        if (isSucursal9) {
+            cargarPedidosSucursal9(false);
+        }
     }
 
     function playAlertBeep() {
@@ -1704,9 +1811,315 @@ if ($descripcion_corta == 1) {
         } catch (e) {}
     }
 
+    // Funciones para gestión de Pedidos Web en Sucursal 9
+    function filtrarPedidos9(filtro) {
+        currentFilter9 = filtro;
+        document.querySelectorAll('#btnGroupFiltro9 .btn').forEach(function(b) { b.classList.remove('active'); });
+        if (filtro === '') document.getElementById('btnF9All').classList.add('active');
+        if (filtro === 'nuevo') document.getElementById('btnF9Nuevo').classList.add('active');
+        if (filtro === 'en_preparacion') document.getElementById('btnF9Prep').classList.add('active');
+        if (filtro === 'completado') document.getElementById('btnF9Comp').classList.add('active');
+        cargarPedidosSucursal9(true);
+    }
+
+    function cargarPedidosSucursal9(manual) {
+        var url = '../api_sync_pedidos.php?action=get_orders&id_sucursal=0';
+        if (currentFilter9 !== '') {
+            url += '&estatus=' + encodeURIComponent(currentFilter9);
+        }
+
+        fetch(url)
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (!data.success) return;
+                var orders = data.orders || [];
+                var countBadge = document.getElementById('badgeTotalOrders9');
+                if (countBadge) countBadge.textContent = orders.length + ' pedidos';
+
+                orders.forEach(function(o) { cachedWebOrders[o.id_pedido] = o; });
+
+                var cont = document.getElementById('contenedorPedidos9');
+                if (!cont) return;
+
+                if (orders.length === 0) {
+                    cont.innerHTML = '<div class="text-center py-4 text-muted"><i class="bi bi-inbox fs-2 d-block mb-1"></i>No hay pedidos web con este filtro.</div>';
+                    return;
+                }
+
+                var html = '<table class="table table-sm table-hover align-middle small mb-0">' +
+                    '<thead class="table-light"><tr>' +
+                        '<th>Folio</th><th>Sucursal</th><th>Fecha/Hora</th><th>Cliente</th><th>Tipo Entrega</th><th>Total</th><th>Estado</th><th class="text-end">Acciones</th>' +
+                    '</tr></thead><tbody>';
+
+                orders.forEach(function(o) {
+                    var statusBadge = '<span class="badge bg-danger">🔴 Nuevo</span>';
+                    if (o.estatus === 'en_preparacion') statusBadge = '<span class="badge bg-warning text-dark">🟡 En Prep.</span>';
+                    if (o.estatus === 'completado') statusBadge = '<span class="badge bg-success">🟢 Completado</span>';
+                    if (o.estatus === 'cancelado') statusBadge = '<span class="badge bg-secondary">⚪ Cancelado</span>';
+
+                    var tipoBadge = (o.tipo_entrega === 'domicilio') 
+                        ? '<span class="badge bg-danger"><i class="bi bi-truck me-1"></i>Domicilio</span>' 
+                        : '<span class="badge bg-primary"><i class="bi bi-shop me-1"></i>Sucursal</span>';
+
+                    var waBtn = '';
+                    var cleanP = (o.cliente_telefono || '').replace(/\D/g, '');
+                    if (cleanP) {
+                        waBtn = '<a href="https://wa.me/52' + cleanP + '" target="_blank" class="btn btn-outline-success btn-sm p-0 px-1 ms-1" title="WhatsApp"><i class="bi bi-whatsapp"></i></a>';
+                    }
+
+                    html += '<tr>' +
+                        '<td><strong class="text-dark">#' + o.id_pedido + '</strong></td>' +
+                        '<td><span class="badge bg-dark">' + escapeHtmlInicio(o.desc_sucursal || ('Suc. ' + o.id_sucursal)) + '</span></td>' +
+                        '<td>' + escapeHtmlInicio(o.fecha_ingreso) + '</td>' +
+                        '<td><strong>' + escapeHtmlInicio(o.cliente_nombre) + '</strong><br>' + escapeHtmlInicio(o.cliente_telefono) + waBtn + '</td>' +
+                        '<td>' + tipoBadge + '</td>' +
+                        '<td><strong class="text-danger">$' + parseFloat(o.total).toFixed(2) + '</strong></td>' +
+                        '<td>' + statusBadge + '</td>' +
+                        '<td class="text-end">' +
+                            '<button class="btn btn-sm btn-outline-dark me-1" onclick="abrirModalPedidoWeb(' + o.id_pedido + ')" title="Ver Detalle"><i class="bi bi-eye"></i></button>' +
+                        '</td>' +
+                    '</tr>';
+                });
+
+                html += '</tbody></table>';
+                cont.innerHTML = html;
+            })
+            .catch(function(err) { console.log('Error carga sucursal 9: ' + err); });
+    }
+
+    // Modal de Pedido Web (para Ventas Pendientes y Sucursal 9)
+    function abrirModalPedidoWeb(orderId) {
+        var myModal = new bootstrap.Modal(document.getElementById('modalPedidoWeb'));
+        myModal.show();
+
+        document.getElementById('modalPedidoWebContent').innerHTML = '<div class="text-center py-4"><div class="spinner-border text-danger"></div><p class="mt-2 text-muted">Cargando pedido #' + orderId + '...</p></div>';
+
+        var url = '../api_sync_pedidos.php?action=get_orders&id_sucursal=0';
+        fetch(url)
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                var orders = data.orders || [];
+                orders.forEach(function(o) { cachedWebOrders[o.id_pedido] = o; });
+                var order = cachedWebOrders[orderId];
+                if (!order) {
+                    document.getElementById('modalPedidoWebContent').innerHTML = '<div class="alert alert-danger">No se encontró el pedido #' + orderId + '</div>';
+                    return;
+                }
+                currentActiveWebOrder = order;
+
+                var cleanP = (order.cliente_telefono || '').replace(/\D/g, '');
+                var waLink = cleanP ? '<a href="https://wa.me/52' + cleanP + '" target="_blank" class="btn btn-outline-success btn-sm p-0 px-2 ms-2 fw-bold text-decoration-none"><i class="bi bi-whatsapp me-1"></i>WhatsApp</a>' : '';
+
+                var mapsBtn = '';
+                if (order.latitud && order.longitud) {
+                    mapsBtn = '<a href="https://www.google.com/maps?q=' + order.latitud + ',' + order.longitud + '" target="_blank" class="btn btn-outline-danger btn-sm p-1 px-2 mt-1"><i class="bi bi-geo-alt-fill me-1"></i>Ver en Google Maps</a>';
+                }
+
+                var itemsHtml = '';
+                (order.items || []).forEach(function(it) {
+                    var note = it.comentario && it.comentario.trim() !== '' ? '<div class="p-1 px-2 mt-1 rounded bg-warning bg-opacity-25 text-dark small"><strong>👉 Corte/Indicación:</strong> ' + escapeHtmlInicio(it.comentario) + '</div>' : '';
+                    itemsHtml += '<tr>' +
+                        '<td><strong>' + escapeHtmlInicio(it.codigo) + '</strong></td>' +
+                        '<td><strong>' + escapeHtmlInicio(it.descripcion) + '</strong>' + note + '</td>' +
+                        '<td class="text-center fw-bold text-danger">' + parseFloat(it.cantidad).toFixed(2) + ' kg/pza</td>' +
+                        '<td class="text-end">$' + parseFloat(it.precio_unitario).toFixed(2) + '</td>' +
+                        '<td class="text-end fw-bold">$' + parseFloat(it.subtotal).toFixed(2) + '</td>' +
+                    '</tr>';
+                });
+
+                var bodyHtml = '<div class="row g-3">' +
+                    '<div class="col-md-5 border-end">' +
+                        '<h6 class="fw-bold border-bottom pb-1 text-danger"><i class="bi bi-person-fill me-1"></i> Datos del Cliente</h6>' +
+                        '<p class="mb-1 small"><strong>Nombre:</strong> ' + escapeHtmlInicio(order.cliente_nombre) + '</p>' +
+                        '<p class="mb-1 small"><strong>Teléfono:</strong> <a href="tel:' + escapeHtmlInicio(order.cliente_telefono) + '" class="fw-bold text-decoration-none">' + escapeHtmlInicio(order.cliente_telefono) + '</a>' + waLink + '</p>' +
+                        (order.cliente_email ? '<p class="mb-1 small"><strong>Email:</strong> ' + escapeHtmlInicio(order.cliente_email) + '</p>' : '') +
+                        '<div class="mt-2 p-2 bg-light rounded border">' +
+                            '<strong class="d-block small text-danger"><i class="bi bi-truck me-1"></i> ' + (order.tipo_entrega === 'domicilio' ? 'Entrega a Domicilio' : 'Recoger en Sucursal') + '</strong>' +
+                            (order.tipo_entrega === 'domicilio' ? (
+                                '<span class="small d-block fw-semibold">' + escapeHtmlInicio(order.direccion_entrega) + '</span>' +
+                                (order.referencias_ubicacion ? '<small class="text-muted d-block mt-1">Ref: ' + escapeHtmlInicio(order.referencias_ubicacion) + '</small>' : '') +
+                                '<div class="mt-1">' + mapsBtn + '</div>'
+                            ) : '<small class="text-muted">El cliente recogerá su pedido en el mostrador de la sucursal.</small>') +
+                        '</div>' +
+                        (order.notas ? '<div class="mt-2 alert alert-secondary p-2 small mb-0"><strong>Notas:</strong> ' + escapeHtmlInicio(order.notas) + '</div>' : '') +
+                    '</div>' +
+                    '<div class="col-md-7">' +
+                        '<h6 class="fw-bold border-bottom pb-1 text-danger"><i class="bi bi-basket-fill me-1"></i> Productos Solicitados</h6>' +
+                        '<div class="table-responsive">' +
+                            '<table class="table table-sm table-striped small align-middle mb-2">' +
+                                '<thead class="table-light"><tr><th>Código</th><th>Descripción</th><th class="text-center">Cant</th><th class="text-end">Precio</th><th class="text-end">Subtotal</th></tr></thead>' +
+                                '<tbody>' + itemsHtml + '</tbody>' +
+                            '</table>' +
+                        '</div>' +
+                        '<div class="d-flex justify-content-between align-items-center bg-light p-2 rounded border mt-2">' +
+                            '<span class="fw-bold fs-6">TOTAL A COBRAR:</span>' +
+                            '<strong class="fs-5 text-danger fw-bold">$' + parseFloat(order.total).toFixed(2) + '</strong>' +
+                        '</div>' +
+                        '<div class="small text-muted mt-1"><strong>Método de pago:</strong> ' + (order.metodo_pago === 'efectivo' ? 'Efectivo (' + (order.monto_pago_efectivo || 'Exacto') + ')' : 'Transferencia SPEI') + '</div>' +
+                    '</div>' +
+                '</div>';
+
+                document.getElementById('modalPedidoWebContent').innerHTML = bodyHtml;
+
+                var footerHtml = '<button type="button" class="btn btn-outline-dark fw-bold" onclick="imprimirComandaInicio(' + order.id_pedido + ')"><i class="bi bi-printer-fill me-1"></i> Imprimir Comanda</button>';
+
+                if (order.estatus === 'nuevo') {
+                    footerHtml += '<button type="button" class="btn btn-warning text-dark fw-bold" onclick="cambiarEstatusWebInicio(' + order.id_pedido + ', \'en_preparacion\')"><i class="bi bi-clock-history me-1"></i> En Preparación</button>';
+                }
+
+                if (order.estatus !== 'completado' && order.estatus !== 'cancelado') {
+                    footerHtml += '<button type="button" class="btn btn-success fw-bold shadow-sm" onclick="aprobarYDescontarStockInicio(' + order.id_pedido + ', ' + order.id_sucursal + ')"><i class="bi bi-check-circle-fill me-1"></i> Aprobar y Descontar Stock</button>';
+                }
+
+                footerHtml += '<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>';
+                document.getElementById('modalPedidoWebFooter').innerHTML = footerHtml;
+            })
+            .catch(function(err) {
+                document.getElementById('modalPedidoWebContent').innerHTML = '<div class="alert alert-danger">Error al cargar datos del pedido.</div>';
+            });
+    }
+
+    function imprimirComandaInicio(orderId) {
+        var order = cachedWebOrders[orderId] || currentActiveWebOrder;
+        if (!order) {
+            alert('No se encontró la información del pedido.');
+            return;
+        }
+
+        var itemsRows = (order.items || []).map(function(it) {
+            var note = it.comentario && it.comentario.trim() !== '' ? '<div style="font-size:11px;padding-left:8px;color:#333;">👉 <em>' + escapeHtmlInicio(it.comentario) + '</em></div>' : '';
+            return '<div style="margin-bottom:6px;border-bottom:1px dashed #ccc;padding-bottom:4px;">' +
+                '<div style="display:flex;justify-content:space-between;font-weight:bold;">' +
+                    '<span>' + parseFloat(it.cantidad).toFixed(2) + ' x ' + escapeHtmlInicio(it.descripcion) + '</span>' +
+                    '<span>$' + parseFloat(it.subtotal).toFixed(2) + '</span>' +
+                '</div>' +
+                note +
+            '</div>';
+        }).join('');
+
+        var ticketHtml = '<!DOCTYPE html><html><head><title>Comanda #' + order.id_pedido + '</title>' +
+            '<meta charset="utf-8">' +
+            '<style>' +
+            'body{font-family:monospace,sans-serif;margin:0;padding:12px;width:280px;font-size:12px;color:#000;line-height:1.3;}' +
+            '.text-center{text-align:center;}' +
+            '.divider{border-top:1px dashed #000;margin:8px 0;}' +
+            '.fw-bold{font-weight:bold;}' +
+            '@media print { body{width:100%;padding:0;} }' +
+            '</style></head><body>' +
+            '<div class="text-center">' +
+                '<h2 style="margin:0;font-size:17px;">CARNICERÍA CANO</h2>' +
+                '<div style="font-size:12px;font-weight:bold;margin:2px 0;">COMANDA DE PEDIDO ONLINE</div>' +
+                '<div style="font-size:11px;">' + escapeHtmlInicio(order.desc_sucursal || ('Sucursal ' + order.id_sucursal)) + '</div>' +
+            '</div>' +
+            '<div class="divider"></div>' +
+            '<div><strong>FOLIO:</strong> #' + order.id_pedido + '</div>' +
+            '<div><strong>FECHA:</strong> ' + escapeHtmlInicio(order.fecha_ingreso) + '</div>' +
+            '<div><strong>ENTREGA:</strong> ' + (order.tipo_entrega === 'domicilio' ? 'A DOMICILIO' : 'RECOGER EN SUCURSAL') + '</div>' +
+            '<div><strong>CLIENTE:</strong> ' + escapeHtmlInicio(order.cliente_nombre) + '</div>' +
+            '<div><strong>TEL:</strong> ' + escapeHtmlInicio(order.cliente_telefono) + '</div>' +
+            (order.tipo_entrega === 'domicilio' ? (
+                '<div style="margin-top:4px;"><strong>DIRECCIÓN:</strong> ' + escapeHtmlInicio(order.direccion_entrega) + '</div>' +
+                (order.referencias_ubicacion ? '<div style="font-size:11px;"><strong>REF:</strong> ' + escapeHtmlInicio(order.referencias_ubicacion) + '</div>' : '')
+            ) : '') +
+            '<div class="divider"></div>' +
+            '<div class="fw-bold" style="margin-bottom:6px;">PRODUCTOS / INDICACIONES:</div>' +
+            itemsRows +
+            '<div class="divider"></div>' +
+            '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:bold;">' +
+                '<span>TOTAL:</span><span>$' + parseFloat(order.total).toFixed(2) + '</span>' +
+            '</div>' +
+            '<div style="font-size:11px;margin-top:2px;"><strong>PAGO:</strong> ' + (order.metodo_pago === 'efectivo' ? 'Efectivo (' + (order.monto_pago_efectivo || 'Exacto') + ')' : 'Transferencia') + '</div>' +
+            (order.notas ? '<div style="font-size:11px;margin-top:4px;"><strong>NOTAS:</strong> ' + escapeHtmlInicio(order.notas) + '</div>' : '') +
+            '<div class="divider"></div>' +
+            '<div class="text-center" style="font-size:10px;">Ticket de preparación / Comanda</div>' +
+            '</body></html>';
+
+        var printWindow = window.open('', '_blank', 'width=380,height=600');
+        if (printWindow) {
+            printWindow.document.write(ticketHtml);
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(function() { printWindow.print(); }, 300);
+        }
+    }
+
+    function cambiarEstatusWebInicio(orderId, nuevoEstatus) {
+        var formData = new FormData();
+        formData.append('action', 'update_status');
+        formData.append('id_pedido', orderId);
+        formData.append('id_sucursal', alertBranchId);
+        formData.append('estatus', nuevoEstatus);
+
+        fetch('../api_sync_pedidos.php', { method: 'POST', body: formData })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(function(err) { alert('Error de conexión al actualizar estatus.'); });
+    }
+
+    function aprobarYDescontarStockInicio(orderId, idSucursalPedido) {
+        var sucTarget = idSucursalPedido || alertBranchId;
+        if (!confirm('¿Deseas confirmar este pedido y DESCONTAR EL STOCK del inventario de la Sucursal ' + sucTarget + '?')) {
+            return;
+        }
+
+        var formData = new FormData();
+        formData.append('action', 'complete_order');
+        formData.append('id_pedido', orderId);
+        formData.append('id_sucursal', sucTarget);
+
+        fetch('../api_sync_pedidos.php', { method: 'POST', body: formData })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    alert('✅ ' + data.message);
+                    location.reload();
+                } else {
+                    alert('❌ Error: ' + data.message);
+                }
+            })
+            .catch(function(err) { alert('Error al procesar pedido.'); });
+    }
+
+    function cancelarPedidoWebInicio(orderId) {
+        if (!confirm('¿Estás seguro de CANCELAR el pedido web #' + orderId + '?')) {
+            return;
+        }
+
+        var formData = new FormData();
+        formData.append('action', 'update_status');
+        formData.append('id_pedido', orderId);
+        formData.append('id_sucursal', alertBranchId);
+        formData.append('estatus', 'cancelado');
+
+        fetch('../api_sync_pedidos.php', { method: 'POST', body: formData })
+            .then(function(res) { return res.json(); })
+            .then(function(data) {
+                if (data.success) {
+                    location.reload();
+                } else {
+                    alert('Error: ' + data.message);
+                }
+            })
+            .catch(function(err) { alert('Error al cancelar pedido.'); });
+    }
+
+    function escapeHtmlInicio(str) {
+        if (!str) return '';
+        return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#039;');
+    }
+
     $(document).ready(function() {
         checkWebOrdersAlert();
         setInterval(checkWebOrdersAlert, 5000);
+        if (isSucursal9) {
+            cargarPedidosSucursal9(true);
+        }
     });
     </script>      
 </body>

@@ -948,9 +948,47 @@ function storefront_process_order_and_deduct_stock(mysqli $link, int $orderId, i
         if ($itemsResult) {
             $fecha_act = date('Y-m-d');
             $hora_act = date('H:i:s');
+
+            // Calcular siguiente id_venta de la sucursal para registrar la venta en el POS
+            $maxQuery = mysqli_query($link, "SELECT GREATEST(
+                COALESCE((SELECT MAX(id_venta) FROM cc_ventas WHERE id_sucursal = $idSucursal), 0),
+                COALESCE((SELECT MAX(id_venta) FROM cc_det_ventas WHERE id_sucursal = $idSucursal), 0)
+            ) as max_id");
+            $maxRow = $maxQuery ? mysqli_fetch_assoc($maxQuery) : null;
+            $idVentaPos = ((int) ($maxRow['max_id'] ?? 0)) + 1;
+            $tipoPagoInt = ($order['metodo_pago'] === 'efectivo') ? 1 : 2;
+            $totalVenta = (float) $order['total'];
+
+            $insertHeader = mysqli_query($link, "INSERT INTO cc_det_ventas 
+                (id_sucursal, id_venta, estatus, id_cierre, id_cliente, id_empleado, pagado, importe_recibido, tipo_pago, id_usuario, fecha_ingreso, hora_ingreso, fecha_act, hora_act, id_usuario_act)
+                VALUES 
+                ($idSucursal, $idVentaPos, 1, 0, 0, 0, 1, $totalVenta, $tipoPagoInt, $userId, '$fecha_act', '$hora_act', '$fecha_act', '$hora_act', $userId)");
+
+            if (!$insertHeader) {
+                throw new Exception("Error al registrar encabezado de venta POS: " . mysqli_error($link));
+            }
+
+            $consecutivo = 1;
             while ($item = mysqli_fetch_assoc($itemsResult)) {
                 $codigoSql = mysqli_real_escape_string($link, $item['codigo']);
                 $cantidad = (float) $item['cantidad'];
+                $precioUnitario = (float) $item['precio_unitario'];
+
+                // Obtener precio compra del producto
+                $prodQuery = mysqli_query($link, "SELECT precio_compra FROM cc_productos WHERE id_sucursal = $idSucursal AND codigo = '$codigoSql' LIMIT 1");
+                $prodRow = $prodQuery ? mysqli_fetch_assoc($prodQuery) : null;
+                $precioCompra = (float) ($prodRow['precio_compra'] ?? 0.00);
+
+                // Insertar partida en cc_ventas
+                $insertItem = mysqli_query($link, "INSERT INTO cc_ventas
+                    (id_sucursal, id_venta, id_consecutivo, codigo, precio_compra, precio_venta, cantidad, clave_externa, estatus, id_usuario, fecha_ingreso, hora_ingreso, fecha_act, hora_act, id_usuario_act)
+                    VALUES
+                    ($idSucursal, $idVentaPos, $consecutivo, '$codigoSql', $precioCompra, $precioUnitario, $cantidad, '', 1, $userId, '$fecha_act', '$hora_act', '$fecha_act', '$hora_act', $userId)");
+
+                if (!$insertItem) {
+                    throw new Exception("Error al registrar partida de venta POS: " . mysqli_error($link));
+                }
+                $consecutivo++;
 
                 $updateStock = mysqli_query($link, "UPDATE cc_productos 
                     SET almacen = almacen - $cantidad, 
@@ -971,6 +1009,13 @@ function storefront_process_order_and_deduct_stock(mysqli $link, int $orderId, i
                 }
             }
             mysqli_free_result($itemsResult);
+
+            if (function_exists('cc_sync_enqueue')) {
+                cc_sync_enqueue($link, $idSucursal, 'venta', 'upsert', ['id_venta' => $idVentaPos], [
+                    'motivo' => 'venta_pedido_web',
+                    'id_pedido' => $orderId
+                ]);
+            }
         }
 
         mysqli_commit($link);
