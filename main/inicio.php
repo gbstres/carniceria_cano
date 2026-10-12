@@ -297,6 +297,7 @@ $qr_precio = file_exists(__DIR__ . '/../img/qr_precios_sucursal_' . $id_sucursal
                     </div>
                 </div>
                 <?php endif; ?>
+                <?php if ($id_sucursal != 9): ?>
                 <div>
                     <div class="bg-light p-2 rounded text-center">
                         <div class="col-sm-8 mx-auto">
@@ -644,6 +645,7 @@ $qr_precio = file_exists(__DIR__ . '/../img/qr_precios_sucursal_' . $id_sucursal
                         </div>
                     </div>
                 </div>
+                <?php endif; ?>
             </div>
         </main>
 
@@ -933,39 +935,43 @@ $qr_precio = file_exists(__DIR__ . '/../img/qr_precios_sucursal_' . $id_sucursal
                                     var tD;
                                     var td;
                                     $(document).ready(function () {
-                                        $('#venta').DataTable({
-                                            paging: false,
-                                            ordering: false,
-                                            info: false,
-                                            searching: false,
-                                            footerCallback: function (tfoot, data, start, end, display) {
-                                                if (data.length > 0)
-                                                    $('#btn_cerrarventa').removeClass('disabled');
-                                                else
-                                                    $('#btn_cerrarventa').addClass('disabled');
-                                            },
-                                            columnDefs: [
-                                                {width: '70px', targets: [5]},
-                                                {className: 'dt-left', targets: '_all'},
-                                                {className: 'dt-center', targets: [5]}
-                                            ],
-                                            language: {zeroRecords: 'Sin productos'}
-                                        });
+                                        if ($('#venta').length) {
+                                            $('#venta').DataTable({
+                                                paging: false,
+                                                ordering: false,
+                                                info: false,
+                                                searching: false,
+                                                footerCallback: function (tfoot, data, start, end, display) {
+                                                    if (data.length > 0)
+                                                        $('#btn_cerrarventa').removeClass('disabled');
+                                                    else
+                                                        $('#btn_cerrarventa').addClass('disabled');
+                                                },
+                                                columnDefs: [
+                                                    {width: '70px', targets: [5]},
+                                                    {className: 'dt-left', targets: '_all'},
+                                                    {className: 'dt-center', targets: [5]}
+                                                ],
+                                                language: {zeroRecords: 'Sin productos'}
+                                            });
 
+                                            makeEditable();
+                                            sumaTotal();
+                                        }
 
-                                        makeEditable();
-                                        sumaTotal();
-                                        var t1 = $('#det_ventas').DataTable(
-                                                {
-                                                    paging: false,
-                                                    ordering: false,
-                                                    info: false,
-                                                    searching: false,
-                                                    columnDefs: [
-                                                        {width: '70px', targets: [3]}, {className: 'dt-left', targets: '_all'}, ],
-                                                    language: {zeroRecords: 'Sin Ventas pendientes'}
-                                                }
-                                        );
+                                        if ($('#det_ventas').length) {
+                                            var t1 = $('#det_ventas').DataTable(
+                                                    {
+                                                        paging: false,
+                                                        ordering: false,
+                                                        info: false,
+                                                        searching: false,
+                                                        columnDefs: [
+                                                            {width: '70px', targets: [3]}, {className: 'dt-left', targets: '_all'}, ],
+                                                        language: {zeroRecords: 'Sin Ventas pendientes'}
+                                                    }
+                                            );
+                                        }
 
 
 
