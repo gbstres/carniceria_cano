@@ -421,6 +421,21 @@ function storefront_fetch_branch_name(mysqli $link, $idSucursal)
 function storefront_fetch_active_branches(mysqli $link): array
 {
     $branches = [];
+    
+    // Auto-reparación: asegurar columnas de ubicación y contacto en cc_sucursales si faltan
+    $checkCols = mysqli_query($link, "SHOW COLUMNS FROM cc_sucursales LIKE 'direccion'");
+    if ($checkCols && mysqli_num_rows($checkCols) === 0) {
+        @mysqli_query($link, "ALTER TABLE cc_sucursales 
+            ADD COLUMN direccion TEXT NULL,
+            ADD COLUMN latitud VARCHAR(50) NULL,
+            ADD COLUMN longitud VARCHAR(50) NULL,
+            ADD COLUMN horario VARCHAR(150) NULL,
+            ADD COLUMN whatsapp VARCHAR(50) NULL");
+    }
+    if ($checkCols) {
+        mysqli_free_result($checkCols);
+    }
+
     $result = mysqli_query($link, "SELECT id_sucursal, desc_sucursal, direccion, latitud, longitud, horario, whatsapp
         FROM cc_sucursales
         WHERE activo = 1
