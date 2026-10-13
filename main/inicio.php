@@ -562,8 +562,8 @@ $qr_precio = file_exists(__DIR__ . '/../img/qr_precios_sucursal_' . $id_sucursal
                         <br>
                         <div class="col-sm-8 mx-auto d-flex justify-content-between align-items-center mb-2" style="max-width: 65%;">
                             <h3 class="mb-0">Ventas pendientes</h3>
-                            <button type="button" class="btn btn-outline-danger btn-sm fw-bold shadow-sm" onclick="extraerPedidosGCP()" id="btnSyncGcp" title="Extraer pedidos web desde el servidor central de GCP">
-                                <i class="bi bi-cloud-arrow-down-fill me-1"></i> Extraer de GCP
+                            <button type="button" class="btn btn-outline-danger btn-sm fw-bold shadow-sm" onclick="extraerPedidosGCP()" id="btnSyncGcp" title="Extraer ventas online desde el servidor central de GCP">
+                                <i class="bi bi-cloud-arrow-down-fill me-1"></i> Extraer ventas online
                             </button>
                         </div>
                         <div class="table-responsive">
@@ -1752,7 +1752,7 @@ if ($descripcion_corta == 1) {
     var currentFilter9 = '';
     var isSucursal9 = <?php echo ($id_sucursal == 9) ? 'true' : 'false'; ?>;
     var alertBranchId = <?php echo ($id_sucursal == 9) ? '0' : (int)($id_sucursal ?? 1); ?>;
-    var alertLastCount = 0;
+    var alertKnownOrderIds = null;
 
     function checkWebOrdersAlert() {
         var url = '../api_sync_pedidos.php?action=get_orders&id_sucursal=' + alertBranchId + '&estatus=nuevo';
@@ -1760,21 +1760,30 @@ if ($descripcion_corta == 1) {
             .then(function(res) { return res.json(); })
             .then(function(data) {
                 if (data.success) {
-                    var count = data.count || 0;
-                    var alertBox = document.getElementById('mainWebOrdersAlert');
-                    var countSpan = document.getElementById('mainWebOrdersCount');
+                    var orders = data.orders || [];
 
-                    if (count > 0) {
-                        if (countSpan) countSpan.textContent = count;
-                        if (alertBox) alertBox.classList.remove('d-none');
-
-                        if (count > alertLastCount) {
-                            playAlertBeep();
-                        }
+                    if (alertKnownOrderIds === null) {
+                        // Primera consulta al abrir o cargar la página: memorizar pedidos existentes sin emitir pitido
+                        alertKnownOrderIds = {};
+                        orders.forEach(function(o) {
+                            alertKnownOrderIds[o.id_pedido] = true;
+                        });
                     } else {
-                        if (alertBox) alertBox.classList.add('d-none');
+                        // Consultas periódicas: únicamente pitar si entró un pedido genuinamente NUEVO
+                        var tieneVentaNueva = false;
+                        orders.forEach(function(o) {
+                            if (!alertKnownOrderIds[o.id_pedido]) {
+                                tieneVentaNueva = true;
+                                alertKnownOrderIds[o.id_pedido] = true;
+                            }
+                        });
+
+                        // El pitido SOLAMENTE debe ser si hay ventas nuevas nada más
+                        if (tieneVentaNueva) {
+                            playAlertBeep();
+                            setTimeout(function() { location.reload(); }, 1200);
+                        }
                     }
-                    alertLastCount = count;
                 }
             })
             .catch(function(err) { console.log('Error consulta pedidos web: ' + err); });
@@ -2132,13 +2141,13 @@ if ($descripcion_corta == 1) {
             .then(function(data) {
                 if (btn && !silencioso) {
                     btn.disabled = false;
-                    btn.innerHTML = '<i class="bi bi-cloud-arrow-down-fill me-1"></i> Extraer de GCP';
+                    btn.innerHTML = '<i class="bi bi-cloud-arrow-down-fill me-1"></i> Extraer ventas online';
                 }
                 if (data.success) {
                     if (!silencioso) {
                         alert('✅ ' + data.message);
                         location.reload();
-                    } else if (data.orders_synced > 0) {
+                    } else if ((data.new_orders && data.new_orders > 0) || (data.updated_orders && data.updated_orders > 0)) {
                         location.reload();
                     }
                 } else if (!silencioso) {
@@ -2148,7 +2157,7 @@ if ($descripcion_corta == 1) {
             .catch(function(err) {
                 if (btn && !silencioso) {
                     btn.disabled = false;
-                    btn.innerHTML = '<i class="bi bi-cloud-arrow-down-fill me-1"></i> Extraer de GCP';
+                    btn.innerHTML = '<i class="bi bi-cloud-arrow-down-fill me-1"></i> Extraer ventas online';
                     alert('Error de conexión al extraer pedidos desde GCP.');
                 }
             });

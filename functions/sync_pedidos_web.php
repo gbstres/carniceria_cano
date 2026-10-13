@@ -69,10 +69,25 @@ function cc_sync_pedidos_desde_gcp(mysqli $linkLocal, ?mysqli $linkRemote = null
     }
 
     $syncedOrders = 0;
+    $newOrders = 0;
+    $updatedOrders = 0;
     $syncedItems = 0;
 
     while ($order = mysqli_fetch_assoc($resRemote)) {
         $idPedido = (int)$order['id_pedido'];
+
+        // Comprobar si ya existe localmente y si cambió de estatus
+        $chkExist = mysqli_query($linkLocal, "SELECT id_pedido, estatus FROM cc_pedidos_web WHERE id_pedido = $idPedido LIMIT 1");
+        $existing = ($chkExist && mysqli_num_rows($chkExist) > 0) ? mysqli_fetch_assoc($chkExist) : null;
+        if ($chkExist) {
+            mysqli_free_result($chkExist);
+        }
+
+        if (!$existing) {
+            $newOrders++;
+        } elseif ($existing['estatus'] !== $order['estatus']) {
+            $updatedOrders++;
+        }
 
         // 1. Sincronizar cliente web si existe
         if (!empty($order['id_cliente_web'])) {
@@ -169,8 +184,10 @@ function cc_sync_pedidos_desde_gcp(mysqli $linkLocal, ?mysqli $linkRemote = null
     return [
         'success' => true,
         'orders_synced' => $syncedOrders,
+        'new_orders' => $newOrders,
+        'updated_orders' => $updatedOrders,
         'items_synced' => $syncedItems,
-        'message' => "Sincronización exitosa: se extrajeron $syncedOrders pedidos y $syncedItems partidas desde GCP."
+        'message' => "Sincronización exitosa: $newOrders nuevos, $updatedOrders actualizados."
     ];
 }
 
