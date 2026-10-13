@@ -133,10 +133,11 @@
 <!-- Modal Lightbox para Pantalla Completa (Zoom) -->
 <div class="modal fade" id="galleryLightboxModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-xl">
-        <div class="modal-content lightbox-modal-content text-white rounded-4 overflow-hidden">
-            <div class="modal-header border-0 pb-0 position-absolute top-0 end-0 z-3 p-3">
-                <button type="button" class="btn-close btn-close-white bg-dark bg-opacity-75 p-2 rounded-circle" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-            </div>
+        <div class="modal-content lightbox-modal-content text-white rounded-4 overflow-hidden position-relative">
+            <!-- Botón de Cierre Superior Derecho (Touch-friendly 44x44px con z-index 1050) -->
+            <button type="button" class="lightbox-close-btn" id="btnCloseLightbox" data-bs-dismiss="modal" aria-label="Cerrar ventana">
+                <i class="bi bi-x-lg"></i>
+            </button>
             <div class="modal-body p-0 position-relative d-flex align-items-center justify-content-center" style="min-height: 65vh; max-height: 88vh;">
                 <img id="lightboxImage" src="<?php echo storefront_escape($product['image_large'] ?? ''); ?>" alt="<?php echo storefront_escape($product['image_alt'] ?? ''); ?>" class="img-fluid rounded-3" style="max-height: 85vh; max-width: 95%; object-fit: contain;">
 
@@ -211,32 +212,72 @@ function stepQtyDetail(step) {
                 var backdrop = document.createElement('div');
                 backdrop.className = 'modal-backdrop fade show';
                 backdrop.id = 'lightboxCustomBackdrop';
-                backdrop.addEventListener('click', closeLightboxFallback);
+                backdrop.addEventListener('click', closeLightboxModal);
                 document.body.appendChild(backdrop);
             }
         }
     }
 
-    function closeLightboxFallback() {
+    function closeLightboxModal() {
+        var bsModal = getBootstrapModal();
+        if (bsModal) {
+            try {
+                bsModal.hide();
+            } catch (err) {}
+        }
         if (lightboxModalEl) {
             lightboxModalEl.classList.remove('show');
             lightboxModalEl.style.display = 'none';
+            lightboxModalEl.setAttribute('aria-hidden', 'true');
+            lightboxModalEl.removeAttribute('aria-modal');
         }
         document.body.classList.remove('modal-open');
-        var backdrop = document.getElementById('lightboxCustomBackdrop');
-        if (backdrop) backdrop.remove();
+        document.body.style.removeProperty('overflow');
+        document.body.style.removeProperty('padding-right');
+
+        // Remover cualquier backdrop presente
+        var backdrops = document.querySelectorAll('.modal-backdrop');
+        backdrops.forEach(function(b) {
+            b.remove();
+        });
     }
 
-    // Vincular cierre fallback en botones con data-bs-dismiss="modal"
+    // Vincular cierre en botones con clase o atributo de cierre
     if (lightboxModalEl) {
-        var dismissBtns = lightboxModalEl.querySelectorAll('[data-bs-dismiss="modal"]');
+        var dismissBtns = lightboxModalEl.querySelectorAll('.lightbox-close-btn, [data-bs-dismiss="modal"]');
         dismissBtns.forEach(function(btn) {
-            btn.addEventListener('click', closeLightboxFallback);
+            btn.addEventListener('click', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                closeLightboxModal();
+            });
+            btn.addEventListener('touchend', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                closeLightboxModal();
+            });
         });
+
+        // Clic en el fondo oscuro exterior para cerrar
         lightboxModalEl.addEventListener('click', function(e) {
-            if (e.target === lightboxModalEl) {
-                closeLightboxFallback();
+            if (e.target === lightboxModalEl || e.target.classList.contains('modal-dialog')) {
+                closeLightboxModal();
             }
+        });
+
+        // Clic en el área oscura de modal-body fuera de la foto para cerrar
+        var modalBody = lightboxModalEl.querySelector('.modal-body');
+        if (modalBody) {
+            modalBody.addEventListener('click', function(e) {
+                if (e.target === modalBody) {
+                    closeLightboxModal();
+                }
+            });
+        }
+
+        // Sincronizar evento de cierre de Bootstrap
+        lightboxModalEl.addEventListener('hidden.bs.modal', function() {
+            closeLightboxModal();
         });
     }
 
@@ -442,7 +483,7 @@ function stepQtyDetail(step) {
     // Navegación por teclado (flechas izquierda/derecha y Escape)
     document.addEventListener('keydown', function(e) {
         if (e.key === 'Escape') {
-            closeLightboxFallback();
+            closeLightboxModal();
         } else if (gallery.length > 1) {
             if (e.key === 'ArrowLeft') {
                 updateSlide(currentIndex - 1);
