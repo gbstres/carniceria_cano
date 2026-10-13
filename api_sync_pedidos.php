@@ -167,7 +167,7 @@ if ($action === 'load_to_pos') {
             $insItem = mysqli_query($link, "INSERT INTO cc_ventas
                 (id_sucursal, id_venta, id_consecutivo, codigo, precio_compra, precio_venta, cantidad, clave_externa, estatus, id_usuario, fecha_ingreso, hora_ingreso, fecha_act, hora_act, id_usuario_act)
                 VALUES
-                ($targetSucursal, $newIdVenta, $consecutivo, '$codigoEsc', $precioCompra, $pu, $cant, '', 0, $userId, '$fecha', '$hora', '$fecha', '$hora', $userId)");
+                ($targetSucursal, $newIdVenta, $consecutivo, '$codigoEsc', $precioCompra, $pu, $cant, 'ONLINE', 0, $userId, '$fecha', '$hora', '$fecha', '$hora', $userId)");
 
             if (!$insItem) {
                 throw new Exception("Error al insertar partida en POS: " . mysqli_error($link));
@@ -175,9 +175,9 @@ if ($action === 'load_to_pos') {
             $consecutivo++;
         }
 
-        mysqli_query($link, "UPDATE cc_pedidos_web SET estatus = 'en_preparacion' WHERE id_pedido = $orderId");
+        mysqli_query($link, "UPDATE cc_pedidos_web SET estatus = 'en_preparacion', id_venta = $newIdVenta WHERE id_pedido = $orderId");
         if (function_exists('cc_sync_notificar_estatus_a_gcp')) {
-            cc_sync_notificar_estatus_a_gcp($orderId, 'en_preparacion');
+            cc_sync_notificar_estatus_a_gcp($orderId, 'en_preparacion', $newIdVenta);
         }
 
         mysqli_commit($link);

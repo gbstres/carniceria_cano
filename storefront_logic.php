@@ -318,6 +318,7 @@ function storefront_ensure_order_tables(mysqli $link)
         'distancia_km' => "ALTER TABLE cc_pedidos_web ADD COLUMN distancia_km DECIMAL(5,2) NULL",
         'monto_pago_efectivo' => "ALTER TABLE cc_pedidos_web ADD COLUMN monto_pago_efectivo VARCHAR(50) NULL",
         'costo_envio' => "ALTER TABLE cc_pedidos_web ADD COLUMN costo_envio DECIMAL(10,2) NOT NULL DEFAULT 0.00",
+        'id_venta' => "ALTER TABLE cc_pedidos_web ADD COLUMN id_venta INT NULL",
     ];
 
     foreach ($columnsNeeded as $col => $alterSql) {
@@ -941,11 +942,6 @@ function storefront_process_order_and_deduct_stock(mysqli $link, int $orderId, i
     date_default_timezone_set("America/Mexico_City");
     mysqli_begin_transaction($link);
     try {
-        $updateOrder = mysqli_query($link, "UPDATE cc_pedidos_web SET estatus = 'completado' WHERE id_pedido = $orderId");
-        if (!$updateOrder) {
-            throw new Exception("Error actualizando estatus del pedido: " . mysqli_error($link));
-        }
-
         $itemsResult = mysqli_query($link, "SELECT * FROM cc_det_pedidos_web WHERE id_pedido = $orderId");
         if ($itemsResult) {
             $fecha_act = date('Y-m-d');
@@ -970,6 +966,11 @@ function storefront_process_order_and_deduct_stock(mysqli $link, int $orderId, i
                 throw new Exception("Error al registrar encabezado de venta POS: " . mysqli_error($link));
             }
 
+            $updateOrder = mysqli_query($link, "UPDATE cc_pedidos_web SET estatus = 'completado', id_venta = $idVentaPos WHERE id_pedido = $orderId");
+            if (!$updateOrder) {
+                throw new Exception("Error actualizando estatus del pedido: " . mysqli_error($link));
+            }
+
             $consecutivo = 1;
             while ($item = mysqli_fetch_assoc($itemsResult)) {
                 $codigoSql = mysqli_real_escape_string($link, $item['codigo']);
@@ -981,11 +982,11 @@ function storefront_process_order_and_deduct_stock(mysqli $link, int $orderId, i
                 $prodRow = $prodQuery ? mysqli_fetch_assoc($prodQuery) : null;
                 $precioCompra = (float) ($prodRow['precio_compra'] ?? 0.00);
 
-                // Insertar partida en cc_ventas
+                // Insertar partida en cc_ventas marcando clave_externa como ONLINE
                 $insertItem = mysqli_query($link, "INSERT INTO cc_ventas
                     (id_sucursal, id_venta, id_consecutivo, codigo, precio_compra, precio_venta, cantidad, clave_externa, estatus, id_usuario, fecha_ingreso, hora_ingreso, fecha_act, hora_act, id_usuario_act)
                     VALUES
-                    ($idSucursal, $idVentaPos, $consecutivo, '$codigoSql', $precioCompra, $precioUnitario, $cantidad, '', 1, $userId, '$fecha_act', '$hora_act', '$fecha_act', '$hora_act', $userId)");
+                    ($idSucursal, $idVentaPos, $consecutivo, '$codigoSql', $precioCompra, $precioUnitario, $cantidad, 'ONLINE', 1, $userId, '$fecha_act', '$hora_act', '$fecha_act', '$hora_act', $userId)");
 
                 if (!$insertItem) {
                     throw new Exception("Error al registrar partida de venta POS: " . mysqli_error($link));
@@ -1017,6 +1018,15 @@ function storefront_process_order_and_deduct_stock(mysqli $link, int $orderId, i
                     'motivo' => 'venta_pedido_web',
                     'id_pedido' => $orderId
                 ]);
+            }
+
+            if (function_exists('cc_sync_notificar_estatus_a_gcp')) {
+                cc_sync_notificar_estatus_a_gcp($orderId, 'completado', $idVentaPos);
+            }
+        } else {
+            $updateOrder = mysqli_query($link, "UPDATE cc_pedidos_web SET estatus = 'completado' WHERE id_pedido = $orderId");
+            if (!$updateOrder) {
+                throw new Exception("Error actualizando estatus del pedido: " . mysqli_error($link));
             }
         }
 

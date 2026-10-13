@@ -194,12 +194,13 @@ function cc_sync_pedidos_desde_gcp(mysqli $linkLocal, ?mysqli $linkRemote = null
 /**
  * Actualiza el estatus de un pedido en GCP cuando la sucursal local lo cambia.
  */
-function cc_sync_notificar_estatus_a_gcp(int $orderId, string $newStatus): bool {
+function cc_sync_notificar_estatus_a_gcp(int $orderId, string $newStatus, int $idVenta = 0): bool {
     $linkRemote = cc_get_gcp_link();
     if (!$linkRemote) {
         return false;
     }
     $statusEsc = mysqli_real_escape_string($linkRemote, $newStatus);
-    $upd = mysqli_query($linkRemote, "UPDATE cc_pedidos_web SET estatus = '$statusEsc' WHERE id_pedido = " . (int)$orderId);
+    $extraSet = ($idVenta > 0) ? ", id_venta = " . (int)$idVenta : "";
+    $upd = mysqli_query($linkRemote, "UPDATE cc_pedidos_web SET estatus = '$statusEsc' $extraSet WHERE id_pedido = " . (int)$orderId);
     return (bool)$upd;
 }

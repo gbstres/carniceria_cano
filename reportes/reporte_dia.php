@@ -205,6 +205,12 @@ function generarToken() {
 
         <style>
             @import "../css/bootstrap.css";
+            tr.venta-online, tr.venta-online td {
+                background-color: #fff9e6 !important;
+            }
+            tr.venta-online td:first-child {
+                border-left: 5px solid #dc3545 !important;
+            }
         </style>
 
 
@@ -299,10 +305,18 @@ function generarToken() {
                                 <?php
                                 $filtro_tipo_pago = $tipo_pago_filtro > 0 ? " and (a.tipo_pago = $tipo_pago_filtro or exists (select 1 from cc_ventas_pagos fp where fp.id_sucursal=a.id_sucursal and fp.id_venta=a.id_venta and fp.tipo_pago=$tipo_pago_filtro))" : "";
                                 $sqlventas = mysqli_query($link, "SELECT a.id_venta,a.fecha_ingreso,a.hora_ingreso,b.codigo,b.precio_compra,b.precio_venta,b.cantidad,"
-                                        . "round(b.precio_compra * b.cantidad,2) as importec,round(b.precio_venta * b.cantidad,2) as importev, a.id_cliente, a.tipo_pago, b.id_consecutivo,b.estatus "
+                                        . "round(b.precio_compra * b.cantidad,2) as importec,round(b.precio_venta * b.cantidad,2) as importev, a.id_cliente, a.tipo_pago, b.id_consecutivo,b.estatus, b.clave_externa "
                                         . "FROM cc_det_ventas as a inner join cc_ventas as b on a.id_sucursal = b.id_sucursal and a.id_venta = b.id_venta "
                                         . "WHERE a.id_sucursal = '$id_sucursal' and a.fecha_ingreso = '$fecha' and a.estatus in (1,3)" . $filtro_tipo_pago
                                         . " order by a.id_venta DESC");
+
+                                $pedidos_web_map = [];
+                                $res_pw = mysqli_query($link, "SELECT id_pedido, id_venta, cliente_nombre, estatus, metodo_pago FROM cc_pedidos_web WHERE id_sucursal = '$id_sucursal' AND id_venta IS NOT NULL AND id_venta > 0");
+                                if ($res_pw) {
+                                    while ($pw = mysqli_fetch_assoc($res_pw)) {
+                                        $pedidos_web_map[(int) $pw['id_venta']] = $pw;
+                                    }
+                                }
 
                                 $renglon = 0;
                                 while ($rowc = mysqli_fetch_assoc($sqlventas)) {
@@ -311,6 +325,10 @@ function generarToken() {
                                     //$sqlcatalogo = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM cc_catalogos where nombre_clave = 'ROL' and id_clave =" . $rowp['rol']));
                                     $producto = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM cc_productos where id_sucursal = '$id_sucursal' and codigo =" . $rowc['codigo']));
                                     if ($id_categoria == '0' or ($producto['id_categoria'] == $id_categoria)) {
+                                        $id_venta_act = (int) $rowc['id_venta'];
+                                        $info_online = $pedidos_web_map[$id_venta_act] ?? null;
+                                        $es_online = ($info_online !== null) || (isset($rowc['clave_externa']) && strtoupper(trim((string)$rowc['clave_externa'])) === 'ONLINE');
+
                                         $cliente = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM cc_clientes where id_sucursal = '$id_sucursal' and id_cliente =" . $rowc['id_cliente']));
                                         $total_id = mysqli_fetch_assoc(mysqli_query($link, "SELECT sum(round(cantidad * precio_venta,2)) total_id FROM cc_ventas WHERE id_sucursal = $id_sucursal  and id_venta = " . $rowc['id_venta'] . " and estatus not in (2)"));
                                         $categoria = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM cc_categorias where id_sucursal = '$id_sucursal' and id_categoria =" . $producto['id_categoria']));
@@ -323,6 +341,23 @@ function generarToken() {
                                         } else {
                                             $nombre_cliente = $cliente['nombre'] . ' ' . $cliente['apellido_paterno'];
                                         }
+
+                                        if ($es_online) {
+                                            $num_pedido = $info_online ? $info_online['id_pedido'] : '';
+                                            $nombre_online = $info_online ? trim((string)$info_online['cliente_nombre']) : '';
+                                            $cliente_mostrar = !empty($nombre_online) ? $nombre_online : (!empty($nombre_cliente) ? $nombre_cliente : 'Cliente Web');
+                                            $badge_folio = !empty($num_pedido) ? "Online #$num_pedido" : "Online";
+                                            $cliente_col_html = '<span class="badge bg-danger text-white mb-1" style="font-size:0.75rem;"><i class="bi bi-globe me-1"></i>' . $badge_folio . '</span><br><strong>' . htmlspecialchars($cliente_mostrar, ENT_QUOTES, 'UTF-8') . '</strong>';
+                                            $id_venta_html = '<strong>' . $rowc['id_venta'] . '</strong> <span class="badge bg-danger text-white ms-1" style="font-size:0.65rem;">WEB</span>';
+                                            $hora_html = $rowc['hora_ingreso'] . '<br><small class="text-danger fw-bold" style="font-size:0.7rem;"><i class="bi bi-globe"></i> Online</small>';
+                                            $tipo_pago_html = $tipo_pago . ' <span class="badge bg-danger text-white ms-1" style="font-size:0.68rem;">ONLINE</span>';
+                                        } else {
+                                            $cliente_col_html = htmlspecialchars($nombre_cliente, ENT_QUOTES, 'UTF-8');
+                                            $id_venta_html = $rowc['id_venta'];
+                                            $hora_html = $rowc['hora_ingreso'];
+                                            $tipo_pago_html = $tipo_pago;
+                                        }
+
                                         if ($rowc['estatus'] == 2) {
                                             $estatus = "C";
                                             $importec = 0;
@@ -334,22 +369,23 @@ function generarToken() {
                                             $importev = $rowc['importev'];
                                             $class_suma = '';
                                         }
+                                        $clase_fila = trim($class_suma . ($es_online ? ' venta-online table-warning' : ''));
                                         echo '
-                                    <tr id="fila' . $renglon . '" class="' . $class_suma . '">
-                                        <td>' . $rowc['id_venta'] . '</td>
+                                    <tr id="fila' . $renglon . '" class="' . $clase_fila . '"' . ($es_online ? ' style="background-color: #fff9e6 !important;"' : '') . '>
+                                        <td>' . $id_venta_html . '</td>
                                         <td>' . $rowc['fecha_ingreso'] . '</td>
-                                        <td>' . $rowc['hora_ingreso'] . '</td>
+                                        <td>' . $hora_html . '</td>
                                         <td>' . $rowc['codigo'] . '</td>
                                         <td>' . $producto['descripcion'] . '</td>
                                         <td>' . $categoria['desc_categoria'] . '</td>
-                                        <td>' . $nombre_cliente . '</td>
+                                        <td>' . $cliente_col_html . '</td>
                                         <td>' . $rowc['precio_compra'] . '</td>
                                         <td>' . $rowc['precio_venta'] . '</td>
                                         <td>' . $rowc['cantidad'] . '</td>
                                         <td>' . $importec . '</td>
                                         <td>' . $importev . '</td>
                                         <td>' . $total_id['total_id'] . '</td>
-                                        <td>' . $tipo_pago . '</td>
+                                        <td>' . $tipo_pago_html . '</td>
                                         <td align="center">';
                                         if ($rowc['estatus'] == 2) {
                                             echo '<a href="#" onclick="cancelar_reactivar(' . $rowc['id_venta'] . ',' . $rowc['id_consecutivo'] . ',0,' . $rowc['id_cliente'] . ')" title = "Reactivar"><img class = "imga" src = "../img/icons/check-circle.svg"></a>';
