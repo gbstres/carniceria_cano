@@ -13,9 +13,90 @@ function storefront_render_header($title, $currentPage, array $cartTotals)
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-        <meta name="description" content="Carnicería Cano - Carnes frescas de res, cerdo, pollo, embutidos y cortes para parrilla con pedido directo.">
-        <link rel="shortcut icon" href="img/logo_1.png">
         <title><?php echo storefront_escape($title); ?></title>
+        <meta name="description" content="Carnicería en San Cristóbal Centro, Ecatepec. Carne fresca de res, cerdo, pollo, embutidos y cortes selectos para asar con servicio a domicilio hasta 30 km. ¡Pide en línea!">
+        <meta name="keywords" content="carnicería ecatepec, cortes finos ecatepec, carne a domicilio ecatepec, san cristóbal centro ecatepec, arrachera marinada ecatepec, carnicería cano">
+        <meta name="robots" content="index, follow">
+        <link rel="canonical" href="https://carniceriacano.com/">
+        <link rel="shortcut icon" href="img/logo_1.png">
+
+        <!-- Open Graph / Redes Sociales -->
+        <meta property="og:type" content="website">
+        <meta property="og:title" content="<?php echo storefront_escape($title); ?>">
+        <meta property="og:description" content="Carnes frescas de res, cerdo, pollo y cortes selectos para parrilladas en Ecatepec. Calidad, peso exacto y servicio a domicilio rápido.">
+        <meta property="og:url" content="https://carniceriacano.com/">
+        <meta property="og:site_name" content="Carnicería Cano">
+        <meta property="og:locale" content="es_MX">
+        <meta property="og:image" content="https://carniceriacano.com/img/promo_asado.jpg">
+
+        <!-- Twitter Card -->
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:title" content="<?php echo storefront_escape($title); ?>">
+        <meta name="twitter:description" content="Carnes frescas y cortes selectos en San Cristóbal Centro, Ecatepec. Reparto a domicilio hasta 30 km.">
+        <meta name="twitter:image" content="https://carniceriacano.com/img/promo_asado.jpg">
+
+        <!-- Geoposicionamiento Local para Motores de Búsqueda -->
+        <meta name="geo.region" content="MX-MEX">
+        <meta name="geo.placename" content="Ecatepec de Morelos">
+        <meta name="geo.position" content="19.602154;-99.045108">
+        <meta name="ICBM" content="19.602154, -99.045108">
+
+        <!-- Datos Estructurados Schema.org (Google Rich Results / LocalBusiness) -->
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "ButcherShop",
+          "@id": "https://carniceriacano.com/#carniceria",
+          "name": "Carnicería Cano",
+          "image": "https://carniceriacano.com/img/promo_asado.jpg",
+          "url": "https://carniceriacano.com/",
+          "telephone": "+525534208819",
+          "priceRange": "$$",
+          "servesCuisine": "Carnes frescas de res, cerdo, pollo y cortes selectos",
+          "address": {
+            "@type": "PostalAddress",
+            "streetAddress": "C. Miguel Hidalgo 19, San Cristóbal Centro",
+            "addressLocality": "Ecatepec de Morelos",
+            "addressRegion": "Estado de México",
+            "postalCode": "55000",
+            "addressCountry": "MX"
+          },
+          "geo": {
+            "@type": "GeoCoordinates",
+            "latitude": 19.6021539,
+            "longitude": -99.0451077
+          },
+          "openingHoursSpecification": [
+            {
+              "@type": "OpeningHoursSpecification",
+              "dayOfWeek": ["Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday", "Sunday"],
+              "opens": "07:30",
+              "closes": "15:30"
+            }
+          ],
+          "areaServed": [
+            { "@type": "AdministrativeArea", "name": "Ecatepec de Morelos" },
+            { "@type": "Place", "name": "San Cristóbal Centro" },
+            { "@type": "Place", "name": "Las Américas" },
+            { "@type": "Place", "name": "Jardines de Morelos" },
+            { "@type": "Place", "name": "Coacalco" }
+          ],
+          "potentialAction": {
+            "@type": "OrderAction",
+            "target": {
+              "@type": "EntryPoint",
+              "urlTemplate": "https://carniceriacano.com/",
+              "inLanguage": "es-MX",
+              "actionPlatform": [
+                "http://schema.org/DesktopWebPlatform",
+                "http://schema.org/MobileWebPlatform"
+              ]
+            },
+            "deliveryMethod": "http://purl.org/goodrelations/v1#DeliveryModeOwnFleet"
+          }
+        }
+        </script>
+
         <link href="css/bootstrap.min.css" rel="stylesheet">
         <link href="css/storefront.css" rel="stylesheet">
         <link href="css/storefront-shop.css" rel="stylesheet">
@@ -164,10 +245,13 @@ function storefront_render_footer()
     ?>
         </main>
         
-        <!-- Footer Simplificado: Logo Centrado Sin Texto -->
-        <footer class="store-footer-centered text-center">
+        <!-- Footer con Información Local para SEO y Confianza -->
+        <footer class="store-footer-centered text-center py-4 bg-white border-top">
             <div class="container text-center">
-                <img src="img/logo_1.jpeg" alt="Carnicería Cano" class="footer-logo-only">
+                <img src="img/logo_1.jpeg" alt="Carnicería Cano" class="footer-logo-only mb-2">
+                <p class="small text-dark fw-bold mb-1">Carnicería Cano · San Cristóbal Centro, Ecatepec</p>
+                <p class="small text-muted mb-1"><i class="bi bi-geo-alt-fill text-danger me-1"></i> C. Miguel Hidalgo 19, San Cristóbal Centro, 55000 Ecatepec de Morelos, Méx.</p>
+                <p class="small text-muted mb-0"><i class="bi bi-truck text-success me-1"></i> Reparto a domicilio hasta 30 km (San Cristóbal, Las Américas, Jardines de Morelos, Coacalco y alrededores)</p>
             </div>
         </footer>
 

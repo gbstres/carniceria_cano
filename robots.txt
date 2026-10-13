@@ -1,0 +1,13 @@
+User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /backups/
+Disallow: /control/
+Disallow: /db/
+Disallow: /login/
+Disallow: /nbproject/
+Disallow: /repartidor/
+Disallow: /usuarios/
+Disallow: /keys/
+
+Sitemap: https://carniceriacano.com/sitemap.xml
