@@ -12,8 +12,14 @@ date_default_timezone_set("America/Mexico_City");
 $id_sucursal = (int) $_SESSION["id_sucursal"];
 $id_usuario = (int) $_SESSION["id"];
 $codigo = isset($_GET['codigo']) ? trim((string) $_GET['codigo']) : '';
-$title = '';
-$body = '';
+
+if ($codigo !== '') {
+    header("Location: editar_producto.php?codigo=" . urlencode($codigo));
+    exit;
+} else {
+    header("Location: productos.php");
+    exit;
+}
 
 function productoFotosTableExists(mysqli $link)
 {

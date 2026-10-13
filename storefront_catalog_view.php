@@ -142,7 +142,7 @@
                                 <article class="product-card-mobile shadow-sm">
                                     <div class="product-card-header position-relative">
                                         <a href="<?php echo storefront_escape(storefront_product_url($product['codigo'])); ?>" class="product-image-wrap">
-                                            <img src="<?php echo storefront_escape($product['image_small']); ?>" alt="<?php echo storefront_escape($product['image_alt']); ?>" class="product-image" loading="lazy">
+                                            <img src="<?php echo storefront_escape($product['image_small']); ?>" alt="<?php echo storefront_escape($product['image_alt']); ?>" class="product-image" loading="lazy" decoding="async">
                                         </a>
                                     </div>
 
@@ -307,7 +307,10 @@ document.addEventListener('DOMContentLoaded', function () {
         var targetUrl = link.getAttribute('href');
         if (!targetUrl) return;
 
-        var fetchUrl = targetUrl + (targetUrl.indexOf('?') !== -1 ? '&ajax=1' : '?ajax=1');
+        var cleanUrl = targetUrl.replace(/#.*$/, '');
+        var fetchUrl = cleanUrl + (cleanUrl.indexOf('?') !== -1 ? '&ajax=1' : '?ajax=1');
+        var currentContent = document.getElementById('catalogo');
+        if (currentContent) currentContent.style.opacity = '0.55';
 
         fetch(fetchUrl)
             .then(function (res) { return res.text(); })
@@ -319,7 +322,10 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 if (newContent && currentContent) {
                     currentContent.innerHTML = newContent.innerHTML;
+                    currentContent.style.opacity = '1';
                     history.pushState(null, '', targetUrl);
+                } else if (currentContent) {
+                    currentContent.style.opacity = '1';
                 }
             })
             .catch(function (err) {
@@ -337,6 +343,8 @@ document.addEventListener('DOMContentLoaded', function () {
         var searchParams = new URLSearchParams(formData);
         var targetUrl = 'index.php?' + searchParams.toString() + '#catalogo';
         var fetchUrl = 'index.php?' + searchParams.toString() + '&ajax=1';
+        var currentContent = document.getElementById('catalogo');
+        if (currentContent) currentContent.style.opacity = '0.55';
 
         fetch(fetchUrl)
             .then(function (res) { return res.text(); })
@@ -348,12 +356,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
                 if (newContent && currentContent) {
                     currentContent.innerHTML = newContent.innerHTML;
+                    currentContent.style.opacity = '1';
                     history.pushState(null, '', targetUrl);
+                } else if (currentContent) {
+                    currentContent.style.opacity = '1';
                 }
             })
             .catch(function (err) {
                 window.location.href = targetUrl;
             });
+    });
+
+    // Soporte para botón "Atrás" del navegador en navegación AJAX
+    window.addEventListener('popstate', function () {
+        window.location.reload();
     });
 
     // Interceptor de Agregar al Carrito: Despliega Modal de Comentarios

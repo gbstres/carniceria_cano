@@ -477,24 +477,44 @@ html, body, body.mobile-first-app {
     border-radius: 8px;
     overflow: hidden;
     background: #F9F6F1;
+    height: 38px;
 }
 
 .btn-step-touch {
     border: none;
     background: #EBE2D5;
     color: var(--cano-red);
-    width: 32px;
-    height: 32px;
+    width: 38px;
+    height: 100%;
     font-weight: 800;
-    font-size: 1rem;
+    font-size: 1.15rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.15s ease;
+    flex-shrink: 0;
+}
+
+.btn-step-touch:hover {
+    background: #DFD3C3;
+}
+
+.btn-step-touch:active {
+    background: #D3C4B0;
 }
 
 .qty-touch-input {
+    flex: 1;
     border: none;
     background: transparent;
-    font-size: 0.85rem;
+    font-size: 1rem;
+    font-weight: 700;
+    text-align: center;
     padding: 0;
     box-shadow: none !important;
+    height: 100%;
 }
 
 .btn-add-touch {
@@ -760,4 +780,306 @@ html, body, body.mobile-first-app {
     border-radius: 50%;
     box-shadow: 0 4px 10px rgba(0,0,0,0.3);
     font-size: 1.1rem;
+}
+
+/* ==========================================================================
+   Ficha de Producto: Galería, Carrusel y Miniaturas Interactivas
+   ========================================================================== */
+.product-detail-shell {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 1.5rem;
+}
+
+@media (min-width: 992px) {
+    .product-detail-shell {
+        grid-template-columns: 1.05fr 1fr;
+        gap: 2.2rem;
+        align-items: start;
+    }
+}
+
+.product-detail-gallery {
+    position: relative;
+    width: 100%;
+}
+
+.product-detail-main-image {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    background-color: #F8F6F2;
+    overflow: hidden;
+    user-select: none;
+    border: 1px solid #EAE2D7;
+    cursor: zoom-in;
+}
+
+.product-detail-main-image.is-zoomed {
+    cursor: crosshair;
+}
+
+.product-detail-image {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.15s ease-out, opacity 0.22s ease-in-out;
+    transform-origin: center center;
+    will-change: transform, transform-origin;
+}
+
+.product-detail-main-image.is-zoomed .product-detail-image {
+    transform: scale(2.3);
+    transition: opacity 0.22s ease-in-out;
+}
+
+/* Indicador de Lupa / Zoom al pasar el ratón */
+.product-gallery-zoom-badge {
+    position: absolute;
+    top: 14px;
+    left: 14px;
+    z-index: 5;
+    background: rgba(20, 10, 10, 0.78);
+    backdrop-filter: blur(6px);
+    color: #FFFFFF;
+    font-size: 0.75rem;
+    font-weight: 700;
+    padding: 0.35rem 0.8rem;
+    border-radius: 999px;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.25);
+    pointer-events: none;
+    opacity: 0.85;
+    transition: opacity 0.2s ease, transform 0.2s ease, background 0.2s ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.product-detail-main-image:hover .product-gallery-zoom-badge {
+    opacity: 1;
+    background: rgba(126, 20, 20, 0.9);
+    border-color: var(--cano-gold, #D4AF37);
+}
+
+/* Flechas de Navegación del Carrusel Principal */
+.product-gallery-nav-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 44px;
+    height: 44px;
+    border-radius: 50%;
+    background: rgba(255, 255, 255, 0.92);
+    color: var(--cano-red, #7E1414);
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.35rem;
+    cursor: pointer;
+    z-index: 6;
+    transition: all 0.2s cubic-bezier(0.165, 0.84, 0.44, 1);
+}
+
+.product-gallery-nav-btn:hover {
+    background: #FFFFFF;
+    color: #4A0B0B;
+    transform: translateY(-50%) scale(1.1);
+    box-shadow: 0 6px 18px rgba(0, 0, 0, 0.25);
+}
+
+.product-gallery-nav-btn:active {
+    transform: translateY(-50%) scale(0.95);
+}
+
+.product-gallery-prev {
+    left: 12px;
+}
+
+.product-gallery-next {
+    right: 12px;
+}
+
+.product-gallery-badge {
+    z-index: 5;
+    font-size: 0.82rem;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    pointer-events: none;
+    background: rgba(30, 20, 20, 0.75) !important;
+    backdrop-filter: blur(4px);
+}
+
+.product-gallery-zoom-btn {
+    z-index: 7;
+    width: 38px;
+    height: 38px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.92);
+    color: #333333;
+    border: 1px solid rgba(0, 0, 0, 0.08);
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.product-gallery-zoom-btn:hover {
+    background: #FFFFFF;
+    color: var(--cano-red, #7E1414);
+    transform: scale(1.1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2) !important;
+}
+
+#lightboxImage {
+    cursor: zoom-in;
+    transition: transform 0.22s ease-out;
+}
+
+/* Carrusel de Miniaturas Inferiores */
+.product-detail-thumbs-container {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.product-detail-thumbs-track {
+    display: flex;
+    gap: 0.6rem;
+    overflow-x: auto;
+    scroll-behavior: smooth;
+    padding: 4px 2px 8px 2px;
+    width: 100%;
+    scrollbar-width: thin;
+    scrollbar-color: #DDD3C5 transparent;
+    -webkit-overflow-scrolling: touch;
+}
+
+.product-detail-thumbs-track::-webkit-scrollbar {
+    height: 5px;
+}
+
+.product-detail-thumbs-track::-webkit-scrollbar-thumb {
+    background: #DDD3C5;
+    border-radius: 4px;
+}
+
+.product-detail-thumb {
+    flex: 0 0 84px;
+    width: 84px;
+    height: 63px;
+    aspect-ratio: 4 / 3;
+    border: 2px solid #EAE2D7;
+    border-radius: 10px;
+    background: #F8F6F2;
+    padding: 0;
+    cursor: pointer;
+    overflow: hidden;
+    transition: all 0.2s ease;
+    outline: none;
+}
+
+.product-detail-thumb:hover {
+    border-color: #B88B8B;
+    transform: translateY(-2px);
+}
+
+.product-detail-thumb.active {
+    border-color: var(--cano-red, #7E1414);
+    box-shadow: 0 0 0 1px var(--cano-red, #7E1414), 0 3px 10px rgba(126, 20, 20, 0.28);
+    transform: translateY(-2px);
+}
+
+.thumbs-scroll-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    background: #FFFFFF;
+    border: 1px solid #DDD3C5;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: var(--cano-red, #7E1414);
+    cursor: pointer;
+    z-index: 2;
+    flex-shrink: 0;
+    transition: background-color 0.15s ease, transform 0.15s ease;
+}
+
+.thumbs-scroll-btn:hover {
+    background: #FDF9F5;
+    transform: scale(1.08);
+}
+
+/* Lightbox Modal para Pantalla Completa (Zoom) */
+.lightbox-modal-content {
+    background: rgba(18, 14, 14, 0.96) !important;
+    border: none;
+}
+
+.lightbox-nav-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 52px;
+    height: 52px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.55);
+    color: #FFFFFF;
+    border: 1px solid rgba(255, 255, 255, 0.25);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.6rem;
+    cursor: pointer;
+    z-index: 10;
+    transition: all 0.2s ease;
+}
+
+.lightbox-nav-btn:hover {
+    background: rgba(0, 0, 0, 0.88);
+    border-color: #FFFFFF;
+    transform: translateY(-50%) scale(1.1);
+}
+
+.lightbox-prev {
+    left: 20px;
+}
+
+.lightbox-next {
+    right: 20px;
+}
+
+@media (max-width: 576px) {
+    .product-gallery-nav-btn {
+        width: 38px;
+        height: 38px;
+        font-size: 1.15rem;
+    }
+    .product-gallery-prev {
+        left: 8px;
+    }
+    .product-gallery-next {
+        right: 8px;
+    }
+    .product-detail-thumb {
+        flex: 0 0 72px;
+        width: 72px;
+        height: 54px;
+    }
+    .lightbox-nav-btn {
+        width: 42px;
+        height: 42px;
+        font-size: 1.3rem;
+    }
+    .lightbox-prev {
+        left: 10px;
+    }
+    .lightbox-next {
+        right: 10px;
+    }
 }

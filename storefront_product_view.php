@@ -20,16 +20,53 @@
         <?php else: ?>
             <div class="product-detail-shell">
                 <div class="product-detail-gallery">
-                    <div class="product-detail-main-image rounded-4 overflow-hidden shadow-sm border">
-                        <img src="<?php echo storefront_escape($product['image_large']); ?>" alt="<?php echo storefront_escape($product['image_alt']); ?>" class="product-detail-image w-100">
+                    <div class="product-detail-main-image rounded-4 overflow-hidden shadow-sm border position-relative" id="mainImageContainer">
+                        <img id="mainProductImage" src="<?php echo storefront_escape($product['image_large']); ?>" alt="<?php echo storefront_escape($product['image_alt']); ?>" class="product-detail-image w-100" fetchpriority="high">
+                        
+                        <!-- Indicador visual de Lupa interactiva (Desktop) -->
+                        <div class="product-gallery-zoom-badge d-none d-md-inline-flex" id="zoomHintBadge">
+                            <i class="bi bi-search"></i> Pasa el mouse para ampliar
+                        </div>
+
+                        <?php if (count($productGallery) > 1): ?>
+                            <!-- Flechas de navegación sobre la foto principal -->
+                            <button type="button" class="product-gallery-nav-btn product-gallery-prev" id="galleryPrevBtn" aria-label="Foto anterior">
+                                <i class="bi bi-chevron-left"></i>
+                            </button>
+                            <button type="button" class="product-gallery-nav-btn product-gallery-next" id="galleryNextBtn" aria-label="Foto siguiente">
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
+                            
+                            <!-- Indicador de foto actual (1 / N) -->
+                            <div class="product-gallery-badge badge text-white position-absolute top-0 end-0 m-3 px-3 py-1 rounded-pill">
+                                <span id="galleryCurrentIndex">1</span> / <?php echo count($productGallery); ?>
+                            </div>
+                        <?php endif; ?>
+
+                        <!-- Botón para ver en pantalla completa / zoom -->
+                        <button type="button" class="product-gallery-zoom-btn btn rounded-circle shadow position-absolute bottom-0 end-0 m-3" id="btnOpenLightbox" data-bs-toggle="modal" data-bs-target="#galleryLightboxModal" title="Ampliar imagen / Pantalla completa" aria-label="Ampliar imagen">
+                            <i class="bi bi-arrows-fullscreen"></i>
+                        </button>
                     </div>
+
                     <?php if (count($productGallery) > 1): ?>
-                        <div class="product-detail-thumbs d-flex gap-2 mt-3">
-                            <?php foreach ($productGallery as $image): ?>
-                                <a href="<?php echo storefront_escape($image['large']); ?>" class="product-detail-thumb rounded-3 overflow-hidden border" target="_blank" rel="noopener">
-                                    <img src="<?php echo storefront_escape($image['small']); ?>" alt="<?php echo storefront_escape($image['alt']); ?>" class="w-100 h-100 object-fit-cover">
-                                </a>
-                            <?php endforeach; ?>
+                        <!-- Carrusel de miniaturas inferiores -->
+                        <div class="product-detail-thumbs-container mt-3">
+                            <button type="button" class="thumbs-scroll-btn thumbs-scroll-prev d-none d-md-flex" id="thumbsScrollPrev" aria-label="Desplazar miniaturas hacia la izquierda">
+                                <i class="bi bi-chevron-left"></i>
+                            </button>
+
+                            <div class="product-detail-thumbs-track" id="thumbsTrack">
+                                <?php foreach ($productGallery as $idx => $image): ?>
+                                    <button type="button" class="product-detail-thumb <?php echo $idx === 0 ? 'active' : ''; ?>" data-index="<?php echo $idx; ?>" aria-label="Ver fotografía <?php echo $idx + 1; ?>">
+                                        <img src="<?php echo storefront_escape($image['small']); ?>" alt="<?php echo storefront_escape($image['alt']); ?>" class="w-100 h-100 object-fit-cover" loading="lazy" decoding="async">
+                                    </button>
+                                <?php endforeach; ?>
+                            </div>
+
+                            <button type="button" class="thumbs-scroll-btn thumbs-scroll-next d-none d-md-flex" id="thumbsScrollNext" aria-label="Desplazar miniaturas hacia la derecha">
+                                <i class="bi bi-chevron-right"></i>
+                            </button>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -69,10 +106,10 @@
                         <input type="hidden" name="product_code" value="<?php echo storefront_escape($product['codigo']); ?>">
                         
                         <label class="form-label fw-bold small text-dark mb-1" for="qty-product-detail">Cantidad deseada:</label>
-                        <div class="quantity-input-group mb-3">
-                            <button type="button" class="btn-qty-step" onclick="stepQtyDetail(-0.25)">-</button>
-                            <input id="qty-product-detail" type="number" name="quantity" min="0.25" step="0.25" value="1" class="form-control qty-field text-center fw-bold">
-                            <button type="button" class="btn-qty-step" onclick="stepQtyDetail(0.25)">+</button>
+                        <div class="quantity-touch-stepper mb-3">
+                            <button type="button" class="btn-step-touch" onclick="stepQtyDetail(-0.25)">-</button>
+                            <input id="qty-product-detail" type="number" name="quantity" min="0.25" step="0.25" value="1" class="form-control qty-touch-input text-center fw-bold">
+                            <button type="button" class="btn-step-touch" onclick="stepQtyDetail(0.25)">+</button>
                         </div>
                         <button type="submit" class="btn btn-danger w-100 py-3 rounded-3 fw-bold shadow-sm fs-6">
                             <i class="bi bi-cart-plus-fill me-1"></i> Agregar al Carrito
@@ -93,6 +130,32 @@
     </div>
 </section>
 
+<!-- Modal Lightbox para Pantalla Completa (Zoom) -->
+<div class="modal fade" id="galleryLightboxModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl">
+        <div class="modal-content lightbox-modal-content text-white rounded-4 overflow-hidden">
+            <div class="modal-header border-0 pb-0 position-absolute top-0 end-0 z-3 p-3">
+                <button type="button" class="btn-close btn-close-white bg-dark bg-opacity-75 p-2 rounded-circle" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body p-0 position-relative d-flex align-items-center justify-content-center" style="min-height: 65vh; max-height: 88vh;">
+                <img id="lightboxImage" src="<?php echo storefront_escape($product['image_large'] ?? ''); ?>" alt="<?php echo storefront_escape($product['image_alt'] ?? ''); ?>" class="img-fluid rounded-3" style="max-height: 85vh; max-width: 95%; object-fit: contain;">
+
+                <?php if (count($productGallery) > 1): ?>
+                    <button type="button" class="lightbox-nav-btn lightbox-prev" id="lightboxPrevBtn" aria-label="Anterior">
+                        <i class="bi bi-chevron-left"></i>
+                    </button>
+                    <button type="button" class="lightbox-nav-btn lightbox-next" id="lightboxNextBtn" aria-label="Siguiente">
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
+                    <div class="badge bg-dark bg-opacity-75 text-white position-absolute bottom-0 start-50 translate-middle-x mb-3 px-3 py-1 rounded-pill">
+                        <span id="lightboxCurrentIndex">1</span> / <?php echo count($productGallery); ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 function stepQtyDetail(step) {
     var el = document.getElementById('qty-product-detail');
@@ -101,4 +164,292 @@ function stepQtyDetail(step) {
     val = Math.max(0.25, val + step);
     el.value = val.toFixed(2).replace(/\.00$/, '');
 }
+
+(function() {
+    var gallery = <?php echo json_encode(array_values($productGallery), JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE); ?> || [];
+    var currentIndex = 0;
+    var container = document.getElementById('mainImageContainer');
+    var mainImg = document.getElementById('mainProductImage');
+    var zoomBadge = document.getElementById('zoomHintBadge');
+    var counterEl = document.getElementById('galleryCurrentIndex');
+    var thumbsTrack = document.getElementById('thumbsTrack');
+    var thumbs = document.querySelectorAll('.product-detail-thumb');
+    
+    var lightboxModalEl = document.getElementById('galleryLightboxModal');
+    var lightboxImg = document.getElementById('lightboxImage');
+    var lightboxCounter = document.getElementById('lightboxCurrentIndex');
+    var btnLightbox = document.getElementById('btnOpenLightbox');
+
+    function getBootstrapModal() {
+        if (!lightboxModalEl) return null;
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            return bootstrap.Modal.getOrCreateInstance(lightboxModalEl);
+        }
+        return null;
+    }
+
+    function openLightbox() {
+        if (!gallery.length) return;
+        updateSlide(currentIndex);
+
+        // Reset hover zoom en la foto principal al abrir lightbox
+        if (container && mainImg) {
+            container.classList.remove('is-zoomed');
+            mainImg.style.transform = 'scale(1)';
+            mainImg.style.transformOrigin = 'center center';
+        }
+
+        var bsModal = getBootstrapModal();
+        if (bsModal) {
+            bsModal.show();
+        } else if (lightboxModalEl) {
+            // Fallback en caso de que bootstrap aún no esté disponible
+            lightboxModalEl.classList.add('show');
+            lightboxModalEl.style.display = 'block';
+            document.body.classList.add('modal-open');
+            if (!document.getElementById('lightboxCustomBackdrop')) {
+                var backdrop = document.createElement('div');
+                backdrop.className = 'modal-backdrop fade show';
+                backdrop.id = 'lightboxCustomBackdrop';
+                backdrop.addEventListener('click', closeLightboxFallback);
+                document.body.appendChild(backdrop);
+            }
+        }
+    }
+
+    function closeLightboxFallback() {
+        if (lightboxModalEl) {
+            lightboxModalEl.classList.remove('show');
+            lightboxModalEl.style.display = 'none';
+        }
+        document.body.classList.remove('modal-open');
+        var backdrop = document.getElementById('lightboxCustomBackdrop');
+        if (backdrop) backdrop.remove();
+    }
+
+    // Vincular cierre fallback en botones con data-bs-dismiss="modal"
+    if (lightboxModalEl) {
+        var dismissBtns = lightboxModalEl.querySelectorAll('[data-bs-dismiss="modal"]');
+        dismissBtns.forEach(function(btn) {
+            btn.addEventListener('click', closeLightboxFallback);
+        });
+        lightboxModalEl.addEventListener('click', function(e) {
+            if (e.target === lightboxModalEl) {
+                closeLightboxFallback();
+            }
+        });
+    }
+
+    function updateSlide(index) {
+        if (!gallery.length) return;
+        if (index < 0) {
+            index = gallery.length - 1;
+        } else if (index >= gallery.length) {
+            index = 0;
+        }
+        currentIndex = index;
+
+        // Actualizar imagen principal en el frame de arriba
+        if (mainImg) {
+            mainImg.style.opacity = '0.35';
+            setTimeout(function() {
+                mainImg.src = gallery[currentIndex].large;
+                mainImg.alt = gallery[currentIndex].alt;
+                mainImg.style.opacity = '1';
+            }, 80);
+        }
+
+        // Reset hover zoom si estaba activo
+        if (container && mainImg) {
+            container.classList.remove('is-zoomed');
+            mainImg.style.transform = 'scale(1)';
+            mainImg.style.transformOrigin = 'center center';
+        }
+
+        // Actualizar contador
+        if (counterEl) {
+            counterEl.textContent = (currentIndex + 1);
+        }
+
+        // Actualizar miniaturas inferiores
+        thumbs.forEach(function(t, i) {
+            if (i === currentIndex) {
+                t.classList.add('active');
+                t.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+            } else {
+                t.classList.remove('active');
+            }
+        });
+
+        // Actualizar Lightbox si está abierto
+        if (lightboxImg && gallery[currentIndex]) {
+            lightboxImg.src = gallery[currentIndex].large;
+            lightboxImg.alt = gallery[currentIndex].alt;
+            lightboxImg.style.transform = 'scale(1)';
+            lightboxImg.style.cursor = 'zoom-in';
+        }
+        if (lightboxCounter) {
+            lightboxCounter.textContent = (currentIndex + 1);
+        }
+    }
+
+    // Lupa interactiva al pasar el mouse sobre la foto principal (Desktop)
+    if (container && mainImg) {
+        var hasHover = window.matchMedia && window.matchMedia('(hover: hover) and (pointer: fine)').matches;
+
+        if (hasHover) {
+            container.addEventListener('mouseenter', function() {
+                container.classList.add('is-zoomed');
+                mainImg.style.transform = 'scale(2.3)';
+                if (zoomBadge) {
+                    zoomBadge.innerHTML = '<i class="bi bi-zoom-in"></i> Lupa activa · Clic para pantalla completa';
+                }
+            });
+
+            container.addEventListener('mousemove', function(e) {
+                var rect = container.getBoundingClientRect();
+                if (!rect.width || !rect.height) return;
+                var x = ((e.clientX - rect.left) / rect.width) * 100;
+                var y = ((e.clientY - rect.top) / rect.height) * 100;
+                x = Math.max(0, Math.min(100, x));
+                y = Math.max(0, Math.min(100, y));
+                mainImg.style.transformOrigin = x.toFixed(1) + '% ' + y.toFixed(1) + '%';
+            });
+
+            container.addEventListener('mouseleave', function() {
+                container.classList.remove('is-zoomed');
+                mainImg.style.transform = 'scale(1)';
+                mainImg.style.transformOrigin = 'center center';
+                if (zoomBadge) {
+                    zoomBadge.innerHTML = '<i class="bi bi-search"></i> Pasa el mouse para ampliar';
+                }
+            });
+        }
+    }
+
+    // Botones de navegación en foto principal
+    var prevBtn = document.getElementById('galleryPrevBtn');
+    var nextBtn = document.getElementById('galleryNextBtn');
+    if (prevBtn) {
+        prevBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            updateSlide(currentIndex - 1);
+        });
+    }
+    if (nextBtn) {
+        nextBtn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            updateSlide(currentIndex + 1);
+        });
+    }
+
+    // Clic en miniaturas inferiores para mostrar en el frame de arriba
+    thumbs.forEach(function(thumb) {
+        thumb.addEventListener('click', function() {
+            var idx = parseInt(this.getAttribute('data-index'), 10);
+            updateSlide(idx);
+        });
+    });
+
+    // Desplazamiento lateral de miniaturas con flechas en desktop
+    var thumbsPrev = document.getElementById('thumbsScrollPrev');
+    var thumbsNext = document.getElementById('thumbsScrollNext');
+    if (thumbsPrev && thumbsTrack) {
+        thumbsPrev.addEventListener('click', function() {
+            thumbsTrack.scrollBy({ left: -160, behavior: 'smooth' });
+        });
+    }
+    if (thumbsNext && thumbsTrack) {
+        thumbsNext.addEventListener('click', function() {
+            thumbsTrack.scrollBy({ left: 160, behavior: 'smooth' });
+        });
+    }
+
+    // Deslizamiento táctil con el dedo en celular (Touch Swipe)
+    var container = document.getElementById('mainImageContainer');
+    if (container && gallery.length > 1) {
+        var touchStartX = 0;
+        var touchStartY = 0;
+        container.addEventListener('touchstart', function(e) {
+            if (e.touches.length === 1) {
+                touchStartX = e.touches[0].clientX;
+                touchStartY = e.touches[0].clientY;
+            }
+        }, { passive: true });
+
+        container.addEventListener('touchend', function(e) {
+            if (e.changedTouches.length === 1) {
+                var touchEndX = e.changedTouches[0].clientX;
+                var touchEndY = e.changedTouches[0].clientY;
+                var deltaX = touchEndX - touchStartX;
+                var deltaY = touchEndY - touchStartY;
+
+                // Solo si el deslizamiento es predominantemente horizontal
+                if (Math.abs(deltaX) > 35 && Math.abs(deltaX) > Math.abs(deltaY) * 1.5) {
+                    if (deltaX < 0) {
+                        updateSlide(currentIndex + 1); // Swipe hacia la izquierda -> siguiente
+                    } else {
+                        updateSlide(currentIndex - 1); // Swipe hacia la derecha -> anterior
+                    }
+                }
+            }
+        }, { passive: true });
+    }
+
+    // Abrir Lightbox al hacer clic en botón de zoom o en la foto principal
+    if (btnLightbox) {
+        btnLightbox.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            openLightbox();
+        });
+    }
+    if (mainImg) {
+        mainImg.addEventListener('click', function() {
+            openLightbox();
+        });
+    }
+
+    // Navegación dentro del Lightbox
+    var lbPrev = document.getElementById('lightboxPrevBtn');
+    var lbNext = document.getElementById('lightboxNextBtn');
+    if (lbPrev) {
+        lbPrev.addEventListener('click', function() {
+            updateSlide(currentIndex - 1);
+        });
+    }
+    if (lbNext) {
+        lbNext.addEventListener('click', function() {
+            updateSlide(currentIndex + 1);
+        });
+    }
+
+    // Zoom secundario al hacer clic sobre la foto en Lightbox
+    if (lightboxImg) {
+        var isLbZoomed = false;
+        lightboxImg.addEventListener('click', function() {
+            isLbZoomed = !isLbZoomed;
+            if (isLbZoomed) {
+                this.style.transform = 'scale(1.6)';
+                this.style.cursor = 'zoom-out';
+            } else {
+                this.style.transform = 'scale(1)';
+                this.style.cursor = 'zoom-in';
+            }
+        });
+    }
+
+    // Navegación por teclado (flechas izquierda/derecha y Escape)
+    document.addEventListener('keydown', function(e) {
+        if (e.key === 'Escape') {
+            closeLightboxFallback();
+        } else if (gallery.length > 1) {
+            if (e.key === 'ArrowLeft') {
+                updateSlide(currentIndex - 1);
+            } else if (e.key === 'ArrowRight') {
+                updateSlide(currentIndex + 1);
+            }
+        }
+    });
+})();
 </script>

@@ -150,17 +150,24 @@ function storefront_render_header($title, $currentPage, array $cartTotals)
         }
         </script>
 
+        <link rel="preconnect" href="https://cdn.jsdelivr.net">
+        <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
         <link href="css/bootstrap.min.css" rel="stylesheet">
         <link href="css/storefront.css" rel="stylesheet">
         <link href="css/storefront-shop.css" rel="stylesheet">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
-        <?php $googleApiKey = defined('GOOGLE_MAPS_API_KEY') ? trim(GOOGLE_MAPS_API_KEY) : ''; ?>
-        <?php if (!empty($googleApiKey)): ?>
-            <script src="https://maps.googleapis.com/maps/api/js?key=<?php echo storefront_escape($googleApiKey); ?>&libraries=geometry"></script>
-        <?php else: ?>
-            <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
-            <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-        <?php endif; ?>
+        <?php 
+        // Leaflet / Google Maps se cargan condicionalmente ÚNICAMENTE en la página de checkout (pedido.php)
+        $isCheckoutPage = ($currentPage === 'pedido');
+        if ($isCheckoutPage):
+            $googleApiKey = defined('GOOGLE_MAPS_API_KEY') ? trim(GOOGLE_MAPS_API_KEY) : '';
+            if (!empty($googleApiKey)): ?>
+                <script src="https://maps.googleapis.com/maps/api/js?key=<?php echo storefront_escape($googleApiKey); ?>&libraries=geometry" defer></script>
+            <?php else: ?>
+                <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+                <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
+            <?php endif;
+        endif; ?>
     </head>
     <body class="mobile-first-app">
         <!-- Top Bar Informativo y Horarios -->
@@ -277,7 +284,10 @@ function storefront_render_header($title, $currentPage, array $cartTotals)
                         <div class="col-lg-5 mt-4 mt-lg-0">
                             <!-- Banner Promocional de Parrilla -->
                             <div class="promo-card-marketing overflow-hidden rounded-4 shadow-lg position-relative border border-warning border-opacity-50">
-                                <img src="img/promo_asado.jpg" alt="Cortes para Asar" class="w-100 img-fluid">
+                                <picture>
+                                    <source srcset="img/promo_asado.webp" type="image/webp">
+                                    <img src="img/promo_asado.jpg" alt="Cortes para Asar" class="w-100 img-fluid" loading="lazy" decoding="async">
+                                </picture>
                                 <div class="promo-card-overlay p-3 text-white">
                                     <span class="badge bg-danger text-uppercase fw-bold mb-1"><i class="bi bi-fire"></i> Recomendación de la Casa</span>
                                     <h4 class="h5 font-serif fw-bold m-0">¿Carne Asada o Comida Familiar?</h4>
@@ -301,7 +311,7 @@ function storefront_render_footer()
         <!-- Footer con Información de Ambas Sucursales para SEO Local y Confianza -->
         <footer class="store-footer-centered py-4 bg-white border-top">
             <div class="container text-center">
-                <img src="img/logo_1.jpeg" alt="Carnicería Cano" class="footer-logo-only mb-3">
+                <img src="img/logo_1.jpeg" alt="Carnicería Cano" class="footer-logo-only mb-3" loading="lazy" decoding="async">
                 <h5 class="fw-bold text-dark font-serif mb-1">Carnicería Cano · Sucursales en Ecatepec</h5>
                 <p class="text-muted small mb-3">Calidad, frescura, higiene y peso exacto en cada uno de tus cortes.</p>
                 

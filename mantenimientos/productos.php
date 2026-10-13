@@ -582,7 +582,7 @@ $sqlproductos = mysqli_query($link, "
                                         <td>' . $rowp['username'] . '</td>
                                         <td align="center">
                                             <a href="?accion=delete&codigo=' . $rowp['codigo'] . '" title="Eliminar" onclick="return confirm(\'¿Esta seguro de borrar el producto ' . $rowp['descripcion'] . '?\')"><img class="imga" src="../img/icons/trash.svg"></a>
-                                            <a href="#" title="Editar categoría" data-bs-toggle="modal" data-bs-target="#editModal"><img class="imga" src="../img/icons/pencil-square.svg"></a>
+                                            <a href="editar_producto.php?codigo=' . urlencode($rowp['codigo']) . '" title="Editar producto y fotos"><img class="imga" src="../img/icons/pencil-square.svg"></a>
                                         </td>
                                         </tr>
                                         ';
@@ -629,111 +629,7 @@ $sqlproductos = mysqli_query($link, "
             </div>
         </main>
 
-        <div class="modal fade modal-lg" id="editModal" tabindex="-1" aria-labelledby="exampleModalLabel" aria-hidden="true">
-            <div class="modal-dialog">
-                <div class="modal-content">
-                    <div class="modal-header">
-                        <h5 class="modal-title" id="ModalLabelTitle">Nuevo mensaje</h5>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-                    </div>
-                    <form class="needs-validation" action="#" method="post" novalidate>
-                        <input type="hidden" name="codigo_e" id="codigo_e">
-                        <div class="modal-body">
-                            <div class="mb-3">
-                                <label for="descripcion" class="form-label">Descripción</label>
-                                <div class="input-group has-validation">
-                                    <input type="text" class="form-control" id="descripcion_e" name="descripcion_e" placeholder="Descripción del producto" autocomplete="off" required>
-                                    <div class="invalid-feedback">
-                                        Favor de ingresar la descripción del producto.
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label for="preciocompra" class="col-form-label">Precio Compra</label>
-                                <div class="input-group has-validation">
-                                    <input type="number" step="0.01" class="form-control" id="precio_compra_e" name="precio_compra_e" placeholder="Precio de compra" autocomplete="off" required>
-                                    <div class="invalid-feedback">
-                                        Favor de ingresar precio de compra.
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label for="precioventa" class="form-label">Precio venta</label>
-                                <div class="input-group has-validation">
-                                    <input type="number" step="0.01" class="form-control" id="precio_venta_e" name="precio_venta_e" placeholder="Precio de venta" autocomplete="off" required>
-                                    <div class="invalid-feedback">
-                                        Favor de ingresar precio de venta.
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label for="almacen" class="form-label">En almacén</label>
-                                <div class="input-group has-validation">
-                                    <input type="number" step="0.001" class="form-control" id="almacen_e" name="almacen_e" placeholder="kg en almacén" autocomplete="off" required>
-                                    <div class="invalid-feedback">
-                                        Ingresar stock.
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label for="limite_stock_e" class="form-label">Límite stock</label>
-                                <div class="input-group has-validation">
-                                    <input type="number" step="0.001" class="form-control" id="limite_stock_e" name="limite_stock_e" placeholder="límite de stock" autocomplete="off" required>
-                                    <div class="invalid-feedback">
-                                        Ingresar límite de stock.
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label for="inputState" class="form-label">Categoría</label>
-                                <div class="input-group has-validation">
-                                    <select id="id_categoria_e" name="id_categoria_e" class="form-select" required>
-                                        <option selected disabled value="">Seleccione...</option>
-                                        <?php
-//$query = $link -> query ("SELECT * FROM sbb_telas");
-                                        $query = mysqli_query($link, "SELECT * FROM cc_categorias where id_sucursal = $id_sucursal order by mayoreo,desc_categoria");
-                                        while ($valores = mysqli_fetch_array($query)) {
-                                            echo '<option value="' . $valores['id_categoria'] . '">' . $valores['desc_categoria'] . '</option>';
-                                        }
-                                        ?>
-                                    </select>
-                                    <div class="invalid-feedback">
-                                        Favor de seleccionar la categoría
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label for="inputcentraliza" class="form-label">¿Dónde centraliza almacén?</label>
-                                <div class="input-group has-validation">
-                                    <select id="centralizar_almacen_e" name="centralizar_almacen_e" class="form-select" required>
-                                        <option selected disabled value="">Seleccione...</option>
-                                        <?php
-                                        $queryca = mysqli_query($link, "SELECT * FROM cc_claves where nombre_clave = 'CENTRALIZAR_ALMACEN'");
-                                        while ($rowca = mysqli_fetch_array($queryca)) {
-                                            echo '<option value="' . $rowca['clave'] . '">' . $rowca['descripcion'] . '</option>';
-                                        }
-                                        ?>
-                                    </select>
-                                    <div class="invalid-feedback">
-                                        Favor de seleccionar dónde centraliza almacen
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="mb-3">
-                                <label class="form-label">Opciones</label><br>
-                                <input class="form-check-input" name="mayoreo_e" type="checkbox" value="1" id="mayoreo_e">&nbsp;&nbsp;Mayoreo<br>
-                                <input class="form-check-input" name="activo_e" type="checkbox" value="1" id="activo_e" checked>&nbsp;&nbsp;Activo<br>
-                            </div>
-                        </div>
-                        <div class="modal-footer">
-                            <a href="producto_fotos.php" class="btn btn-outline-primary" id="edit_fotos_link">Fotos de producto</a>
-                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
-                            <button type="submit" class="btn btn-primary" name="editar">Guardar</button>
-                        </div>
-                    </form>
-                </div>
-            </div>
-        </div>
+
 
         <?php
         if ($title != "") {
@@ -747,7 +643,7 @@ $sqlproductos = mysqli_query($link, "
                     </div>
                     <div class="modal-body">' . $body . '</div>
                     <div class="modal-footer">
-                        ' . ($photoProductCode !== '' ? '<a href="producto_fotos.php?codigo=' . urlencode($photoProductCode) . '" class="btn btn-outline-primary">Agregar fotos</a>' : '') . '
+                        ' . ($photoProductCode !== '' ? '<a href="editar_producto.php?codigo=' . urlencode($photoProductCode) . '" class="btn btn-outline-primary">Editar producto y fotos</a>' : '') . '
                         <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Close</button>
                     </div>
                 </div>
@@ -848,40 +744,7 @@ $sqlproductos = mysqli_query($link, "
                             })
                 })()
             });
-            var editModal = document.getElementById('editModal')
-            editModal.addEventListener('show.bs.modal', function (event) {
-                // Botón que activó el modal
-                var icono = event.relatedTarget
-                // Extraer información de los atributos data-bs-*
-                var codigo = $(icono).parents("tr").find("td").eq(0).text();
-                var descripcion = $(icono).parents("tr").find("td").eq(1).text();
-                var precio_compra = $(icono).parents("tr").find("td").eq(2).text();
-                var precio_venta = $(icono).parents("tr").find("td").eq(3).text();
-                var almacen = $(icono).parents("tr").find("td").eq(4).text();
-                var limite_stock = $(icono).parents("tr").find("td").eq(5).text();
-                var categoria = $(icono).parents("tr").find("td").eq(6).attr('class');
-                var mayoreo = $(icono).parents("tr").find("td").eq(7).attr('class');
-                var centralizar_almacen = $(icono).parents("tr").find("td").eq(8).attr('class');
-                var activo = $(icono).parents("tr").find("td").eq(9).attr('class');
-                $("#ModalLabelTitle").html("Editar el código: " + codigo);
-                $("#codigo_e").val(codigo);
-                $("#descripcion_e").val(descripcion);
-                $("#precio_compra_e").val(precio_compra);
-                $("#precio_venta_e").val(precio_venta);
-                $("#almacen_e").val(almacen);
-                $("#limite_stock_e").val(limite_stock);
-                $("#id_categoria_e").val(categoria);
-                $("#centralizar_almacen_e").val(centralizar_almacen);
-                $("#edit_fotos_link").attr("href", "producto_fotos.php?codigo=" + encodeURIComponent(codigo));
-                if (mayoreo == 0)
-                    $("#mayoreo_e").prop("checked", false);
-                else
-                    $("#mayoreo_e").prop("checked", true);
-                if (activo == 0)
-                    $("#activo_e").prop("checked", false);
-                else
-                    $("#activo_e").prop("checked", true);
-            })
+
 <?php
 if ($title != "") {
     echo

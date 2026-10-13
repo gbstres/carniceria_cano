@@ -177,10 +177,10 @@ function storefront_attach_product_images(mysqli $link, array $products)
     $sql = "
         SELECT codigo, ruta_small, ruta_large, alt_text
         FROM cc_productos_fotos
-        WHERE id_sucursal = " . STOREFRONT_SUCURSAL_ID . "
+        WHERE (id_sucursal = " . STOREFRONT_SUCURSAL_ID . " OR id_sucursal = 1)
             AND codigo IN (" . implode(', ', $quotedCodes) . ")
             AND activo = 1
-        ORDER BY codigo ASC, es_principal DESC, orden ASC, id_foto ASC
+        ORDER BY codigo ASC, (id_sucursal = " . STOREFRONT_SUCURSAL_ID . ") DESC, es_principal DESC, orden ASC, id_foto ASC
     ";
 
     if ($result = mysqli_query($link, $sql)) {
@@ -215,10 +215,10 @@ function storefront_fetch_product_gallery(mysqli $link, $productCode)
     $sql = "
         SELECT ruta_small, ruta_large, alt_text, es_principal
         FROM cc_productos_fotos
-        WHERE id_sucursal = " . STOREFRONT_SUCURSAL_ID . "
+        WHERE (id_sucursal = " . STOREFRONT_SUCURSAL_ID . " OR id_sucursal = 1)
             AND codigo = '" . $productCode . "'
             AND activo = 1
-        ORDER BY es_principal DESC, orden ASC, id_foto ASC
+        ORDER BY (id_sucursal = " . STOREFRONT_SUCURSAL_ID . ") DESC, es_principal DESC, orden ASC, id_foto ASC
     ";
 
     if ($result = mysqli_query($link, $sql)) {
@@ -585,7 +585,10 @@ function storefront_build_url(array $params = [])
 
 $link = $link ?? ($GLOBALS['link'] ?? null);
 if ($link instanceof mysqli) {
-    storefront_ensure_order_tables($link);
+    if (empty($_SESSION['cc_tables_ensured'])) {
+        storefront_ensure_order_tables($link);
+        $_SESSION['cc_tables_ensured'] = true;
+    }
     $products = storefront_fetch_products($link);
     $storefrontBranches = storefront_fetch_active_branches($link);
     if (!empty($storefrontBranches) && !isset($storefrontBranches[(int) ($formData['id_sucursal'] ?? 0)])) {
