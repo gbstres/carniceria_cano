@@ -1,7 +1,12 @@
 <?php
 $checkoutBranches = is_array($storefrontBranches ?? null) ? $storefrontBranches : [];
 $minDeliveryAmount = defined('STOREFRONT_MIN_DELIVERY_AMOUNT') ? (float)STOREFRONT_MIN_DELIVERY_AMOUNT : 200.00;
-$deliveryCost = defined('STOREFRONT_DELIVERY_COST') ? (float)STOREFRONT_DELIVERY_COST : 60.00;
+$deliveryBaseCost = defined('STOREFRONT_DELIVERY_BASE_COST') ? (float)STOREFRONT_DELIVERY_BASE_COST : 25.00;
+$deliveryCost = (float)($cartTotals['costo_envio'] ?? $deliveryBaseCost);
+if ($deliveryCost <= 0 && ($formData['tipo_entrega'] ?? '') === 'domicilio') {
+    $deliveryCost = $deliveryBaseCost;
+}
+$maxDeliveryKm = defined('STOREFRONT_DELIVERY_MAX_KM') ? (float)STOREFRONT_DELIVERY_MAX_KM : 30.0;
 $cartSubtotal = (float)($cartTotals['subtotal'] ?? 0.0);
 ?>
 <style>
@@ -197,9 +202,9 @@ $cartSubtotal = (float)($cartTotals['subtotal'] ?? 0.0);
                                                 <div class="flex-grow-1">
                                                     <div class="d-flex align-items-center justify-content-between">
                                                         <strong class="text-dark fs-6"><i class="bi bi-truck text-danger me-1"></i> Entrega a Domicilio</strong>
-                                                        <span class="badge bg-danger-subtle text-danger border border-danger fw-bold small">Envío $<?php echo number_format($deliveryCost, 2); ?></span>
+                                                        <span class="badge bg-danger-subtle text-danger border border-danger fw-bold small" id="badgeDeliveryHeader">Envío desde $<?php echo number_format($deliveryBaseCost, 2); ?></span>
                                                     </div>
-                                                    <span class="small text-muted d-block mt-1">Llevamos tus cortes a domicilio (Máx. 5 km • Mínimo $<?php echo number_format($minDeliveryAmount, 2); ?>).</span>
+                                                    <span class="small text-muted d-block mt-1">Llevamos tus cortes a domicilio (Hasta <?php echo (int)$maxDeliveryKm; ?> km • Mínimo $<?php echo number_format($minDeliveryAmount, 2); ?>).</span>
                                                 </div>
                                             </div>
                                         </div>
@@ -260,6 +265,9 @@ $cartSubtotal = (float)($cartTotals['subtotal'] ?? 0.0);
 
                                 <div class="p-3 bg-light rounded-4 border border-secondary border-opacity-25 my-1">
                                     <!-- Sucursal de despacho para entrega a domicilio -->
+                                    <div id="nearestBranchNotice" class="alert alert-success border-success border-opacity-50 p-2.5 rounded-3 mb-3 small text-dark d-none">
+                                        <i class="bi bi-geo-alt-fill text-success me-1"></i> <span id="nearestBranchNoticeText"></span>
+                                    </div>
                                     <div class="mb-3">
                                         <label class="form-label fw-bold text-dark small" for="id_sucursal"><i class="bi bi-shop text-warning me-1"></i> Sucursal que prepara y despacha tu pedido *</label>
                                         <select class="form-select fw-semibold" id="id_sucursal" name="id_sucursal" onchange="selectBranchFromSelect()">
@@ -271,8 +279,8 @@ $cartSubtotal = (float)($cartTotals['subtotal'] ?? 0.0);
 
                                     <div class="d-flex align-items-center justify-content-between flex-wrap gap-2 mb-2">
                                         <div>
-                                            <strong class="d-block text-dark small"><i class="bi bi-geo-alt-fill text-danger me-1"></i> Cobertura y Geolocalización (Máximo 5 km)</strong>
-                                            <span class="small text-muted">Usa tu GPS o haz clic en el mapa para marcar tu ubicación exacta de entrega.</span>
+                                            <strong class="d-block text-dark small"><i class="bi bi-geo-alt-fill text-danger me-1"></i> Cobertura y Geolocalización (Hasta <?php echo (int)$maxDeliveryKm; ?> km)</strong>
+                                            <span class="small text-muted">Usa tu GPS o haz clic en el mapa; el sistema seleccionará automáticamente la sucursal más cercana.</span>
                                         </div>
                                         <button type="button" class="btn btn-danger btn-sm rounded-pill fw-bold px-3 shadow-sm" onclick="getGpsLocation()">
                                             <i class="bi bi-crosshair me-1"></i> Usar mi Ubicación GPS
@@ -290,7 +298,10 @@ $cartSubtotal = (float)($cartTotals['subtotal'] ?? 0.0);
                                                         <div>
                                                             <strong class="d-block small text-dark"><i class="bi bi-geo-alt-fill text-danger me-1"></i><?php echo storefront_escape($branch['desc_sucursal']); ?></strong>
                                                             <span class="small text-muted d-block" style="font-size: 0.75rem;"><?php echo storefront_escape($branch['direccion']); ?></span>
-                                                            <span class="badge bg-warning text-dark mt-1" style="font-size: 0.68rem;">Horario: <?php echo storefront_escape($branch['horario']); ?></span>
+                                                            <div class="d-flex align-items-center gap-1 mt-1 flex-wrap">
+                                                                <span class="badge bg-warning text-dark" style="font-size: 0.68rem;">Horario: <?php echo storefront_escape($branch['horario']); ?></span>
+                                                                <span class="badge bg-secondary branch-dist-badge d-none" id="branchDistBadge<?php echo (int) $branch['id_sucursal']; ?>" style="font-size: 0.68rem;"></span>
+                                                            </div>
                                                         </div>
                                                         <a href="https://www.google.com/maps/search/?api=1&amp;query=<?php echo rawurlencode($branch['latitud'] . ',' . $branch['longitud']); ?>" target="_blank" rel="noopener" class="btn btn-outline-danger btn-sm p-1 px-2 ms-2" title="Abrir en Google Maps" onclick="event.stopPropagation();">
                                                             <i class="bi bi-box-arrow-up-right"></i>
@@ -457,8 +468,56 @@ foreach ($checkoutBranches as $branch) {
 const BRANCH_COORDS = <?php echo json_encode($branchCoordinates, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES); ?>;
 const DEFAULT_BRANCH_ID = Object.keys(BRANCH_COORDS)[0] || null;
 const MIN_DELIVERY_AMOUNT = <?php echo (float)$minDeliveryAmount; ?>;
-const DELIVERY_COST = <?php echo (float)$deliveryCost; ?>;
+const DELIVERY_BASE_COST = <?php echo (float)$deliveryBaseCost; ?>;
+const DELIVERY_BASE_KM = <?php echo defined('STOREFRONT_DELIVERY_BASE_KM') ? (float)STOREFRONT_DELIVERY_BASE_KM : 1.5; ?>;
+const DELIVERY_STEP_KM = <?php echo defined('STOREFRONT_DELIVERY_STEP_KM') ? (float)STOREFRONT_DELIVERY_STEP_KM : 0.5; ?>;
+const DELIVERY_STEP_COST = <?php echo defined('STOREFRONT_DELIVERY_STEP_COST') ? (float)STOREFRONT_DELIVERY_STEP_COST : 5.00; ?>;
+const DELIVERY_MAX_KM = <?php echo (float)$maxDeliveryKm; ?>;
 const CART_SUBTOTAL = <?php echo (float)$cartSubtotal; ?>;
+
+function calculateDeliveryCost(distKm) {
+    if (distKm <= 0) return DELIVERY_BASE_COST;
+    if (distKm > DELIVERY_MAX_KM) return -1;
+    if (distKm <= DELIVERY_BASE_KM) return DELIVERY_BASE_COST;
+    var extraKm = distKm - DELIVERY_BASE_KM;
+    var steps = Math.ceil(Math.round((extraKm / DELIVERY_STEP_KM) * 10000) / 10000);
+    return Math.round((DELIVERY_BASE_COST + (steps * DELIVERY_STEP_COST)) * 100) / 100;
+}
+
+function findNearestBranch(userLat, userLng) {
+    var nearestId = null;
+    var minDistance = Infinity;
+    Object.keys(BRANCH_COORDS).forEach(function (key) {
+        var b = BRANCH_COORDS[key];
+        if (b && !isNaN(b.lat) && !isNaN(b.lng) && b.lat !== 0 && b.lng !== 0) {
+            var dist = calculateDistance(userLat, userLng, b.lat, b.lng);
+            if (dist < minDistance) {
+                minDistance = dist;
+                nearestId = key;
+            }
+        }
+    });
+    return { branchId: nearestId, distance: minDistance };
+}
+
+function updateBranchDistancesUI(userLat, userLng, selectedNearestId) {
+    if (isNaN(userLat) || isNaN(userLng)) return;
+    Object.keys(BRANCH_COORDS).forEach(function (key) {
+        var b = BRANCH_COORDS[key];
+        var d = calculateDistance(userLat, userLng, b.lat, b.lng);
+        var distBadge = document.getElementById('branchDistBadge' + key);
+        if (distBadge) {
+            distBadge.classList.remove('d-none');
+            if (key === selectedNearestId) {
+                distBadge.className = 'badge bg-success branch-dist-badge';
+                distBadge.innerHTML = '<i class="bi bi-star-fill me-1"></i>' + d + ' km (Más cercana)';
+            } else {
+                distBadge.className = 'badge bg-secondary branch-dist-badge';
+                distBadge.textContent = d + ' km';
+            }
+        }
+    });
+}
 
 var mapEngine = 'google';
 var map = null;
@@ -770,32 +829,35 @@ function updateMapVisuals() {
     var isWithin = true;
     if (hasUserLoc) {
         var dist = calculateDistance(lat, lng, branch.lat, branch.lng);
-        isWithin = dist <= 5.0;
+        isWithin = dist <= DELIVERY_MAX_KM;
     }
 
     var circleColor = isWithin ? '#198754' : '#DC3545';
+    var circleRadius = DELIVERY_MAX_KM * 1000;
 
     if (mapEngine === 'google') {
         if (radiusCircle) {
             radiusCircle.setCenter({ lat: branch.lat, lng: branch.lng });
+            radiusCircle.setRadius(circleRadius);
             radiusCircle.setOptions({
                 strokeColor: circleColor, fillColor: circleColor,
-                strokeOpacity: 0.8, strokeWeight: 2, fillOpacity: 0.15
+                strokeOpacity: 0.8, strokeWeight: 2, fillOpacity: 0.12
             });
         } else {
             radiusCircle = new google.maps.Circle({
                 strokeColor: circleColor, strokeOpacity: 0.8, strokeWeight: 2,
-                fillColor: circleColor, fillOpacity: 0.15, map: map,
-                center: { lat: branch.lat, lng: branch.lng }, radius: 5000
+                fillColor: circleColor, fillOpacity: 0.12, map: map,
+                center: { lat: branch.lat, lng: branch.lng }, radius: circleRadius
             });
         }
     } else {
         if (radiusCircle) {
             radiusCircle.setLatLng([branch.lat, branch.lng]);
+            radiusCircle.setRadius(circleRadius);
             radiusCircle.setStyle({ color: circleColor, fillColor: circleColor });
         } else {
             radiusCircle = L.circle([branch.lat, branch.lng], {
-                color: circleColor, fillColor: circleColor, fillOpacity: 0.15, radius: 5000
+                color: circleColor, fillColor: circleColor, fillOpacity: 0.12, radius: circleRadius
             }).addTo(map);
         }
     }
@@ -804,6 +866,23 @@ function updateMapVisuals() {
 function setUserLocationOnMap(userLat, userLng, skipReverseGeocode) {
     document.getElementById('latitud').value = userLat;
     document.getElementById('longitud').value = userLng;
+
+    // 1. Auto-seleccionar la sucursal más cercana
+    var nearest = findNearestBranch(userLat, userLng);
+    if (nearest && nearest.branchId) {
+        var branchSelect = document.getElementById('id_sucursal');
+        if (branchSelect) {
+            branchSelect.value = nearest.branchId;
+        }
+        var nearestNotice = document.getElementById('nearestBranchNotice');
+        var nearestText = document.getElementById('nearestBranchNoticeText');
+        if (nearestNotice && nearestText) {
+            var nBranch = BRANCH_COORDS[nearest.branchId];
+            nearestText.innerHTML = '📍 <strong>' + escapeHtml(nBranch ? nBranch.name : '') + '</strong> es tu sucursal más cercana (a <strong>' + nearest.distance + ' km</strong> de ti). Tu pedido se despachará desde aquí.';
+            nearestNotice.classList.remove('d-none');
+        }
+        updateBranchDistancesUI(userLat, userLng, nearest.branchId);
+    }
 
     if (map) {
         if (mapEngine === 'google') {
@@ -934,9 +1013,11 @@ function toggleDeliveryFields() {
         if (dirInput) dirInput.required = true;
         if (refInput) refInput.required = true;
 
-        // Actualizar resumen con envío
-        if (shippingLabel) shippingLabel.textContent = '$' + DELIVERY_COST.toFixed(2);
-        if (totalLabel) totalLabel.textContent = '$' + (CART_SUBTOTAL + DELIVERY_COST).toFixed(2);
+        // Actualizar resumen con envío dinámico
+        var currentDist = parseFloat(document.getElementById('distancia_km').value);
+        var initialCost = calculateDeliveryCost(!isNaN(currentDist) && currentDist > 0 ? currentDist : 0);
+        if (shippingLabel) shippingLabel.textContent = '$' + initialCost.toFixed(2);
+        if (totalLabel) totalLabel.textContent = '$' + (CART_SUBTOTAL + initialCost).toFixed(2);
 
         // Pago: Solo SPEI para domicilio
         if (paymentSelect) {
@@ -1046,6 +1127,9 @@ function validateBranchDistance() {
     var tipoEntrega = document.getElementById('tipo_entrega').value;
     var gpsBox = document.getElementById('gpsAlertBox');
     var btnSubmit = document.getElementById('btnSubmitOrder');
+    var shippingLabel = document.getElementById('shippingAmountLabel');
+    var totalLabel = document.getElementById('summaryOrderTotal');
+    var badgeHeader = document.getElementById('badgeDeliveryHeader');
 
     if (tipoEntrega !== 'domicilio') {
         if (btnSubmit) btnSubmit.disabled = false;
@@ -1061,8 +1145,10 @@ function validateBranchDistance() {
     if (isNaN(lat) || isNaN(lng) || !BRANCH_COORDS[branchId]) {
         if (gpsBox && gpsBox.classList.contains('d-none')) {
             gpsBox.className = 'mt-2 alert alert-info p-2.5 small d-block';
-            gpsBox.innerHTML = '<i class="bi bi-info-circle-fill me-1"></i> Usa el botón <strong>"Usar mi Ubicación GPS"</strong> o haz clic en el mapa para verificar tu cobertura de 5 km.';
+            gpsBox.innerHTML = '<i class="bi bi-info-circle-fill me-1"></i> Usa el botón <strong>"Usar mi Ubicación GPS"</strong> o haz clic en el mapa para marcar tu entrega y calcular tu costo de envío.';
         }
+        if (shippingLabel) shippingLabel.textContent = '$' + DELIVERY_BASE_COST.toFixed(2);
+        if (totalLabel) totalLabel.textContent = '$' + (CART_SUBTOTAL + DELIVERY_BASE_COST).toFixed(2);
         if (btnSubmit) btnSubmit.disabled = false;
         return;
     }
@@ -1071,16 +1157,26 @@ function validateBranchDistance() {
     var dist = calculateDistance(lat, lng, branch.lat, branch.lng);
     document.getElementById('distancia_km').value = dist;
 
-    if (dist > 5.0) {
+    // Calcular costo según distancia de la sucursal seleccionada
+    var cost = calculateDeliveryCost(dist);
+
+    if (dist > DELIVERY_MAX_KM || cost < 0) {
         if (gpsBox) {
             gpsBox.className = 'mt-2 alert alert-danger p-2.5 small d-block';
-            gpsBox.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-1"></i> <strong>Ubicación a ' + dist + ' km de ' + branch.name + ':</strong> Excede el radio máximo de 5 km para entrega a domicilio. Selecciona <em>Recoger en Sucursal</em> o cambia a otra sucursal disponible.';
+            gpsBox.innerHTML = '<i class="bi bi-exclamation-triangle-fill me-1"></i> <strong>Ubicación a ' + dist + ' km de ' + branch.name + ':</strong> Excede el límite máximo de ' + DELIVERY_MAX_KM + ' km para entrega a domicilio. Selecciona <em>Recoger en Sucursal</em> o comunícate con nosotros.';
         }
+        if (shippingLabel) shippingLabel.textContent = 'Fuera de Cobertura';
+        if (totalLabel) totalLabel.textContent = '$' + CART_SUBTOTAL.toFixed(2);
         if (btnSubmit) btnSubmit.disabled = true;
     } else {
         if (gpsBox) {
             gpsBox.className = 'mt-2 alert alert-success p-2.5 small d-block';
-            gpsBox.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> <strong>Ubicación válida (' + dist + ' km de ' + branch.name + '):</strong> Cobertura de entrega a domicilio confirmada.';
+            gpsBox.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> <strong>Ubicación válida:</strong> Cobertura de entrega a domicilio confirmada.';
+        }
+        if (shippingLabel) shippingLabel.textContent = '$' + cost.toFixed(2);
+        if (totalLabel) totalLabel.textContent = '$' + (CART_SUBTOTAL + cost).toFixed(2);
+        if (badgeHeader) {
+            badgeHeader.textContent = 'Envío: $' + cost.toFixed(2);
         }
         if (btnSubmit) btnSubmit.disabled = false;
     }

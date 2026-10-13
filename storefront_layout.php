@@ -43,7 +43,7 @@ function storefront_render_header($title, $currentPage, array $cartTotals)
                     </span>
                 </span>
             <?php endif; ?>
-            <span class="delivery-radius-note">• <strong>Reparto a Domicilio (Máx. 5 km)</strong></span>
+            <span class="delivery-radius-note">• <strong>Reparto a Domicilio (Hasta 30 km)</strong></span>
         </div>
 
         <!-- Sticky Header Principal -->

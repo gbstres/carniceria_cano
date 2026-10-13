@@ -113,6 +113,7 @@ if ($modo === 'historico' && $id_cierre > 0) {
         WHERE id_sucursal = $id_sucursal
           AND id_cierre = $id_cierre
           AND tipo = 'PRODUCTO'
+          AND (centraliza <> 'CAT' OR centraliza IS NULL OR centraliza = '')
         ORDER BY desc_categoria, descripcion
     ");
 
@@ -164,6 +165,7 @@ if ($modo === 'historico' && $id_cierre > 0) {
            AND eq.codigo_destino = p.codigo
         WHERE p.id_sucursal = $id_sucursal
           AND p.almacen <> 0
+          AND (p.centralizar_almacen = 1 OR p.centralizar_almacen IS NULL OR p.centralizar_almacen = 0)
         ORDER BY c.desc_categoria, p.descripcion
     ");
 

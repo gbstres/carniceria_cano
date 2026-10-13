@@ -47,6 +47,11 @@ function cc_sync_pedidos_desde_gcp(mysqli $linkLocal, ?mysqli $linkRemote = null
     require_once __DIR__ . '/../storefront_logic.php';
     storefront_ensure_order_tables($linkLocal);
 
+    // Auto-sanitizar productos CAT locales para que no mantengan stock individual
+    if ($idSucursal > 0) {
+        mysqli_query($linkLocal, "UPDATE cc_productos SET almacen = 0.000 WHERE id_sucursal = " . (int)$idSucursal . " AND centralizar_almacen = 2 AND almacen <> 0");
+    }
+
     // Condición de sucursal:
     // Si la sucursal es 9 (Tienda Online) o 0 (admin general), sincronizamos todas.
     // Si es una sucursal física (1 a 8), traemos los pedidos asignados a esta sucursal.

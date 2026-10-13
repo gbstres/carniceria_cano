@@ -245,6 +245,9 @@ if (isset($_POST['fecha_cierre'])) {
         }
     }
 
+    // Asegurar que productos con centralización de categoría (CAT) no mantengan stock individual
+    mysqli_query($link, "UPDATE cc_productos SET almacen = 0.000 WHERE id_sucursal = $id_sucursal AND centralizar_almacen = 2 AND almacen <> 0");
+
     // Insertar snapshot de stock de productos y categorias (Base de datos ligera: almacen <> 0)
     mysqli_query($link, "CREATE TABLE IF NOT EXISTS `cc_cierre_stock` (
         `id_cierre_stock` int(11) NOT NULL AUTO_INCREMENT,
@@ -299,6 +302,7 @@ if (isset($_POST['fecha_cierre'])) {
            AND eq.codigo_destino = p.codigo
         WHERE p.id_sucursal = $id_sucursal
           AND p.almacen <> 0
+          AND (p.centralizar_almacen = 1 OR p.centralizar_almacen IS NULL OR p.centralizar_almacen = 0)
         ORDER BY c.desc_categoria, p.descripcion
     ");
 

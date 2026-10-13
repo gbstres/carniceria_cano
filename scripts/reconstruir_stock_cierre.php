@@ -91,13 +91,15 @@ LEFT JOIN (
     GROUP BY codigo
 ) e ON p.codigo = e.codigo COLLATE utf8_spanish_ci
 SET p.almacen = ROUND(COALESCE(cs.stock, 0) + COALESCE(c.cant_comprada, 0) + COALESCE(e.cant_entrada, 0) - COALESCE(v.cant_vendida, 0), 3)
-WHERE p.id_sucursal = $id_sucursal;
+WHERE p.id_sucursal = $id_sucursal
+  AND (p.centralizar_almacen = 1 OR p.centralizar_almacen IS NULL OR p.centralizar_almacen = 0);
 ";
 
 $updProd = mysqli_query($link, $sqlProd);
 if (!$updProd) {
     die("Error al actualizar productos: " . mysqli_error($link) . "\n");
 }
+mysqli_query($link, "UPDATE cc_productos SET almacen = 0 WHERE id_sucursal = $id_sucursal AND centralizar_almacen = 2");
 echo "[OK] Productos actualizados correctamente.\n";
 
 // 2. Recalcular Stock de Categorías Centralizadas (centralizar_almacen = 2)

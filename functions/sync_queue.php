@@ -424,6 +424,13 @@ function cc_sync_delete_remote_rows(mysqli $linkRemote, string $table, int $idSu
 function cc_sync_upsert_remote_rows(mysqli $linkRemote, string $table, array $rows): void
 {
     foreach ($rows as $row) {
+        if ($table === 'cc_productos' && isset($row['centralizar_almacen']) && (int) $row['centralizar_almacen'] === 2) {
+            $row['almacen'] = 0.000;
+        }
+        if ($table === 'cc_cierre_stock' && isset($row['tipo']) && $row['tipo'] === 'PRODUCTO' && isset($row['centraliza']) && $row['centraliza'] === 'CAT') {
+            continue;
+        }
+
         $columns = array_keys($row);
         $columnList = implode(',', array_map(fn($column) => "`$column`", $columns));
         $values = [];

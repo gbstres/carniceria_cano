@@ -13,8 +13,23 @@ if (!defined('GOOGLE_MAPS_API_KEY')) {
 if (!defined('STOREFRONT_MIN_DELIVERY_AMOUNT')) {
     define('STOREFRONT_MIN_DELIVERY_AMOUNT', 200.00);
 }
+if (!defined('STOREFRONT_DELIVERY_BASE_COST')) {
+    define('STOREFRONT_DELIVERY_BASE_COST', 25.00);
+}
+if (!defined('STOREFRONT_DELIVERY_BASE_KM')) {
+    define('STOREFRONT_DELIVERY_BASE_KM', 1.5);
+}
+if (!defined('STOREFRONT_DELIVERY_STEP_KM')) {
+    define('STOREFRONT_DELIVERY_STEP_KM', 0.5);
+}
+if (!defined('STOREFRONT_DELIVERY_STEP_COST')) {
+    define('STOREFRONT_DELIVERY_STEP_COST', 5.00);
+}
+if (!defined('STOREFRONT_DELIVERY_MAX_KM')) {
+    define('STOREFRONT_DELIVERY_MAX_KM', 30.0);
+}
 if (!defined('STOREFRONT_DELIVERY_COST')) {
-    define('STOREFRONT_DELIVERY_COST', 60.00);
+    define('STOREFRONT_DELIVERY_COST', STOREFRONT_DELIVERY_BASE_COST);
 }
 if (!defined('EVOLUTION_API_URL')) {
     define('EVOLUTION_API_URL', '');
@@ -455,7 +470,41 @@ function storefront_fetch_active_branches(mysqli $link): array
     return $branches;
 }
 
-function storefront_cart_totals(array $cart, string $tipoEntrega = 'recoger')
+function storefront_calculate_delivery_cost(float $distanciaKm): float
+{
+    $baseCost = defined('STOREFRONT_DELIVERY_BASE_COST') ? (float)STOREFRONT_DELIVERY_BASE_COST : 25.00;
+    $baseKm = defined('STOREFRONT_DELIVERY_BASE_KM') ? (float)STOREFRONT_DELIVERY_BASE_KM : 1.5;
+    $stepKm = defined('STOREFRONT_DELIVERY_STEP_KM') ? (float)STOREFRONT_DELIVERY_STEP_KM : 0.5;
+    $stepCost = defined('STOREFRONT_DELIVERY_STEP_COST') ? (float)STOREFRONT_DELIVERY_STEP_COST : 5.00;
+    $maxKm = defined('STOREFRONT_DELIVERY_MAX_KM') ? (float)STOREFRONT_DELIVERY_MAX_KM : 30.0;
+
+    if ($distanciaKm <= 0.0) {
+        return $baseCost;
+    }
+    if ($distanciaKm > $maxKm) {
+        return -1.0; // Fuera de cobertura (> 30 km)
+    }
+    if ($distanciaKm <= $baseKm) {
+        return $baseCost;
+    }
+    $extraKm = $distanciaKm - $baseKm;
+    $steps = (int) ceil(round($extraKm / $stepKm, 4));
+    return round($baseCost + ($steps * $stepCost), 2);
+}
+
+function storefront_calculate_haversine_distance(float $lat1, float $lon1, float $lat2, float $lon2): float
+{
+    $earthRadius = 6371; // Radio terrestre en km
+    $dLat = deg2rad($lat2 - $lat1);
+    $dLon = deg2rad($lon2 - $lon1);
+    $a = sin($dLat / 2) * sin($dLat / 2) +
+         cos(deg2rad($lat1)) * cos(deg2rad($lat2)) *
+         sin($dLon / 2) * sin($dLon / 2);
+    $c = 2 * atan2(sqrt($a), sqrt(1 - $a));
+    return round($earthRadius * $c, 2);
+}
+
+function storefront_cart_totals(array $cart, string $tipoEntrega = 'recoger', float $distanciaKm = 0.0)
 {
     $totals = [
         'items' => 0,
@@ -468,8 +517,12 @@ function storefront_cart_totals(array $cart, string $tipoEntrega = 'recoger')
         $totals['subtotal'] += (float) $item['subtotal'];
     }
     $totals['subtotal'] = round($totals['subtotal'], 2);
-    $costoEnvio = defined('STOREFRONT_DELIVERY_COST') ? (float)STOREFRONT_DELIVERY_COST : 60.00;
+    
     if ($tipoEntrega === 'domicilio') {
+        $costoEnvio = storefront_calculate_delivery_cost($distanciaKm);
+        if ($costoEnvio < 0) {
+            $costoEnvio = defined('STOREFRONT_DELIVERY_BASE_COST') ? (float)STOREFRONT_DELIVERY_BASE_COST : 25.00;
+        }
         $totals['costo_envio'] = $costoEnvio;
         $totals['total'] = round($totals['subtotal'] + $costoEnvio, 2);
     } else {
@@ -753,8 +806,26 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 
         $formData['tipo_entrega'] = trim((string)($_POST['tipo_entrega'] ?? 'recoger'));
         $minDeliveryAmount = defined('STOREFRONT_MIN_DELIVERY_AMOUNT') ? (float)STOREFRONT_MIN_DELIVERY_AMOUNT : 200.00;
-        $cartTotals = storefront_cart_totals($_SESSION['store_cart'], $formData['tipo_entrega']);
+        $maxDeliveryKm = defined('STOREFRONT_DELIVERY_MAX_KM') ? (float)STOREFRONT_DELIVERY_MAX_KM : 30.0;
         $distancia = (float) $formData['distancia_km'];
+        $idSucursalInt = (int) $formData['id_sucursal'];
+        $latVal = $formData['latitud'] !== '' ? (float)$formData['latitud'] : null;
+        $lngVal = $formData['longitud'] !== '' ? (float)$formData['longitud'] : null;
+
+        // Recalcular distancia con Haversine si tenemos coordenadas válidas y sucursal
+        if ($formData['tipo_entrega'] === 'domicilio' && $latVal !== null && $lngVal !== null && isset($storefrontBranches[$idSucursalInt])) {
+            $branchLat = (float)$storefrontBranches[$idSucursalInt]['latitud'];
+            $branchLng = (float)$storefrontBranches[$idSucursalInt]['longitud'];
+            if ($branchLat != 0.0 && $branchLng != 0.0) {
+                $calcDist = storefront_calculate_haversine_distance($latVal, $lngVal, $branchLat, $branchLng);
+                if ($distancia <= 0.0 || abs($distancia - $calcDist) > 0.5) {
+                    $distancia = $calcDist;
+                    $formData['distancia_km'] = (string)$distancia;
+                }
+            }
+        }
+
+        $cartTotals = storefront_cart_totals($_SESSION['store_cart'], $formData['tipo_entrega'], $distancia);
         $cleanPhone = preg_replace('/[^0-9]/', '', $formData['cliente_telefono']);
 
         // Regla: Para entrega a domicilio el método de pago es exclusivamente SPEI y no se requiere campo de cambio
@@ -781,8 +852,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             $feedback = ['type' => 'danger', 'message' => 'La dirección es obligatoria para entrega a domicilio.'];
         } elseif ($formData['tipo_entrega'] === 'domicilio' && $formData['referencias_ubicacion'] === '') {
             $feedback = ['type' => 'danger', 'message' => 'Las referencias de ubicación (fachada, entre calles) son obligatorias para el repartidor.'];
-        } elseif ($formData['tipo_entrega'] === 'domicilio' && $distancia > 5.0) {
-            $feedback = ['type' => 'danger', 'message' => 'La ubicación se encuentra a ' . $distancia . ' km de la Sucursal seleccionada. El límite máximo para entrega a domicilio es de 5 km. Elige Recoger en Sucursal.'];
+        } elseif ($formData['tipo_entrega'] === 'domicilio' && $distancia > $maxDeliveryKm) {
+            $feedback = ['type' => 'danger', 'message' => 'La ubicación se encuentra a ' . $distancia . ' km de la Sucursal seleccionada. El límite máximo para entrega a domicilio es de ' . $maxDeliveryKm . ' km. Elige Recoger en Sucursal.'];
         } elseif (!storefront_is_phone_verified($link, $cleanPhone, $formData['direccion_entrega'], $formData['tipo_entrega'])) {
             $feedback = ['type' => 'warning', 'message' => 'Se ha detectado una nueva ubicación o falta de verificación. Por favor presiona "Enviar Código" para validar tus 4 dígitos en WhatsApp.'];
         } else {
@@ -884,7 +955,7 @@ if (isset($_GET['remove'])) {
 }
 
 $cart = $_SESSION['store_cart'];
-$cartTotals = storefront_cart_totals($cart, $formData['tipo_entrega'] ?? 'recoger');
+$cartTotals = storefront_cart_totals($cart, $formData['tipo_entrega'] ?? 'recoger', (float)($formData['distancia_km'] ?? 0));
 $categoryCounts = [];
 foreach ($products as $product) {
     if (!isset($categoryCounts[$product['categoria']])) {
