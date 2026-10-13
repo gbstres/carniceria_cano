@@ -124,7 +124,7 @@ if (isset($_GET['accion']) == 'delete' and (!isset($_POST['agregar'])) and (!iss
     $id = mysqli_real_escape_string($link, (strip_tags($_GET["id"], ENT_QUOTES)));
     $rowusuario = mysqli_fetch_assoc(mysqli_query($link, "SELECT * FROM cc_users WHERE id = $id"));
 
-    if ($rowusuario['fecha_acceso'] != '0000-00-00') {
+    if (!empty($rowusuario['fecha_acceso']) && $rowusuario['fecha_acceso'] != '0000-00-00') {
         $body = 'Usuario ' . $rowusuario['nombre'] . ' no eliminado porque ya tiene accesos';
         $title = 'No eliminado';
     } else {

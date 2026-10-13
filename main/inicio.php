@@ -15,6 +15,11 @@ if ($id_sucursal <= 0) {
     exit;
 }
 
+if ((int) ($_SESSION["rol"] ?? 0) === 4) {
+    header("location: ../repartidor/pedidos.php");
+    exit;
+}
+
 $_SESSION['carpeta'] = '';
 
 //Eliminar la venta

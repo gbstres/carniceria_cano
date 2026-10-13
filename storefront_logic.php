@@ -1,5 +1,7 @@
 <?php
-session_start();
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
 
 require_once __DIR__ . '/functions/config.php';
 
@@ -334,6 +336,8 @@ function storefront_ensure_order_tables(mysqli $link)
         'monto_pago_efectivo' => "ALTER TABLE cc_pedidos_web ADD COLUMN monto_pago_efectivo VARCHAR(50) NULL",
         'costo_envio' => "ALTER TABLE cc_pedidos_web ADD COLUMN costo_envio DECIMAL(10,2) NOT NULL DEFAULT 0.00",
         'id_venta' => "ALTER TABLE cc_pedidos_web ADD COLUMN id_venta INT NULL",
+        'id_repartidor' => "ALTER TABLE cc_pedidos_web ADD COLUMN id_repartidor INT NULL",
+        'fecha_entrega' => "ALTER TABLE cc_pedidos_web ADD COLUMN fecha_entrega DATETIME NULL",
     ];
 
     foreach ($columnsNeeded as $col => $alterSql) {

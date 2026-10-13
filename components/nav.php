@@ -18,12 +18,26 @@ if (in_array($ccHost, ['localhost', '127.0.0.1', '::1'], true)) {
         <?php echo htmlspecialchars($ccEntorno, ENT_QUOTES, 'UTF-8'); ?>
     </div>
     <div class="container-fluid">
-        <a class="navbar-brand" href="../main/inicio.php">Carnicería Cano</a>
+<?php $esRepartidor = ((int) ($_SESSION['rol'] ?? 0) === 4); ?>
+        <a class="navbar-brand fw-bold" href="<?php echo $esRepartidor ? '../repartidor/pedidos.php' : '../main/inicio.php'; ?>">Carnicería Cano<?php echo $esRepartidor ? ' <span class="badge bg-primary text-white ms-1 fs-6"><i class="bi bi-bicycle me-1"></i>Repartidor</span>' : ''; ?></a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarsExample09" aria-controls="navbarsExample09" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>
 
         <div class="collapse navbar-collapse" id="navbarsExample09">
+            <?php if ($esRepartidor): ?>
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item">
+                    <a class="nav-link fw-bold" href="../repartidor/pedidos.php"><i class="bi bi-box-seam me-1"></i> Pedidos pendientes</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link fw-bold" href="../repartidor/pedidos.php?tab=historial"><i class="bi bi-clock-history me-1"></i> Historial de pedidos</a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link disabled"><i class="bi bi-geo-alt me-1"></i> <?php echo htmlspecialchars($_SESSION["desc_sucursal"] ?? ''); ?></a>
+                </li>
+            </ul>
+            <?php else: ?>
             <ul class="navbar-nav me-auto mb-2 mb-lg-0">
                 <li class="nav-item">
                     <a class="nav-link active" aria-current="page" href="../main/inicio.php">Inicio</a>
@@ -90,6 +104,13 @@ if (in_array($ccHost, ['localhost', '127.0.0.1', '::1'], true)) {
                         <li><a class="dropdown-item" href="../control/inicio_dia.php">Inicio de día</a></li>
                         <li><a class="dropdown-item" href="../control/reconstruir_stock.php">Reconstruir Stock</a></li>
                         <li><a class="dropdown-item" href="../control/reconstruir_cierre.php">Reconstruir Cierre</a></li>
+                        <?php
+                        if (tienePermiso('ver')) {
+                            echo '
+                        <li><hr class="dropdown-divider"></li>
+                        <li><a class="dropdown-item" href="../repartidor/pedidos.php"><i class="bi bi-bicycle me-1"></i> Pedidos y repartos</a></li>';
+                        }
+                        ?>
                     </ul>
                 </li>
                 <?php
@@ -116,6 +137,7 @@ if (in_array($ccHost, ['localhost', '127.0.0.1', '::1'], true)) {
                     <a class="nav-link disabled"><?php echo $_SESSION["desc_sucursal"]; ?></a>
                 </li>
             </ul>
+            <?php endif; ?>
             <ul class="navbar-nav mb-2 mb-lg-0 ml-auto">
                 <li class="nav-item dropdown" >
                     <a href="#" class="dropdown-toggle nav-link" data-bs-toggle="dropdown" aria-expanded="false">

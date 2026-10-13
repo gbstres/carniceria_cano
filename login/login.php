@@ -74,7 +74,11 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                         if ((int) $_SESSION["id_sucursal"] > 0) {
                             unset($_SESSION['redirect_after_login']);
-                            header("location: " . $redirectAfterLogin);
+                            if ((int) $_SESSION["rol"] === 4) {
+                                header("location: ../repartidor/pedidos.php");
+                            } else {
+                                header("location: " . $redirectAfterLogin);
+                            }
                         } else {
                             header("location: ../login/cambio_sucursal.php");
                         }

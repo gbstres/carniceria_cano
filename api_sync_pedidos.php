@@ -82,23 +82,33 @@ if ($action === 'update_status') {
     $orderId = isset($_REQUEST['id_pedido']) ? (int)$_REQUEST['id_pedido'] : 0;
     $newStatus = isset($_REQUEST['estatus']) ? mysqli_real_escape_string($link, $_REQUEST['estatus']) : '';
 
-    $allowed = ['nuevo', 'en_preparacion', 'completado', 'cancelado'];
+    $allowed = ['nuevo', 'en_preparacion', 'en_camino', 'completado', 'cancelado'];
     if ($orderId <= 0 || !in_array($newStatus, $allowed, true)) {
         echo json_encode(['success' => false, 'message' => 'Estatus o folio no válido.']);
         exit;
     }
 
+    if (session_status() !== PHP_SESSION_ACTIVE) {
+        session_start();
+    }
+    $idRepartidor = isset($_REQUEST['id_repartidor']) ? (int)$_REQUEST['id_repartidor'] : (int)($_SESSION['id'] ?? 0);
+
     if ($newStatus === 'completado') {
         $res = storefront_process_order_and_deduct_stock($link, $orderId, $idSucursal);
-        if (!empty($res['success']) && function_exists('cc_sync_notificar_estatus_a_gcp')) {
-            cc_sync_notificar_estatus_a_gcp($orderId, 'completado');
+        if (!empty($res['success'])) {
+            $repSql = ($idRepartidor > 0) ? ", id_repartidor = $idRepartidor" : "";
+            mysqli_query($link, "UPDATE cc_pedidos_web SET fecha_entrega = NOW() $repSql WHERE id_pedido = $orderId");
+            if (function_exists('cc_sync_notificar_estatus_a_gcp')) {
+                cc_sync_notificar_estatus_a_gcp($orderId, 'completado');
+            }
         }
         echo json_encode($res);
         exit;
     }
 
     $whereBranch = ($idSucursal > 0) ? "AND id_sucursal = $idSucursal" : "";
-    $upd = mysqli_query($link, "UPDATE cc_pedidos_web SET estatus = '$newStatus' WHERE id_pedido = $orderId $whereBranch");
+    $repSet = ($idRepartidor > 0 && in_array($newStatus, ['en_camino', 'en_preparacion'])) ? ", id_repartidor = $idRepartidor" : "";
+    $upd = mysqli_query($link, "UPDATE cc_pedidos_web SET estatus = '$newStatus' $repSet WHERE id_pedido = $orderId $whereBranch");
     if ($upd) {
         if (function_exists('cc_sync_notificar_estatus_a_gcp')) {
             cc_sync_notificar_estatus_a_gcp($orderId, $newStatus);
