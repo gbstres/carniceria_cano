@@ -83,19 +83,24 @@ foreach ($files as $file) {
 
     fwrite(STDOUT, "Aplicando: " . $filename . "...\n");
 
-    if (!mysqli_multi_query($link, $sql)) {
-        fwrite(STDERR, "Error en " . $filename . ": " . mysqli_error($link) . "\n");
-        exit(1);
-    }
-
-    do {
-        if ($result = mysqli_store_result($link)) {
-            mysqli_free_result($result);
+    try {
+        if (!mysqli_multi_query($link, $sql)) {
+            fwrite(STDERR, "Error en " . $filename . ": " . mysqli_error($link) . "\n");
+            exit(1);
         }
-    } while (mysqli_more_results($link) && mysqli_next_result($link));
 
-    if (mysqli_errno($link)) {
-        fwrite(STDERR, "Error en " . $filename . ": " . mysqli_error($link) . "\n");
+        do {
+            if ($result = mysqli_store_result($link)) {
+                mysqli_free_result($result);
+            }
+        } while (mysqli_more_results($link) && mysqli_next_result($link));
+
+        if (mysqli_errno($link)) {
+            fwrite(STDERR, "Error en " . $filename . ": " . mysqli_error($link) . "\n");
+            exit(1);
+        }
+    } catch (Throwable $e) {
+        fwrite(STDERR, "Error en " . $filename . ": " . $e->getMessage() . "\n");
         exit(1);
     }
 
