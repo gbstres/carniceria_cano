@@ -345,12 +345,11 @@ function generarToken() {
                                         if ($es_online) {
                                             $num_pedido = $info_online ? $info_online['id_pedido'] : '';
                                             $nombre_online = $info_online ? trim((string)$info_online['cliente_nombre']) : '';
-                                            $cliente_mostrar = !empty($nombre_online) ? $nombre_online : (!empty($nombre_cliente) ? $nombre_cliente : 'Cliente Web');
-                                            $badge_folio = !empty($num_pedido) ? "Online #$num_pedido" : "Online";
-                                            $cliente_col_html = '<span class="badge bg-danger text-white mb-1" style="font-size:0.75rem;"><i class="bi bi-globe me-1"></i>' . $badge_folio . '</span><br><strong>' . htmlspecialchars($cliente_mostrar, ENT_QUOTES, 'UTF-8') . '</strong>';
-                                            $id_venta_html = '<strong>' . $rowc['id_venta'] . '</strong> <span class="badge bg-danger text-white ms-1" style="font-size:0.65rem;">WEB</span>';
-                                            $hora_html = $rowc['hora_ingreso'] . '<br><small class="text-danger fw-bold" style="font-size:0.7rem;"><i class="bi bi-globe"></i> Online</small>';
-                                            $tipo_pago_html = $tipo_pago . ' <span class="badge bg-danger text-white ms-1" style="font-size:0.68rem;">ONLINE</span>';
+                                            $cliente_mostrar = !empty($nombre_online) ? $nombre_online : (!empty($nombre_cliente) ? $nombre_cliente : '');
+                                            $id_venta_html = '<strong>' . $rowc['id_venta'] . '</strong><br><span class="badge bg-danger text-white" style="font-size:0.68rem;"' . (!empty($num_pedido) ? ' title="Pedido Web #' . $num_pedido . '"' : '') . '>Online</span>';
+                                            $cliente_col_html = htmlspecialchars($cliente_mostrar, ENT_QUOTES, 'UTF-8');
+                                            $hora_html = $rowc['hora_ingreso'];
+                                            $tipo_pago_html = $tipo_pago;
                                         } else {
                                             $cliente_col_html = htmlspecialchars($nombre_cliente, ENT_QUOTES, 'UTF-8');
                                             $id_venta_html = $rowc['id_venta'];
