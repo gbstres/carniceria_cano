@@ -85,7 +85,9 @@
                     <div>
                         <h2 class="h4 font-serif fw-bold text-dark m-0">
                             <?php
-                            if ($selectedCategory !== '') {
+                            if ($searchTerm !== '') {
+                                echo 'Resultados de "' . storefront_escape($searchTerm) . '"';
+                            } elseif ($selectedCategory !== '') {
                                 echo storefront_escape($selectedCategory);
                             } elseif ($showAll) {
                                 echo 'Catálogo de Productos';

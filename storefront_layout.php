@@ -251,53 +251,79 @@ function storefront_render_header($title, $currentPage, array $cartTotals)
 
         <main id="inicio" class="pb-5 mb-5 pb-lg-0 mb-lg-0">
             <?php if ($currentPage === 'catalogo'): ?>
-            <!-- Hero Mobile-First Limpio & Auténtico -->
-            <section class="hero-section hero-mobile-marketing">
-                <div class="container">
-                    <div class="row align-items-center">
-                        <div class="col-lg-7 text-center text-lg-start">
-                            <div class="badge-marketing mb-2">
-                                <i class="bi bi-patch-check-fill text-warning me-1"></i> Cortes Frescos Seleccionados Diariamente
-                            </div>
-                            <h1 class="hero-marketing-title">
-                                Carnes frescas de Res, Cerdo y Parrilla a tu mesa
-                            </h1>
-                            <p class="hero-marketing-subtitle">
-                                Elige la cantidad exacta que necesites en kilos o piezas. Te ofrecemos atención personalizada, limpieza y productos frescos en cada pedido.
-                            </p>
-                            
-                            <!-- Buscador Rápido -->
-                            <div class="search-hero-box my-3">
+                <?php
+                $heroSearchTerm = isset($_GET['buscar']) ? trim((string)$_GET['buscar']) : '';
+                $isSearching = ($heroSearchTerm !== '');
+                ?>
+                <?php if ($isSearching): ?>
+                    <!-- Hero Compacto en Búsqueda (Sin frame promocional de asado, solo cuadro de búsqueda activo) -->
+                    <section class="hero-section hero-mobile-marketing py-3 py-md-4 border-bottom">
+                        <div class="container">
+                            <div class="search-hero-box mx-auto" style="max-width: 680px;">
                                 <form method="get" action="index.php" class="d-flex align-items-stretch gap-2">
-                                    <input type="text" name="buscar" class="form-control form-control-lg rounded-pill shadow-sm" placeholder="🔍 ¿Qué producto buscas? Ej: Bistec, Milanesa, Arrachera...">
+                                    <input type="text" name="buscar" class="form-control form-control-lg rounded-pill shadow-sm" placeholder="🔍 ¿Qué producto buscas? Ej: Bistec, Milanesa, Arrachera..." value="<?php echo storefront_escape($heroSearchTerm); ?>">
                                     <button type="submit" class="btn btn-warning btn-lg rounded-pill px-4 font-weight-bold shadow-sm d-inline-flex align-items-center justify-content-center">Buscar</button>
                                 </form>
-                            </div>
-
-                            <div class="marketing-trust-badges d-flex justify-content-center justify-content-lg-start gap-3 flex-wrap mt-3">
-                                <span><i class="bi bi-check-circle-fill text-warning me-1"></i> Peso Exacto</span>
-                                <span><i class="bi bi-truck text-warning me-1"></i> Entrega a Domicilio</span>
-                                <span><i class="bi bi-shop text-warning me-1"></i> Recoge en Sucursal</span>
-                            </div>
-                        </div>
-
-                        <div class="col-lg-5 mt-4 mt-lg-0">
-                            <!-- Banner Promocional de Parrilla -->
-                            <div class="promo-card-marketing overflow-hidden rounded-4 shadow-lg position-relative border border-warning border-opacity-50">
-                                <picture>
-                                    <source srcset="img/promo_asado.webp" type="image/webp">
-                                    <img src="img/promo_asado.jpg" alt="Cortes para Asar" class="w-100 img-fluid" loading="lazy" decoding="async">
-                                </picture>
-                                <div class="promo-card-overlay p-3 text-white">
-                                    <span class="badge bg-danger text-uppercase fw-bold mb-1"><i class="bi bi-fire"></i> Recomendación de la Casa</span>
-                                    <h4 class="h5 font-serif fw-bold m-0">¿Carne Asada o Comida Familiar?</h4>
-                                    <p class="small text-white-50 m-0">Tenemos los mejores cortes y marinados listos para ti.</p>
+                                <div class="d-flex justify-content-between align-items-center mt-2 px-2 flex-wrap gap-1">
+                                    <span class="small text-white-50">
+                                        Resultados de búsqueda: <strong class="text-warning">"<?php echo storefront_escape($heroSearchTerm); ?>"</strong>
+                                    </span>
+                                    <a href="index.php" class="text-warning small text-decoration-none fw-bold d-inline-flex align-items-center">
+                                        <i class="bi bi-x-circle-fill me-1"></i> Borrar búsqueda
+                                    </a>
                                 </div>
                             </div>
                         </div>
-                    </div>
-                </div>
-            </section>
+                    </section>
+                <?php else: ?>
+                    <!-- Hero Completo con Banner Promocional -->
+                    <section class="hero-section hero-mobile-marketing">
+                        <div class="container">
+                            <div class="row align-items-center">
+                                <div class="col-lg-7 text-center text-lg-start">
+                                    <div class="badge-marketing mb-2">
+                                        <i class="bi bi-patch-check-fill text-warning me-1"></i> Cortes Frescos Seleccionados Diariamente
+                                    </div>
+                                    <h1 class="hero-marketing-title">
+                                        Carnes frescas de Res, Cerdo y Parrilla a tu mesa
+                                    </h1>
+                                    <p class="hero-marketing-subtitle">
+                                        Elige la cantidad exacta que necesites en kilos o piezas. Te ofrecemos atención personalizada, limpieza y productos frescos en cada pedido.
+                                    </p>
+                                    
+                                    <!-- Buscador Rápido -->
+                                    <div class="search-hero-box my-3">
+                                        <form method="get" action="index.php" class="d-flex align-items-stretch gap-2">
+                                            <input type="text" name="buscar" class="form-control form-control-lg rounded-pill shadow-sm" placeholder="🔍 ¿Qué producto buscas? Ej: Bistec, Milanesa, Arrachera..." value="<?php echo storefront_escape($heroSearchTerm); ?>">
+                                            <button type="submit" class="btn btn-warning btn-lg rounded-pill px-4 font-weight-bold shadow-sm d-inline-flex align-items-center justify-content-center">Buscar</button>
+                                        </form>
+                                    </div>
+
+                                    <div class="marketing-trust-badges d-flex justify-content-center justify-content-lg-start gap-3 flex-wrap mt-3">
+                                        <span><i class="bi bi-check-circle-fill text-warning me-1"></i> Peso Exacto</span>
+                                        <span><i class="bi bi-truck text-warning me-1"></i> Entrega a Domicilio</span>
+                                        <span><i class="bi bi-shop text-warning me-1"></i> Recoge en Sucursal</span>
+                                    </div>
+                                </div>
+
+                                <div class="col-lg-5 mt-4 mt-lg-0">
+                                    <!-- Banner Promocional de Parrilla -->
+                                    <div class="promo-card-marketing overflow-hidden rounded-4 shadow-lg position-relative border border-warning border-opacity-50">
+                                        <picture>
+                                            <source srcset="img/promo_asado.webp" type="image/webp">
+                                            <img src="img/promo_asado.jpg" alt="Cortes para Asar" class="w-100 img-fluid" loading="lazy" decoding="async">
+                                        </picture>
+                                        <div class="promo-card-overlay p-3 text-white">
+                                            <span class="badge bg-danger text-uppercase fw-bold mb-1"><i class="bi bi-fire"></i> Recomendación de la Casa</span>
+                                            <h4 class="h5 font-serif fw-bold m-0">¿Carne Asada o Comida Familiar?</h4>
+                                            <p class="small text-white-50 m-0">Tenemos los mejores cortes y marinados listos para ti.</p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                <?php endif; ?>
             <?php endif; ?>
     <?php
 }
