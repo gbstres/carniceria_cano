@@ -388,7 +388,10 @@ function storefront_fetch_products(mysqli $link)
         LEFT JOIN cc_categorias c
             ON c.id_sucursal = p.id_sucursal
             AND c.id_categoria = p.id_categoria
-        WHERE p.id_sucursal = " . STOREFRONT_SUCURSAL_ID . " and p.activo = 1
+        WHERE p.id_sucursal = " . STOREFRONT_SUCURSAL_ID . "
+            AND p.activo = 1
+            AND p.mayoreo = 0
+            AND (c.activo = 1 OR c.id_categoria IS NULL)
         ORDER BY categoria ASC, p.descripcion ASC
     ";
 
