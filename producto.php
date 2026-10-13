@@ -15,6 +15,6 @@ if ($product !== null && empty($productGallery)) {
     ];
 }
 
-storefront_render_header('Producto | Carniceria Cano', 'catalogo', $cartTotals);
+storefront_render_header('Producto | Carniceria Cano', 'producto', $cartTotals);
 require_once __DIR__ . '/storefront_product_view.php';
 storefront_render_footer();

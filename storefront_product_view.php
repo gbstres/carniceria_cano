@@ -18,6 +18,20 @@
                 </a>
             </div>
         <?php else: ?>
+            <!-- Navegación y retorno rápido -->
+            <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2">
+                <nav aria-label="breadcrumb">
+                    <ol class="breadcrumb mb-0 py-1 small">
+                        <li class="breadcrumb-item"><a href="index.php" class="text-decoration-none text-muted"><i class="bi bi-house-door me-1"></i>Catálogo</a></li>
+                        <li class="breadcrumb-item"><a href="index.php?categoria=<?php echo urlencode($product['categoria']); ?>" class="text-decoration-none text-muted"><?php echo storefront_escape($product['categoria']); ?></a></li>
+                        <li class="breadcrumb-item active text-dark fw-bold" aria-current="page"><?php echo storefront_escape($product['descripcion']); ?></li>
+                    </ol>
+                </nav>
+                <a href="javascript:history.back()" class="btn btn-sm btn-outline-secondary rounded-pill px-3 d-inline-flex align-items-center">
+                    <i class="bi bi-arrow-left me-1"></i> Regresar
+                </a>
+            </div>
+
             <div class="product-detail-shell">
                 <div class="product-detail-gallery">
                     <div class="product-detail-main-image rounded-4 overflow-hidden shadow-sm border position-relative" id="mainImageContainer">

@@ -218,7 +218,7 @@ function storefront_render_header($title, $currentPage, array $cartTotals)
                     <div class="collapse navbar-collapse" id="storefrontNav">
                         <ul class="navbar-nav ms-auto align-items-lg-center">
                             <li class="nav-item">
-                                <a class="nav-link storefront-menu-link <?php echo $currentPage === 'catalogo' ? 'active' : ''; ?>" href="index.php">
+                                <a class="nav-link storefront-menu-link <?php echo ($currentPage === 'catalogo' || $currentPage === 'producto') ? 'active' : ''; ?>" href="index.php">
                                     <i class="bi bi-grid-fill me-1"></i> Catálogo
                                 </a>
                             </li>
