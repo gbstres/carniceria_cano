@@ -103,28 +103,36 @@ storefront_render_header('Mis Pedidos - Carnicería Cano', 'mis_pedidos', $cartT
                         $statusLabel = 'Nuevo';
                         switch ($order['estatus']) {
                             case 'nuevo':
-                                $statusClass = 'bg-warning text-dark';
-                                $statusLabel = '🟡 Nuevo Pedido';
+                                $statusClass = 'bg-danger text-white';
+                                $statusLabel = 'Nuevo';
                                 break;
+                            case 'en_preparacion':
                             case 'en_proceso':
-                                $statusClass = 'bg-primary';
-                                $statusLabel = '🔵 En Preparación';
+                                $statusClass = 'bg-warning text-dark';
+                                $statusLabel = 'En Preparación';
                                 break;
                             case 'enviado':
+                            case 'en_camino':
                                 $statusClass = 'bg-info text-dark';
-                                $statusLabel = '🟣 En Camino';
+                                $statusLabel = 'En Camino';
                                 break;
                             case 'completado':
                             case 'entregado':
-                                $statusClass = 'bg-success';
-                                $statusLabel = '🟢 Entregado / Completado';
+                                $statusClass = 'bg-success text-white';
+                                $statusLabel = 'Completado';
                                 break;
                             case 'cancelado':
-                                $statusClass = 'bg-danger';
-                                $statusLabel = '🔴 Cancelado';
+                                $statusClass = 'bg-secondary text-white';
+                                $statusLabel = 'Cancelado';
+                                break;
+                            default:
+                                $statusClass = 'bg-secondary text-white';
+                                $statusLabel = ucfirst($order['estatus'] ?? 'Nuevo');
                                 break;
                         }
-                        $sucursalNombre = $order['id_sucursal'] == 1 ? 'Sucursal 1 (San Cristóbal Centro)' : 'Sucursal 2 (La Principal)';
+                        $sucursalNombre = !empty($order['desc_sucursal']) 
+                            ? $order['desc_sucursal'] 
+                            : (function_exists('storefront_branch_name') ? storefront_branch_name($link, (int)$order['id_sucursal']) : ('Sucursal ' . $order['id_sucursal']));
                         ?>
                         <div class="col-12">
                             <div class="card rounded-4 border-0 shadow-sm bg-white overflow-hidden">
@@ -133,7 +141,8 @@ storefront_render_header('Mis Pedidos - Carnicería Cano', 'mis_pedidos', $cartT
                                         <strong class="fs-5 text-dark font-serif me-2">Folio #<?php echo storefront_escape($order['id_pedido']); ?></strong>
                                         <span class="text-muted small"><i class="bi bi-calendar3 me-1"></i> <?php echo storefront_escape(date('d/m/Y h:i A', strtotime($order['fecha_ingreso']))); ?></span>
                                     </div>
-                                    <div>
+                                    <div class="d-flex align-items-center">
+                                        <span class="small fw-bold text-muted me-2">Estatus:</span>
                                         <span class="badge <?php echo $statusClass; ?> px-3 py-2 rounded-pill fw-bold">
                                             <?php echo storefront_escape($statusLabel); ?>
                                         </span>

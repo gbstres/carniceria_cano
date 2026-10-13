@@ -1268,12 +1268,14 @@ function storefront_fetch_customer_orders(mysqli $link, string $phone, string $f
         $whereDate = " AND fecha_ingreso >= DATE_FORMAT(CURRENT_DATE, '%Y-%m-01') ";
     }
 
-    $sql = "SELECT id_pedido, cliente_nombre, cliente_telefono, cliente_email, id_sucursal, 
-                   tipo_entrega, direccion_entrega, referencias_ubicacion, metodo_pago, 
-                   monto_pago_efectivo, notas, subtotal, total, estatus, fecha_ingreso 
-            FROM cc_pedidos_web 
-            WHERE cliente_telefono = '$phoneSql' {$whereDate}
-            ORDER BY id_pedido DESC";
+    $sql = "SELECT p.id_pedido, p.cliente_nombre, p.cliente_telefono, p.cliente_email, p.id_sucursal, 
+                   p.tipo_entrega, p.direccion_entrega, p.referencias_ubicacion, p.metodo_pago, 
+                   p.monto_pago_efectivo, p.notas, p.subtotal, p.total, p.estatus, p.fecha_ingreso,
+                   s.desc_sucursal 
+            FROM cc_pedidos_web p 
+            LEFT JOIN cc_sucursales s ON p.id_sucursal = s.id_sucursal 
+            WHERE p.cliente_telefono = '$phoneSql' {$whereDate}
+            ORDER BY p.id_pedido DESC";
 
     $res = mysqli_query($link, $sql);
     if (!$res) {
