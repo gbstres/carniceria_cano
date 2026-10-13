@@ -2062,7 +2062,7 @@ if ($descripcion_corta == 1) {
 
     function aprobarYDescontarStockInicio(orderId, idSucursalPedido) {
         var sucTarget = idSucursalPedido || alertBranchId;
-        if (!confirm('¿Deseas confirmar este pedido y DESCONTAR EL STOCK del inventario de la Sucursal ' + sucTarget + '?')) {
+        if (!confirm('¿Deseas confirmar este pedido y DESCONTAR EL STOCK?')) {
             return;
         }
 

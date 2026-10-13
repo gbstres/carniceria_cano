@@ -344,7 +344,7 @@ function loadOrders(manualRefresh) {
 }
 
 function processOrder(orderId, statusVal) {
-    if (!confirm('¿Deseas confirmar este pedido y DESCONTAR EL STOCK del inventario de la Sucursal ' + currentBranch + '?')) {
+    if (!confirm('¿Deseas confirmar este pedido y DESCONTAR EL STOCK?')) {
         return;
     }
 
