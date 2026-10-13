@@ -32,20 +32,26 @@ $body = "";
 $title = "";
 
 if (isset($_POST['agregar'])) {
-    $sql = "INSERT INTO cc_sucursales (desc_sucursal, direccion, latitud, longitud, horario, whatsapp, activo, id_usuario, fecha_ingreso, hora_ingreso) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+    $desc_sucursal = mb_strtoupper(trim($_POST["desc_sucursal"]));
+    $direccion = trim($_POST["direccion"]);
+    $latitud = trim($_POST["latitud"]);
+    $longitud = trim($_POST["longitud"]);
+    $horario = trim($_POST["horario"]);
+    $whatsapp = trim($_POST["whatsapp"]);
+    $wa_instancia = trim($_POST["wa_instancia"] ?? "");
+    $es_default = isset($_POST['es_default']) ? 1 : 0;
+    $activo = isset($_POST['activo']) ? 1 : 0;
+    $fecha_ingreso = date('Y-m-d');
+    $hora_ingreso = date('H:i:s');
+    $id_usuario = $_SESSION["id"];
+
+    if ($es_default === 1) {
+        mysqli_query($link, "UPDATE cc_sucursales SET es_default = 0");
+    }
+
+    $sql = "INSERT INTO cc_sucursales (desc_sucursal, direccion, latitud, longitud, horario, whatsapp, wa_instancia, es_default, activo, id_usuario, fecha_ingreso, hora_ingreso) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
     if ($stmt = mysqli_prepare($link, $sql)) {
-        mysqli_stmt_bind_param($stmt, "ssssssiiss", $desc_sucursal, $direccion, $latitud, $longitud, $horario, $whatsapp, $activo, $id_usuario, $fecha_ingreso, $hora_ingreso);
-        
-        $desc_sucursal = mb_strtoupper(trim($_POST["desc_sucursal"]));
-        $direccion = trim($_POST["direccion"]);
-        $latitud = trim($_POST["latitud"]);
-        $longitud = trim($_POST["longitud"]);
-        $horario = trim($_POST["horario"]);
-        $whatsapp = trim($_POST["whatsapp"]);
-        $activo = isset($_POST['activo']) ? 1 : 0;
-        $fecha_ingreso = date('Y-m-d');
-        $hora_ingreso = date('H:i:s');
-        $id_usuario = $_SESSION["id"];
+        mysqli_stmt_bind_param($stmt, "sssssssiiiss", $desc_sucursal, $direccion, $latitud, $longitud, $horario, $whatsapp, $wa_instancia, $es_default, $activo, $id_usuario, $fecha_ingreso, $hora_ingreso);
         if (mysqli_stmt_execute($stmt)) {
             $title = 'Agregado';
             $body = 'Sucursal ' . $desc_sucursal . ' agregada correctamente.';
@@ -64,12 +70,20 @@ if (isset($_POST['editar'])) {
     $longitud = mysqli_real_escape_string($link, trim($_POST["longitud_e"]));
     $horario = mysqli_real_escape_string($link, trim($_POST["horario_e"]));
     $whatsapp = mysqli_real_escape_string($link, trim($_POST["whatsapp_e"]));
+    $wa_instancia = mysqli_real_escape_string($link, trim($_POST["wa_instancia_e"] ?? ''));
+    $es_default = isset($_POST['es_default_e']) ? 1 : 0;
     $activo = isset($_POST['activo_e']) ? 1 : 0;
     $id_usuario_act = $_SESSION["id"];
     $fecha_act = date('Y-m-d');
     $hora_act = date('H:i:s');
+
+    if ($es_default === 1) {
+        mysqli_query($link, "UPDATE cc_sucursales SET es_default = 0");
+    }
+
     $update1 = mysqli_query($link, "UPDATE cc_sucursales SET "
-                    . "desc_sucursal='$desc_sucursal', direccion='$direccion', latitud='$latitud', longitud='$longitud', horario='$horario', whatsapp='$whatsapp', activo='$activo', "
+                    . "desc_sucursal='$desc_sucursal', direccion='$direccion', latitud='$latitud', longitud='$longitud', "
+                    . "horario='$horario', whatsapp='$whatsapp', wa_instancia='$wa_instancia', es_default='$es_default', activo='$activo', "
                     . "fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act='$id_usuario_act' "
                     . "WHERE id_sucursal='$id_sucursal'")
             or die(mysqli_error($link));
@@ -182,6 +196,23 @@ $googleApiKey = defined('GOOGLE_MAPS_API_KEY') ? trim(GOOGLE_MAPS_API_KEY) : '';
                                     <input type="text" class="form-control" id="whatsapp" name="whatsapp" placeholder="Ej: 5512345678">
                                 </div>
                             </div>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <label for="wa_instancia" class="form-label fw-bold text-dark"><i class="bi bi-robot text-success me-1"></i> Instancia Evolution API (WhatsApp):</label>
+                                    <input type="text" class="form-control" id="wa_instancia" name="wa_instancia" placeholder="Ej: pruebas, test_abstrings, prod_abstrings">
+                                    <div class="form-text small text-muted">Nombre exacto de la instancia en Evolution API vinculada a esta sucursal.</div>
+                                </div>
+                                <div class="col-md-6 d-flex align-items-center pt-3 flex-wrap gap-3">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" name="activo" type="checkbox" value="1" id="activo" checked>
+                                        <label class="form-check-label fw-bold" for="activo">Sucursal Activa</label>
+                                    </div>
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" name="es_default" type="checkbox" value="1" id="es_default">
+                                        <label class="form-check-label fw-bold text-primary" for="es_default"><i class="bi bi-star-fill text-warning me-1"></i> Sucursal Predeterminada (Default)</label>
+                                    </div>
+                                </div>
+                            </div>
 
                             <!-- Mapa Interactivo Google Maps -->
                             <div class="row mb-3">
@@ -192,12 +223,8 @@ $googleApiKey = defined('GOOGLE_MAPS_API_KEY') ? trim(GOOGLE_MAPS_API_KEY) : '';
                             </div>
 
                             <div class="row mb-3">
-                                <div class="col-12 d-flex justify-content-between align-items-center">
-                                    <div class="form-check">
-                                        <input class="form-check-input" name="activo" type="checkbox" value="1" id="activo" checked>
-                                        <label class="form-check-label fw-bold" for="activo">Sucursal Activa</label>
-                                    </div>
-                                    <button type="submit" class="btn btn-primary px-4 fw-bold" name="agregar"><i class="bi bi-plus-circle me-1"></i> Agregar Sucursal</button>
+                                <div class="col-12 text-end">
+                                    <button type="submit" class="btn btn-primary px-4 fw-bold shadow-sm" name="agregar"><i class="bi bi-plus-circle me-1"></i> Agregar Sucursal</button>
                                 </div>
                             </div>
                         </form>
@@ -210,7 +237,7 @@ $googleApiKey = defined('GOOGLE_MAPS_API_KEY') ? trim(GOOGLE_MAPS_API_KEY) : '';
                                         <th>Descripción</th>
                                         <th>Dirección</th>
                                         <th>Horario</th>
-                                        <th>WhatsApp</th>
+                                        <th>WhatsApp / Instancia</th>
                                         <th>Mapa</th>
                                         <th>Activo</th>
                                         <th>Usuario</th>
@@ -231,22 +258,29 @@ $googleApiKey = defined('GOOGLE_MAPS_API_KEY') ? trim(GOOGLE_MAPS_API_KEY) : '';
                                     $desc = storefront_escape($rowc['desc_sucursal'] ?? '');
                                     $hor = storefront_escape($rowc['horario'] ?? '');
                                     $wa = storefront_escape($rowc['whatsapp'] ?? '');
+                                    $instancia = storefront_escape($rowc['wa_instancia'] ?? '');
+                                    $isDefault = ((int)($rowc['es_default'] ?? 0) === 1);
                                     
                                     $mapBtn = '-';
                                     if (!empty($lat) && !empty($lng)) {
                                         $mapBtn = '<a href="https://www.google.com/maps?q=' . $lat . ',' . $lng . '" target="_blank" rel="noopener" class="btn btn-sm btn-outline-danger py-0 px-2" title="Abrir en Google Maps"><i class="bi bi-geo-alt-fill"></i> Ver</a>';
                                     }
 
-                                    $waLink = '-';
+                                    $waLink = '<span class="text-muted">Sin teléfono</span>';
                                     if (!empty($wa)) {
                                         $cleanWa = preg_replace('/[^0-9]/', '', $wa);
                                         $waLink = '<a href="https://wa.me/52' . $cleanWa . '" target="_blank" class="text-success fw-bold text-decoration-none"><i class="bi bi-whatsapp"></i> ' . $wa . '</a>';
                                     }
+                                    if (!empty($instancia)) {
+                                        $waLink .= '<small class="text-muted d-block">Inst: <code class="text-dark fw-bold">' . $instancia . '</code></small>';
+                                    }
+
+                                    $defaultBadge = $isDefault ? ' <span class="badge bg-primary text-white ms-1"><i class="bi bi-star-fill text-warning me-1"></i>Predeterminada</span>' : '';
 
                                     echo '
                                     <tr id="fila' . $renglon . '">
                                         <td>' . $rowc['id_sucursal'] . '</td>
-                                        <td><strong>' . $desc . '</strong></td>
+                                        <td><strong>' . $desc . '</strong>' . $defaultBadge . '</td>
                                         <td><small>' . ($dir !== '' ? $dir : '<span class="text-muted">Sin dirección</span>') . '</small></td>
                                         <td><small><span class="badge bg-warning text-dark">' . ($hor !== '' ? $hor : 'Por definir') . '</span></small></td>
                                         <td><small>' . $waLink . '</small></td>
@@ -263,6 +297,8 @@ $googleApiKey = defined('GOOGLE_MAPS_API_KEY') ? trim(GOOGLE_MAPS_API_KEY) : '';
                                                data-longitud="' . htmlspecialchars($rowc['longitud'] ?? '', ENT_QUOTES) . '" 
                                                data-horario="' . htmlspecialchars($rowc['horario'] ?? '', ENT_QUOTES) . '" 
                                                data-whatsapp="' . htmlspecialchars($rowc['whatsapp'] ?? '', ENT_QUOTES) . '" 
+                                               data-wa-instancia="' . htmlspecialchars($rowc['wa_instancia'] ?? '', ENT_QUOTES) . '" 
+                                               data-es-default="' . ($rowc['es_default'] ?? 0) . '" 
                                                data-activo="' . $rowc['activo'] . '">
                                                 <img class="imga" src="../img/icons/pencil-square.svg">
                                             </a>
@@ -317,19 +353,31 @@ $googleApiKey = defined('GOOGLE_MAPS_API_KEY') ? trim(GOOGLE_MAPS_API_KEY) : '';
                             </div>
 
                             <div class="row mb-3">
-                                <div class="col-md-6">
+                                <div class="col-md-4">
                                     <label for="horario_e" class="form-label fw-bold">Horario de Atención:</label>
                                     <input type="text" class="form-control" id="horario_e" name="horario_e" placeholder="Ej: 7:30 AM - 3:30 PM">
                                 </div>
-                                <div class="col-md-6">
+                                <div class="col-md-4">
                                     <label for="whatsapp_e" class="form-label fw-bold">Número de WhatsApp:</label>
                                     <input type="text" class="form-control" id="whatsapp_e" name="whatsapp_e" placeholder="Ej: 5512345678">
                                 </div>
+                                <div class="col-md-4">
+                                    <label for="wa_instancia_e" class="form-label fw-bold text-dark"><i class="bi bi-robot text-success me-1"></i> Instancia Evolution API:</label>
+                                    <input type="text" class="form-control" id="wa_instancia_e" name="wa_instancia_e" placeholder="Ej: pruebas, test_abstrings">
+                                </div>
                             </div>
-                            <div class="mb-3">
-                                <div class="form-check">
-                                    <input class="form-check-input" name="activo_e" type="checkbox" value="1" id="activo_e">
-                                    <label class="form-check-label fw-bold" for="activo_e">¿Sucursal Activa?</label>
+                            <div class="row mb-3">
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" name="activo_e" type="checkbox" value="1" id="activo_e">
+                                        <label class="form-check-label fw-bold" for="activo_e">¿Sucursal Activa?</label>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" name="es_default_e" type="checkbox" value="1" id="es_default_e">
+                                        <label class="form-check-label fw-bold text-primary" for="es_default_e"><i class="bi bi-star-fill text-warning me-1"></i> ¿Sucursal Predeterminada (Default)?</label>
+                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -454,6 +502,8 @@ $googleApiKey = defined('GOOGLE_MAPS_API_KEY') ? trim(GOOGLE_MAPS_API_KEY) : '';
                     var longitud = $btn.data('longitud');
                     var horario = $btn.data('horario');
                     var whatsapp = $btn.data('whatsapp');
+                    var wa_instancia = $btn.data('wa-instancia');
+                    var es_default = $btn.data('es-default');
                     var activo = $btn.data('activo');
 
                     $("#ModalLabelTitle").html("Editar sucursal: " + desc_sucursal + " (#" + id_sucursal + ")");
@@ -464,6 +514,8 @@ $googleApiKey = defined('GOOGLE_MAPS_API_KEY') ? trim(GOOGLE_MAPS_API_KEY) : '';
                     $("#longitud_e").val(longitud);
                     $("#horario_e").val(horario);
                     $("#whatsapp_e").val(whatsapp);
+                    $("#wa_instancia_e").val(wa_instancia || '');
+                    $("#es_default_e").prop("checked", es_default == 1);
                     $("#activo_e").prop("checked", activo == 1);
                 });
 

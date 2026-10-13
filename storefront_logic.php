@@ -55,13 +55,32 @@ if (empty($_SESSION['csrf_token'])) {
     }
 }
 
+function storefront_get_default_branch(?mysqli $link = null): array
+{
+    if (!$link instanceof mysqli) {
+        return [];
+    }
+    $res = mysqli_query($link, "SELECT * FROM cc_sucursales WHERE es_default = 1 AND activo = 1 LIMIT 1");
+    if ($res && $row = mysqli_fetch_assoc($res)) {
+        return $row;
+    }
+    $res2 = mysqli_query($link, "SELECT * FROM cc_sucursales WHERE activo = 1 ORDER BY id_sucursal ASC LIMIT 1");
+    if ($res2 && $row2 = mysqli_fetch_assoc($res2)) {
+        return $row2;
+    }
+    return [];
+}
+
 $feedback = ['type' => '', 'message' => ''];
 $orderSuccess = null;
+$defaultBranchRow = (isset($link) && $link instanceof mysqli) ? storefront_get_default_branch($link) : [];
+$defaultBranchId = !empty($defaultBranchRow['id_sucursal']) ? (string)$defaultBranchRow['id_sucursal'] : '1';
+
 $formData = [
     'cliente_nombre' => '',
     'cliente_telefono' => '',
     'cliente_email' => '',
-    'id_sucursal' => '1',
+    'id_sucursal' => $defaultBranchId,
     'tipo_entrega' => 'recoger',
     'direccion_entrega' => '',
     'referencias_ubicacion' => '',
@@ -676,7 +695,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         $phone = trim((string)($_POST['phone'] ?? ''));
         $direccion = trim((string)($_POST['direccion'] ?? ''));
         $tipoEntrega = trim((string)($_POST['tipo_entrega'] ?? 'recoger'));
-        $idSucursal = (int)($_POST['id_sucursal'] ?? 1);
+        $idSucursal = (int)($_POST['id_sucursal'] ?? 0);
+        $context = trim((string)($_POST['context'] ?? 'checkout'));
         $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
 
         if (strlen($cleanPhone) < 10) {
@@ -684,7 +704,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             exit;
         }
 
-        if (storefront_is_phone_verified($link, $cleanPhone, $direccion, $tipoEntrega)) {
+        if ($context !== 'mis_pedidos' && storefront_is_phone_verified($link, $cleanPhone, $direccion, $tipoEntrega)) {
             echo json_encode(['ok' => true, 'already_verified' => true, 'message' => 'Este número y dirección ya están verificados previamente.']);
             exit;
         }
@@ -694,20 +714,32 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
         $_SESSION['otp_phone'] = $cleanPhone;
         $_SESSION['otp_address'] = $direccion;
         $_SESSION['otp_id_sucursal'] = $idSucursal;
+        $_SESSION['otp_context'] = $context;
 
-        $sentViaEvolution = storefront_send_evolution_whatsapp_otp($cleanPhone, $code, $idSucursal, $link);
+        $sentViaEvolution = storefront_send_evolution_whatsapp_otp($cleanPhone, $code, $idSucursal, $link, $context);
 
         $branchPhone = '525514345414';
-        if ($link instanceof mysqli && $idSucursal > 0) {
-            $resSuc = mysqli_query($link, "SELECT whatsapp FROM cc_sucursales WHERE id_sucursal = " . (int)$idSucursal);
-            if ($resSuc && $rowSuc = mysqli_fetch_assoc($resSuc)) {
-                $bWa = preg_replace('/[^0-9]/', '', (string)($rowSuc['whatsapp'] ?? ''));
+        if ($link instanceof mysqli) {
+            $branchRow = null;
+            if ($idSucursal > 0) {
+                $resSuc = mysqli_query($link, "SELECT whatsapp FROM cc_sucursales WHERE id_sucursal = " . (int)$idSucursal);
+                if ($resSuc) $branchRow = mysqli_fetch_assoc($resSuc);
+            }
+            if (!$branchRow) {
+                $resDef = mysqli_query($link, "SELECT whatsapp FROM cc_sucursales WHERE es_default = 1 LIMIT 1");
+                if ($resDef) $branchRow = mysqli_fetch_assoc($resDef);
+            }
+            if ($branchRow) {
+                $bWa = preg_replace('/[^0-9]/', '', (string)($branchRow['whatsapp'] ?? ''));
                 if (!empty($bWa)) {
                     $branchPhone = (strlen($bWa) === 10) ? '52' . $bWa : $bWa;
                 }
             }
         }
-        $text = urlencode("Hola Carnicería Cano, mi código de verificación para mi pedido online es: CANO-" . $code);
+        $introText = ($context === 'mis_pedidos') 
+            ? "Hola Carnicería Cano, mi código para consultar mis compras es: CANO-" . $code
+            : "Hola Carnicería Cano, mi código de verificación para mi pedido online es: CANO-" . $code;
+        $text = urlencode($introText);
         $waUrl = "https://api.whatsapp.com/send?phone=" . $branchPhone . "&text=" . $text;
 
         echo json_encode([
@@ -716,7 +748,7 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             'wa_url' => $waUrl,
             'auto_sent' => $sentViaEvolution,
             'message' => $sentViaEvolution 
-                ? '¡Te enviamos un código de 4 dígitos a tu WhatsApp por Evolution Manager! Ingrésalo a continuación.' 
+                ? '¡Te enviamos un código de 4 dígitos a tu WhatsApp! Ingrésalo a continuación.' 
                 : 'Código generado. Envía tu código por WhatsApp o ingresa los 4 dígitos.'
         ]);
         exit;
@@ -734,7 +766,9 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
 
         if ($userCode !== '' && $sessCode !== '' && $userCode === $sessCode) {
             storefront_mark_phone_as_verified($link, $cleanPhone, $direccion);
-            echo json_encode(['ok' => true, 'message' => '¡Teléfono y dirección verificados correctamente!']);
+            // Revocar/eliminar automáticamente el mensaje en WhatsApp al autenticar
+            storefront_revoke_whatsapp_otp();
+            echo json_encode(['ok' => true, 'message' => '¡Código verificado con éxito! Acceso autorizado.']);
         } else {
             echo json_encode(['ok' => false, 'message' => 'Código de verificación incorrecto. Intenta de nuevo.']);
         }
@@ -1218,6 +1252,23 @@ function storefront_is_phone_verified(mysqli $link, string $phone, string $addre
     return false;
 }
 
+function storefront_is_device_verified_phone(string $phone): bool
+{
+    $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
+    if (strlen($cleanPhone) < 10) {
+        return false;
+    }
+    if (isset($_SESSION['verified_phones'][$cleanPhone]) && $_SESSION['verified_phones'][$cleanPhone] === true) {
+        return true;
+    }
+    $cookieName = 'cano_ver_' . substr(md5($cleanPhone), 0, 8);
+    if (isset($_COOKIE[$cookieName]) && $_COOKIE[$cookieName] === sha1($cleanPhone . '_cano_verified_salt')) {
+        $_SESSION['verified_phones'][$cleanPhone] = true;
+        return true;
+    }
+    return false;
+}
+
 function storefront_mark_phone_as_verified(mysqli $link, string $phone, string $address = ''): bool
 {
     $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
@@ -1233,6 +1284,7 @@ function storefront_mark_phone_as_verified(mysqli $link, string $phone, string $
     $cookieName = 'cano_ver_' . substr(md5($cleanPhone), 0, 8);
     $cookieValue = sha1($cleanPhone . '_cano_verified_salt');
     setcookie($cookieName, $cookieValue, time() + (180 * 86400), '/');
+    setcookie('cano_last_verified_phone', $cleanPhone, time() + (180 * 86400), '/');
 
     // Registrar dirección como verificada para esta memoria/dispositivo (180 días)
     $cleanAddr = trim(mb_strtolower($address));
@@ -1258,7 +1310,7 @@ function storefront_mark_phone_as_verified(mysqli $link, string $phone, string $
     return true;
 }
 
-function storefront_send_evolution_whatsapp_otp(string $phone, string $code, int $idSucursal = 1, ?mysqli $link = null): bool
+function storefront_send_evolution_whatsapp_otp(string $phone, string $code, int $idSucursal = 0, ?mysqli $link = null, string $context = 'checkout'): bool
 {
     $cleanPhone = preg_replace('/[^0-9]/', '', $phone);
     if (strlen($cleanPhone) === 10) {
@@ -1269,11 +1321,12 @@ function storefront_send_evolution_whatsapp_otp(string $phone, string $code, int
 
     $apiUrl = (defined('EVOLUTION_API_URL') && EVOLUTION_API_URL !== '') ? rtrim(EVOLUTION_API_URL, '/') : 'https://wa.abstrings.com';
     $apiKey = (defined('EVOLUTION_API_KEY') && EVOLUTION_API_KEY !== '') ? EVOLUTION_API_KEY : 'CarniceriaCano2026ClaveSegura';
-    $instance = (defined('EVOLUTION_INSTANCE_NAME') && EVOLUTION_INSTANCE_NAME !== '') ? EVOLUTION_INSTANCE_NAME : 'pruebas';
+    $instance = '';
     $branchName = 'Carnicería Cano';
 
+    // 1. Si se especificó una sucursal, buscar sus datos e instancia
     if ($link instanceof mysqli && $idSucursal > 0) {
-        $stmt = mysqli_prepare($link, "SELECT desc_sucursal, whatsapp FROM cc_sucursales WHERE id_sucursal = ? LIMIT 1");
+        $stmt = mysqli_prepare($link, "SELECT desc_sucursal, whatsapp, wa_instancia FROM cc_sucursales WHERE id_sucursal = ? LIMIT 1");
         if ($stmt) {
             mysqli_stmt_bind_param($stmt, 'i', $idSucursal);
             mysqli_stmt_execute($stmt);
@@ -1282,17 +1335,30 @@ function storefront_send_evolution_whatsapp_otp(string $phone, string $code, int
                 if (!empty($row['desc_sucursal'])) {
                     $branchName = 'Carnicería Cano (' . $row['desc_sucursal'] . ')';
                 }
-                $sucWa = preg_replace('/[^0-9]/', '', (string)($row['whatsapp'] ?? ''));
-                if ($idSucursal === 5 || $sucWa === '5565559639') {
-                    $instance = 'test_abstrings';
-                } elseif ($sucWa === '5514345414') {
-                    $instance = 'pruebas';
-                } elseif ($sucWa === '5520612241') {
-                    $instance = 'prod_abstrings';
+                if (!empty($row['wa_instancia'])) {
+                    $instance = trim((string)$row['wa_instancia']);
                 }
             }
             mysqli_stmt_close($stmt);
         }
+    }
+
+    // 2. Si no hay instancia aún, buscar la sucursal predeterminada (es_default = 1)
+    if (empty($instance) && $link instanceof mysqli) {
+        $resDef = mysqli_query($link, "SELECT desc_sucursal, whatsapp, wa_instancia FROM cc_sucursales WHERE es_default = 1 AND activo = 1 LIMIT 1");
+        if ($resDef && $rowDef = mysqli_fetch_assoc($resDef)) {
+            if (!empty($rowDef['desc_sucursal']) && $idSucursal <= 0) {
+                $branchName = 'Carnicería Cano (' . $rowDef['desc_sucursal'] . ')';
+            }
+            if (!empty($rowDef['wa_instancia'])) {
+                $instance = trim((string)$rowDef['wa_instancia']);
+            }
+        }
+    }
+
+    // 3. Fallback a constante global
+    if (empty($instance)) {
+        $instance = (defined('EVOLUTION_INSTANCE_NAME') && EVOLUTION_INSTANCE_NAME !== '') ? EVOLUTION_INSTANCE_NAME : 'pruebas';
     }
 
     if (empty($apiUrl) || empty($apiKey) || empty($instance)) {
@@ -1300,7 +1366,11 @@ function storefront_send_evolution_whatsapp_otp(string $phone, string $code, int
     }
 
     $endpoint = $apiUrl . '/message/sendText/' . rawurlencode($instance);
-    $messageText = "🥩 *{$branchName}*\n\nTu código de verificación de pedido es: *{$code}*\n\nPor favor ingresa este código de 4 dígitos en la pantalla para confirmar tu pedido.";
+    if ($context === 'mis_pedidos') {
+        $messageText = "🥩 *{$branchName}*\n\nTu código de verificación para consultar tus compras es: *{$code}*\n\nPor favor ingresa este código de 4 dígitos en la pantalla para ver tu historial de pedidos.";
+    } else {
+        $messageText = "🥩 *{$branchName}*\n\nTu código de verificación de pedido es: *{$code}*\n\nPor favor ingresa este código de 4 dígitos en la pantalla para confirmar tu pedido.";
+    }
 
     $data = [
         'number' => $cleanPhone,
@@ -1315,7 +1385,7 @@ function storefront_send_evolution_whatsapp_otp(string $phone, string $code, int
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data, JSON_UNESCAPED_UNICODE));
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         'Content-Type: application/json',
-        'apikey: ' . $apiKey
+        'apikey' => $apiKey
     ]);
     curl_setopt($ch, CURLOPT_TIMEOUT, 10);
     $response = curl_exec($ch);
@@ -1323,14 +1393,59 @@ function storefront_send_evolution_whatsapp_otp(string $phone, string $code, int
     curl_close($ch);
 
     $responseData = json_decode((string)$response, true);
-    if ($httpCode === 200 || $httpCode === 201) {
-        return true;
-    }
-    if (isset($responseData['key']['id']) || (isset($responseData['status']) && $responseData['status'] === 'PENDING')) {
+    if ($httpCode === 200 || $httpCode === 201 || isset($responseData['key']['id']) || (isset($responseData['status']) && $responseData['status'] === 'PENDING')) {
+        // Guardar detalles del mensaje para revocar/eliminar cuando el usuario se firme
+        if (!empty($responseData['key']['id'])) {
+            $_SESSION['otp_msg_id'] = (string)$responseData['key']['id'];
+            $_SESSION['otp_remote_jid'] = (string)($responseData['key']['remoteJid'] ?? ($cleanPhone . '@s.whatsapp.net'));
+            $_SESSION['otp_instance'] = $instance;
+        }
         return true;
     }
 
     return false;
+}
+
+/**
+ * Elimina/revoca el mensaje del código OTP de WhatsApp para todos una vez validado
+ */
+function storefront_revoke_whatsapp_otp(?string $instance = null, ?string $remoteJid = null, ?string $msgId = null): bool
+{
+    $inst = $instance ?: ($_SESSION['otp_instance'] ?? '');
+    $jid = $remoteJid ?: ($_SESSION['otp_remote_jid'] ?? '');
+    $id = $msgId ?: ($_SESSION['otp_msg_id'] ?? '');
+
+    if (empty($inst) || empty($id) || empty($jid)) {
+        return false;
+    }
+
+    $apiUrl = (defined('EVOLUTION_API_URL') && EVOLUTION_API_URL !== '') ? rtrim(EVOLUTION_API_URL, '/') : 'https://wa.abstrings.com';
+    $apiKey = (defined('EVOLUTION_API_KEY') && EVOLUTION_API_KEY !== '') ? EVOLUTION_API_KEY : 'CarniceriaCano2026ClaveSegura';
+
+    $endpoint = $apiUrl . '/chat/deleteMessageForEveryone/' . rawurlencode($inst);
+    $payload = [
+        'id' => $id,
+        'remoteJid' => $jid,
+        'fromMe' => true
+    ];
+
+    $ch = curl_init($endpoint);
+    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+    curl_setopt($ch, CURLOPT_CUSTOMREQUEST, 'DELETE');
+    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+    curl_setopt($ch, CURLOPT_HTTPHEADER, [
+        'Content-Type: application/json',
+        'apikey' => $apiKey
+    ]);
+    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+    $response = curl_exec($ch);
+    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+    curl_close($ch);
+
+    unset($_SESSION['otp_msg_id'], $_SESSION['otp_remote_jid'], $_SESSION['otp_instance']);
+    return ($httpCode === 200 || $httpCode === 201);
 }
 
 function storefront_fetch_customer_orders(mysqli $link, string $phone, string $filterRange = 'all'): array
