@@ -8,3 +8,7 @@ backups/
 logs/
 scratch/
 nbproject/private/
+uploads/*
+!uploads/.gitkeep
+*.orig
+*.bak
