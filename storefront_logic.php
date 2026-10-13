@@ -1007,7 +1007,14 @@ foreach ($products as $product) {
     }
     $categoryCounts[$product['categoria']]++;
 }
-ksort($categoryCounts, SORT_NATURAL | SORT_FLAG_CASE);
+uksort($categoryCounts, function ($catA, $catB) use ($categoryCounts) {
+    $countA = $categoryCounts[$catA];
+    $countB = $categoryCounts[$catB];
+    if ($countA !== $countB) {
+        return $countB <=> $countA;
+    }
+    return strcasecmp($catA, $catB);
+});
 
 $filteredProducts = [];
 $isInitialCatalog = $selectedCategory === '' && $searchTerm === '' && !$showAll;

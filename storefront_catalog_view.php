@@ -300,6 +300,69 @@ document.addEventListener('DOMContentLoaded', function () {
     var commentModalEl = document.getElementById('productCommentModal');
     var commentModal = commentModalEl && typeof bootstrap !== 'undefined' ? new bootstrap.Modal(commentModalEl) : null;
 
+    // Persistencia y estabilidad del scroll del carrusel de categorías
+    var carouselTrack = document.getElementById('categoryCarouselTrack');
+    if (carouselTrack) {
+        var savedTrackScroll = sessionStorage.getItem('cano_cat_scroll');
+        if (savedTrackScroll !== null) {
+            carouselTrack.scrollLeft = parseFloat(savedTrackScroll);
+        }
+        carouselTrack.addEventListener('scroll', function () {
+            sessionStorage.setItem('cano_cat_scroll', carouselTrack.scrollLeft);
+        }, { passive: true });
+    }
+
+    // Función unificada para actualizar catálogo sin mover ni resetear el carrusel
+    function updateCatalogContent(newDoc, targetUrl) {
+        var currentTrack = document.getElementById('categoryCarouselTrack');
+        var newTrack = newDoc.getElementById('categoryCarouselTrack');
+
+        // 1. Sincronizar clases activas en los chips del carrusel SIN tocar el scroll del carrusel
+        if (currentTrack && newTrack) {
+            var currentScrollLeft = currentTrack.scrollLeft;
+            var currentChips = currentTrack.querySelectorAll('.category-chip-btn');
+            var newChips = newTrack.querySelectorAll('.category-chip-btn');
+
+            newChips.forEach(function (newChip, idx) {
+                if (currentChips[idx]) {
+                    if (newChip.classList.contains('active')) {
+                        currentChips[idx].classList.add('active');
+                    } else {
+                        currentChips[idx].classList.remove('active');
+                    }
+                }
+            });
+
+            // Evitar que el carrusel se mueva o se regrese: restaurar estrictamente scrollLeft
+            currentTrack.scrollLeft = currentScrollLeft;
+            sessionStorage.setItem('cano_cat_scroll', currentScrollLeft);
+        }
+
+        // 2. Actualizar el contenido principal (productos, paginación, sidebar)
+        var currentMain = document.getElementById('catalog-main-content');
+        var newMain = newDoc.getElementById('catalog-main-content');
+        if (currentMain && newMain) {
+            currentMain.innerHTML = newMain.innerHTML;
+            currentMain.style.opacity = '1';
+        }
+
+        // 3. Sincronizar alertas si existen
+        var currentFeedback = document.querySelector('#catalog-container > .alert');
+        var newFeedback = newDoc.querySelector('#catalog-container > .alert');
+        if (currentFeedback && newFeedback) {
+            currentFeedback.replaceWith(newFeedback);
+        } else if (newFeedback) {
+            var container = document.getElementById('catalog-container');
+            if (container) container.insertBefore(newFeedback, container.firstChild);
+        } else if (currentFeedback) {
+            currentFeedback.remove();
+        }
+
+        if (targetUrl) {
+            history.pushState(null, '', targetUrl);
+        }
+    }
+
     // Interceptor de Navegación AJAX (Categorías, Paginación, Limpiar Filtros)
     document.addEventListener('click', function (e) {
         var link = e.target.closest('.ajax-nav-link');
@@ -311,24 +374,15 @@ document.addEventListener('DOMContentLoaded', function () {
 
         var cleanUrl = targetUrl.replace(/#.*$/, '');
         var fetchUrl = cleanUrl + (cleanUrl.indexOf('?') !== -1 ? '&ajax=1' : '?ajax=1');
-        var currentContent = document.getElementById('catalogo');
-        if (currentContent) currentContent.style.opacity = '0.55';
+        var currentMain = document.getElementById('catalog-main-content');
+        if (currentMain) currentMain.style.opacity = '0.55';
 
         fetch(fetchUrl)
             .then(function (res) { return res.text(); })
             .then(function (html) {
                 var parser = new DOMParser();
                 var doc = parser.parseFromString(html, 'text/html');
-                var newContent = doc.getElementById('catalogo');
-                var currentContent = document.getElementById('catalogo');
-
-                if (newContent && currentContent) {
-                    currentContent.innerHTML = newContent.innerHTML;
-                    currentContent.style.opacity = '1';
-                    history.pushState(null, '', targetUrl);
-                } else if (currentContent) {
-                    currentContent.style.opacity = '1';
-                }
+                updateCatalogContent(doc, targetUrl);
             })
             .catch(function (err) {
                 window.location.href = targetUrl;
@@ -345,24 +399,15 @@ document.addEventListener('DOMContentLoaded', function () {
         var searchParams = new URLSearchParams(formData);
         var targetUrl = 'index.php?' + searchParams.toString() + '#catalogo';
         var fetchUrl = 'index.php?' + searchParams.toString() + '&ajax=1';
-        var currentContent = document.getElementById('catalogo');
-        if (currentContent) currentContent.style.opacity = '0.55';
+        var currentMain = document.getElementById('catalog-main-content');
+        if (currentMain) currentMain.style.opacity = '0.55';
 
         fetch(fetchUrl)
             .then(function (res) { return res.text(); })
             .then(function (html) {
                 var parser = new DOMParser();
                 var doc = parser.parseFromString(html, 'text/html');
-                var newContent = doc.getElementById('catalogo');
-                var currentContent = document.getElementById('catalogo');
-
-                if (newContent && currentContent) {
-                    currentContent.innerHTML = newContent.innerHTML;
-                    currentContent.style.opacity = '1';
-                    history.pushState(null, '', targetUrl);
-                } else if (currentContent) {
-                    currentContent.style.opacity = '1';
-                }
+                updateCatalogContent(doc, targetUrl);
             })
             .catch(function (err) {
                 window.location.href = targetUrl;
@@ -371,7 +416,20 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Soporte para botón "Atrás" del navegador en navegación AJAX
     window.addEventListener('popstate', function () {
-        window.location.reload();
+        var fetchUrl = window.location.href + (window.location.href.indexOf('?') !== -1 ? '&ajax=1' : '?ajax=1');
+        var currentMain = document.getElementById('catalog-main-content');
+        if (currentMain) currentMain.style.opacity = '0.55';
+
+        fetch(fetchUrl)
+            .then(function (res) { return res.text(); })
+            .then(function (html) {
+                var parser = new DOMParser();
+                var doc = parser.parseFromString(html, 'text/html');
+                updateCatalogContent(doc, null);
+            })
+            .catch(function () {
+                window.location.reload();
+            });
     });
 
     // Interceptor de Agregar al Carrito: Despliega Modal de Comentarios
