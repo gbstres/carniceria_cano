@@ -30,13 +30,23 @@ body, button, input, select, textarea,
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif !important;
 }
 
-/* Fondo unificado en todo el sitio (Elimina franjas naranjas desalineadas) */
-html, body, body.mobile-first-app {
+/* Fondo unificado en todo el sitio (Elimina franjas naranjas desalineadas) y prevención de desborde horizontal */
+html, body {
     background: #F7F3EE !important;
     color: var(--cano-text-main) !important;
     margin: 0;
     padding: 0;
     -webkit-tap-highlight-color: transparent;
+    overflow-x: hidden !important;
+    overflow-x: clip !important;
+    max-width: 100vw;
+}
+
+body.mobile-first-app {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden !important;
+    overflow-x: clip !important;
 }
 
 /* Banner de Encabezado Unificado y Consistente para todas las páginas */
@@ -741,11 +751,13 @@ html, body, body.mobile-first-app {
    ========================================================================== */
 #storefrontMap {
     width: 100%;
+    max-width: 100%;
     height: 320px;
     border-radius: 16px;
     box-shadow: 0 6px 18px rgba(0, 0, 0, 0.12);
     z-index: 1;
     border: 2px solid var(--cano-gold);
+    overflow: hidden !important;
 }
 
 .map-branch-card {

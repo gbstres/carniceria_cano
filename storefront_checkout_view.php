@@ -10,6 +10,17 @@ $maxDeliveryKm = defined('STOREFRONT_DELIVERY_MAX_KM') ? (float)STOREFRONT_DELIV
 $cartSubtotal = (float)($cartTotals['subtotal'] ?? 0.0);
 ?>
 <style>
+.checkout-section,
+.checkout-panel,
+.summary-card {
+    max-width: 100%;
+}
+.checkout-form .form-control,
+.checkout-form .form-select,
+.checkout-form .input-group {
+    max-width: 100% !important;
+    box-sizing: border-box !important;
+}
 .checkout-form .form-control,
 .checkout-form .form-select,
 .checkout-form .input-group,
@@ -18,6 +29,33 @@ $cartSubtotal = (float)($cartTotals['subtotal'] ?? 0.0);
 .checkout-form .input-group > .btn {
     min-height: 50px !important;
     height: 50px !important;
+}
+.checkout-form .input-group > .form-control {
+    min-width: 0 !important;
+}
+.checkout-form select,
+#id_sucursal,
+#metodo_pago,
+#tipo_entrega {
+    max-width: 100% !important;
+    width: 100% !important;
+    text-overflow: ellipsis;
+    overflow: hidden;
+    white-space: nowrap;
+}
+#storefrontMap {
+    max-width: 100% !important;
+    overflow: hidden !important;
+}
+.delivery-option-card,
+.branch-select-card {
+    max-width: 100%;
+    word-break: break-word;
+    overflow-wrap: break-word;
+}
+.branch-select-card > div:first-child {
+    min-width: 0;
+    flex: 1 1 auto;
 }
 .delivery-option-card {
     cursor: pointer;
@@ -184,7 +222,7 @@ $cartSubtotal = (float)($cartTotals['subtotal'] ?? 0.0);
                                             <div class="d-flex align-items-start">
                                                 <input class="form-check-input mt-1 me-3 fs-5" type="radio" name="tipo_entrega_radio" id="radioRecoger" value="recoger" <?php echo $formData['tipo_entrega'] === 'recoger' ? 'checked' : ''; ?> onchange="setDeliveryType('recoger')">
                                                 <div class="flex-grow-1">
-                                                    <div class="d-flex align-items-center justify-content-between">
+                                                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-1">
                                                         <strong class="text-dark fs-6"><i class="bi bi-shop text-danger me-1"></i> Recoger en Sucursal</strong>
                                                         <span class="badge bg-success-subtle text-success border border-success fw-bold small">Gratis</span>
                                                     </div>
@@ -200,7 +238,7 @@ $cartSubtotal = (float)($cartTotals['subtotal'] ?? 0.0);
                                             <div class="d-flex align-items-start">
                                                 <input class="form-check-input mt-1 me-3 fs-5" type="radio" name="tipo_entrega_radio" id="radioDomicilio" value="domicilio" <?php echo $formData['tipo_entrega'] === 'domicilio' ? 'checked' : ''; ?> onchange="setDeliveryType('domicilio')">
                                                 <div class="flex-grow-1">
-                                                    <div class="d-flex align-items-center justify-content-between">
+                                                    <div class="d-flex align-items-center justify-content-between flex-wrap gap-1">
                                                         <strong class="text-dark fs-6"><i class="bi bi-truck text-danger me-1"></i> Entrega a Domicilio</strong>
                                                         <span class="badge bg-danger-subtle text-danger border border-danger fw-bold small" id="badgeDeliveryHeader">Envío desde $<?php echo number_format($deliveryBaseCost, 2); ?></span>
                                                     </div>
@@ -270,9 +308,9 @@ $cartSubtotal = (float)($cartTotals['subtotal'] ?? 0.0);
                                     </div>
                                     <div class="mb-3">
                                         <label class="form-label fw-bold text-dark small" for="id_sucursal"><i class="bi bi-shop text-warning me-1"></i> Sucursal que prepara y despacha tu pedido *</label>
-                                        <select class="form-select fw-semibold" id="id_sucursal" name="id_sucursal" onchange="selectBranchFromSelect()">
+                                        <select class="form-select fw-semibold" id="id_sucursal" name="id_sucursal" onchange="selectBranchFromSelect()" style="max-width: 100%; width: 100%; text-overflow: ellipsis; overflow: hidden;">
                                             <?php foreach ($checkoutBranches as $branch): ?>
-                                                <option value="<?php echo (int) $branch['id_sucursal']; ?>" <?php echo $formData['id_sucursal'] === (string) $branch['id_sucursal'] ? 'selected' : ''; ?>><?php echo storefront_escape($branch['desc_sucursal']); ?> (<?php echo storefront_escape($branch['direccion']); ?> · <?php echo storefront_escape($branch['horario']); ?>)</option>
+                                                <option value="<?php echo (int) $branch['id_sucursal']; ?>" <?php echo $formData['id_sucursal'] === (string) $branch['id_sucursal'] ? 'selected' : ''; ?>><?php echo storefront_escape($branch['desc_sucursal']); ?> · <?php echo storefront_escape($branch['direccion']); ?></option>
                                             <?php endforeach; ?>
                                         </select>
                                     </div>
@@ -347,7 +385,7 @@ $cartSubtotal = (float)($cartTotals['subtotal'] ?? 0.0);
                                         <input class="form-control" type="text" id="cliente_nombre" name="cliente_nombre" value="<?php echo storefront_escape($formData['cliente_nombre']); ?>" placeholder="Ej: Juan Pérez" required>
                                     </div>
                                     <div class="col-md-6">
-                                        <div class="d-flex align-items-center justify-content-between mb-2" style="min-height: 21px;">
+                                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-1 mb-2" style="min-height: 21px;">
                                             <label class="form-label fw-bold text-dark small m-0" for="cliente_telefono"><i class="bi bi-telephone-fill text-danger me-1"></i> Teléfono de Contacto (WhatsApp) *</label>
                                             <div id="phoneVerificationBadge"></div>
                                         </div>
