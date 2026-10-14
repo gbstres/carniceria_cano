@@ -460,6 +460,25 @@ function storefront_fetch_branch_name(mysqli $link, $idSucursal)
     return 'Sucursal ' . $idSucursal;
 }
 
+function storefront_format_branch_title(string $name): string
+{
+    $name = trim($name);
+    if ($name === '') {
+        return 'Sucursal';
+    }
+    if (preg_match('/^SUC\.?\s+/i', $name)) {
+        $name = preg_replace('/^SUC\.?\s+/i', '', $name);
+    } elseif (preg_match('/^SUCURSAL\s+/i', $name)) {
+        $name = preg_replace('/^SUCURSAL\s+/i', '', $name);
+    }
+
+    if (mb_strtoupper($name, 'UTF-8') === $name) {
+        $name = mb_convert_case(mb_strtolower($name, 'UTF-8'), MB_CASE_TITLE, 'UTF-8');
+    }
+
+    return 'Sucursal ' . $name;
+}
+
 function storefront_fetch_active_branches(mysqli $link): array
 {
     $branches = [];
@@ -478,15 +497,26 @@ function storefront_fetch_active_branches(mysqli $link): array
         mysqli_free_result($checkCols);
     }
 
-    $result = mysqli_query($link, "SELECT id_sucursal, desc_sucursal, direccion, latitud, longitud, horario, whatsapp
+    $checkInst = mysqli_query($link, "SHOW COLUMNS FROM cc_sucursales LIKE 'wa_instancia'");
+    if ($checkInst && mysqli_num_rows($checkInst) === 0) {
+        @mysqli_query($link, "ALTER TABLE cc_sucursales ADD COLUMN wa_instancia VARCHAR(100) NULL");
+    }
+    if ($checkInst) {
+        mysqli_free_result($checkInst);
+    }
+
+    $result = mysqli_query($link, "SELECT id_sucursal, desc_sucursal, direccion, latitud, longitud, horario, whatsapp, wa_instancia, es_default
         FROM cc_sucursales
         WHERE activo = 1
           AND TRIM(COALESCE(desc_sucursal, '')) <> ''
           AND TRIM(COALESCE(direccion, '')) <> ''
-          AND TRIM(COALESCE(horario, '')) <> ''
           AND latitud IS NOT NULL
           AND longitud IS NOT NULL
-        ORDER BY desc_sucursal ASC, id_sucursal ASC");
+          AND TRIM(COALESCE(latitud, '')) <> ''
+          AND TRIM(COALESCE(longitud, '')) <> ''
+          AND wa_instancia IS NOT NULL
+          AND TRIM(COALESCE(wa_instancia, '')) <> ''
+        ORDER BY id_sucursal ASC");
     if ($result) {
         while ($row = mysqli_fetch_assoc($result)) {
             $branches[(int)$row['id_sucursal']] = $row;

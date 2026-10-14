@@ -178,7 +178,7 @@ function storefront_render_header($title, $currentPage, array $cartTotals)
                     <span class="branch-hours-track">
                         <?php for ($copy = 0; $copy < 2; $copy++): ?>
                             <?php foreach ($headerBranches as $branch): ?>
-                                <span class="branch-hours-item"><strong><?php echo storefront_escape($branch['desc_sucursal']); ?>:</strong> <?php echo storefront_escape($branch['horario']); ?> · <?php echo storefront_escape($branch['direccion']); ?></span>
+                                <span class="branch-hours-item"><strong><?php echo storefront_escape(function_exists('storefront_format_branch_title') ? storefront_format_branch_title($branch['desc_sucursal']) : $branch['desc_sucursal']); ?>:</strong> <?php echo storefront_escape($branch['horario']); ?> · <?php echo storefront_escape($branch['direccion']); ?></span>
                             <?php endforeach; ?>
                         <?php endfor; ?>
                     </span>
@@ -331,33 +331,120 @@ function storefront_render_header($title, $currentPage, array $cartTotals)
 function storefront_render_footer()
 {
     $cartCount = !empty($_SESSION['store_cart']) ? count($_SESSION['store_cart']) : 0;
+    global $storefrontBranches, $link;
+    if ((!isset($storefrontBranches) || empty($storefrontBranches)) && isset($link) && $link instanceof mysqli) {
+        $storefrontBranches = storefront_fetch_active_branches($link);
+    }
+    $footerBranches = is_array($storefrontBranches ?? null) ? $storefrontBranches : [];
+
+    // Fallback de seguridad en caso de desconexión temporal de BD
+    if (empty($footerBranches)) {
+        $footerBranches = [
+            1 => [
+                'id_sucursal' => 1,
+                'desc_sucursal' => 'Sucursal Ecatepec',
+                'direccion' => 'C. Miguel Hidalgo 19, San Cristóbal Centro, 55000 Ecatepec, Méx.',
+                'latitud' => '19.6021539',
+                'longitud' => '-99.0451077',
+                'horario' => '7:30 AM - 3:30 PM',
+                'whatsapp' => '5534208819',
+                'wa_instancia' => 'ecatepec'
+            ],
+            2 => [
+                'id_sucursal' => 2,
+                'desc_sucursal' => 'Sucursal La Principal',
+                'direccion' => 'Nezahualcóyotl 1-Int 1, Olímpica Jajalpa, 55090 Ecatepec, Méx.',
+                'latitud' => '19.588193',
+                'longitud' => '-99.0366936',
+                'horario' => '8:00 AM - 4:00 PM',
+                'whatsapp' => '5521458855',
+                'wa_instancia' => 'olimpica'
+            ]
+        ];
+    }
     ?>
         </main>
         
-        <!-- Footer con Información de Ambas Sucursales para SEO Local y Confianza -->
+        <!-- Footer con Información de Sucursales en Carrusel Horizontal -->
         <footer class="store-footer-centered py-4 bg-white border-top">
             <div class="container text-center">
                 <img src="img/logo_1.jpeg" alt="Carnicería Cano" class="footer-logo-only mb-3" loading="lazy" decoding="async">
                 <h5 class="fw-bold text-dark font-serif mb-1">Carnicería Cano · Sucursales en Ecatepec</h5>
                 <p class="text-muted small mb-3">Calidad, frescura, higiene y peso exacto en cada uno de tus cortes.</p>
                 
-                <div class="row g-3 justify-content-center text-start mx-auto mb-3" style="max-width: 780px;">
-                    <div class="col-md-6">
-                        <div class="p-3 bg-light rounded-3 border h-100 shadow-sm">
-                            <span class="badge bg-danger mb-2"><i class="bi bi-shop me-1"></i> Sucursal Ecatepec</span>
-                            <p class="small text-dark fw-bold mb-1"><i class="bi bi-geo-alt-fill text-danger me-1"></i> C. Miguel Hidalgo 19, San Cristóbal Centro, 55000 Ecatepec, Méx.</p>
-                            <p class="small text-muted mb-1"><i class="bi bi-clock-history me-1"></i> Horario: 7:30 AM - 3:30 PM</p>
-                            <p class="small mb-0"><i class="bi bi-whatsapp text-success me-1"></i> WhatsApp: <a href="https://wa.me/525534208819" target="_blank" class="text-success fw-bold text-decoration-none">55 3420 8819</a></p>
+                <!-- Contenedor de Sucursales: Grid completo en PC / Carrusel en Móviles y Pantallas Pequeñas -->
+                <div class="branch-carousel-shell position-relative mx-auto mb-3">
+                    <button type="button" class="branch-carousel-arrow arrow-left d-lg-none" onclick="scrollBranchCarousel(-320)" aria-label="Sucursal anterior">
+                        <i class="bi bi-chevron-left"></i>
+                    </button>
+
+                    <div class="branch-horizontal-scroll-container" id="branchCarouselTrack">
+                        <div class="branch-horizontal-wrapper">
+                            <?php foreach ($footerBranches as $branch): ?>
+                                <?php
+                                $branchName = function_exists('storefront_format_branch_title') 
+                                    ? storefront_format_branch_title($branch['desc_sucursal'] ?? '') 
+                                    : ($branch['desc_sucursal'] ?? 'Sucursal');
+                                $lat = trim((string)($branch['latitud'] ?? ''));
+                                $lng = trim((string)($branch['longitud'] ?? ''));
+                                $mapsUrl = (!empty($lat) && !empty($lng))
+                                    ? 'https://www.google.com/maps?q=' . rawurlencode($lat . ',' . $lng)
+                                    : 'https://maps.google.com/?q=' . rawurlencode($branch['direccion'] ?? 'Carniceria Cano Ecatepec');
+                                
+                                $waRaw = trim((string)($branch['whatsapp'] ?? ''));
+                                $cleanWa = preg_replace('/[^0-9]/', '', $waRaw);
+                                $waDisplay = (!empty($cleanWa) && strlen($cleanWa) === 10)
+                                    ? preg_replace('/(\d{2})(\d{4})(\d{4})/', '$1 $2 $3', $cleanWa)
+                                    : ($waRaw ?: '55 3420 8819');
+                                
+                                $waMsg = 'Hola Carnicería Cano (' . $branchName . '), quisiera hacer un pedido.';
+                                $waUrl = !empty($cleanWa)
+                                    ? 'https://wa.me/52' . $cleanWa . '?text=' . rawurlencode($waMsg)
+                                    : 'https://wa.me/?text=' . rawurlencode($waMsg);
+                                
+                                $instanciaWa = trim((string)($branch['wa_instancia'] ?? ''));
+                                ?>
+                                <div class="branch-carousel-card p-3 bg-light rounded-3 border h-100 shadow-sm text-start d-flex flex-column justify-content-between">
+                                    <div>
+                                        <div class="d-flex align-items-center justify-content-between mb-2">
+                                            <span class="badge bg-danger"><i class="bi bi-shop me-1"></i> <?php echo storefront_escape($branchName); ?></span>
+                                            <a href="<?php echo storefront_escape($mapsUrl); ?>" target="_blank" rel="noopener" class="btn btn-sm btn-outline-danger py-0 px-2 rounded-pill shadow-xs" style="font-size: 0.72rem;" title="Abrir ubicación en Google Maps">
+                                                <i class="bi bi-geo-alt-fill me-1"></i> Maps
+                                            </a>
+                                        </div>
+                                        <p class="small text-dark fw-bold mb-1">
+                                            <i class="bi bi-geo-alt-fill text-danger me-1"></i>
+                                            <a href="<?php echo storefront_escape($mapsUrl); ?>" target="_blank" rel="noopener" class="text-dark text-decoration-none branch-map-link" title="Ver en Google Maps">
+                                                <?php echo storefront_escape($branch['direccion'] ?? ''); ?>
+                                            </a>
+                                        </p>
+                                        <p class="small text-muted mb-2">
+                                            <i class="bi bi-clock-history me-1"></i> Horario: <?php echo storefront_escape($branch['horario'] ?? '7:30 AM - 3:30 PM'); ?>
+                                        </p>
+                                    </div>
+                                    <div class="pt-2 border-top border-secondary border-opacity-10 mt-auto">
+                                        <p class="small mb-0 d-flex align-items-center justify-content-between flex-wrap gap-1">
+                                            <span>
+                                                <i class="bi bi-whatsapp text-success me-1"></i> WhatsApp: 
+                                                <a href="<?php echo storefront_escape($waUrl); ?>" target="_blank" rel="noopener" class="text-success fw-bold text-decoration-none">
+                                                    <?php echo storefront_escape($waDisplay); ?>
+                                                </a>
+                                            </span>
+                                            <?php if (!empty($instanciaWa)): ?>
+                                                <span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25" style="font-size: 0.7rem;" title="Instancia Evolution API: <?php echo storefront_escape($instanciaWa); ?>">
+                                                    <i class="bi bi-check-circle-fill me-1"></i> WA Activo
+                                                </span>
+                                            <?php endif; ?>
+                                        </p>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
                         </div>
                     </div>
-                    <div class="col-md-6">
-                        <div class="p-3 bg-light rounded-3 border h-100 shadow-sm">
-                            <span class="badge bg-danger mb-2"><i class="bi bi-shop me-1"></i> Sucursal La Principal</span>
-                            <p class="small text-dark fw-bold mb-1"><i class="bi bi-geo-alt-fill text-danger me-1"></i> Nezahualcóyotl 1-Int 1, Olímpica Jajalpa, 55090 Ecatepec, Méx.</p>
-                            <p class="small text-muted mb-1"><i class="bi bi-clock-history me-1"></i> Horario: 8:00 AM - 4:00 PM</p>
-                            <p class="small mb-0"><i class="bi bi-whatsapp text-success me-1"></i> WhatsApp: <a href="https://wa.me/525521458855" target="_blank" class="text-success fw-bold text-decoration-none">55 2145 8855</a></p>
-                        </div>
-                    </div>
+
+                    <button type="button" class="branch-carousel-arrow arrow-right d-lg-none" onclick="scrollBranchCarousel(320)" aria-label="Siguiente sucursal">
+                        <i class="bi bi-chevron-right"></i>
+                    </button>
                 </div>
 
                 <p class="small text-muted mb-0"><i class="bi bi-truck text-success me-1"></i> <strong>Reparto a Domicilio (Hasta 30 km):</strong> San Cristóbal Centro, Olímpica Jajalpa, Las Américas, Jardines de Morelos, Coacalco y zonas aledañas.</p>
@@ -392,6 +479,52 @@ function storefront_render_footer()
         </nav>
 
         <script src="js/bootstrap.bundle.min.js"></script>
+        <script>
+        function scrollBranchCarousel(distance) {
+            var track = document.getElementById('branchCarouselTrack');
+            if (track) {
+                track.scrollBy({ left: distance, behavior: 'smooth' });
+            }
+        }
+
+        function updateBranchCarouselArrows() {
+            var track = document.getElementById('branchCarouselTrack');
+            var leftBtn = document.querySelector('.branch-carousel-arrow.arrow-left');
+            var rightBtn = document.querySelector('.branch-carousel-arrow.arrow-right');
+            if (!track || !leftBtn || !rightBtn) return;
+            
+            // En pantallas de escritorio (PC >= 992px) es un Grid estático completo sin flechas
+            if (window.innerWidth >= 992) {
+                leftBtn.style.display = 'none';
+                rightBtn.style.display = 'none';
+                return;
+            }
+
+            var canScroll = track.scrollWidth > track.clientWidth + 8;
+            if (!canScroll) {
+                leftBtn.style.display = 'none';
+                rightBtn.style.display = 'none';
+            } else {
+                leftBtn.style.display = 'inline-flex';
+                rightBtn.style.display = 'inline-flex';
+                leftBtn.style.opacity = track.scrollLeft <= 10 ? '0.35' : '1';
+                leftBtn.style.pointerEvents = track.scrollLeft <= 10 ? 'none' : 'auto';
+                var atEnd = track.scrollLeft + track.clientWidth >= track.scrollWidth - 10;
+                rightBtn.style.opacity = atEnd ? '0.35' : '1';
+                rightBtn.style.pointerEvents = atEnd ? 'none' : 'auto';
+            }
+        }
+
+        window.addEventListener('load', function () {
+            var track = document.getElementById('branchCarouselTrack');
+            if (track) {
+                track.scrollLeft = 0;
+                track.addEventListener('scroll', updateBranchCarouselArrows);
+            }
+            updateBranchCarouselArrows();
+            window.addEventListener('resize', updateBranchCarouselArrows);
+        });
+        </script>
     </body>
 </html>
     <?php
