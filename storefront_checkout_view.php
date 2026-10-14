@@ -1322,11 +1322,21 @@ function startWhatsAppVerification() {
             if (data.ok) {
                 var otpNoticeText = document.getElementById('otpNoticeText');
                 if (otpNoticeText) {
-                    otpNoticeText.innerHTML = '<div class="alert alert-success p-3 text-center small mb-3 rounded-3 shadow-sm">' +
-                        '<i class="bi bi-whatsapp fs-4 d-block mb-1 text-success"></i>' +
-                        '<strong>¡Te enviamos un código a tu WhatsApp!</strong><br>' +
-                        'Revisa la aplicación de WhatsApp en tu teléfono e ingresa los 4 dígitos a continuación:' +
-                        '</div>';
+                    if (data.auto_sent) {
+                        otpNoticeText.innerHTML = '<div class="alert alert-success p-3 text-center small mb-3 rounded-3 shadow-sm">' +
+                            '<i class="bi bi-whatsapp fs-4 d-block mb-1 text-success"></i>' +
+                            '<strong>¡Te enviamos un código a tu WhatsApp!</strong><br>' +
+                            'Revisa la aplicación de WhatsApp en tu teléfono e ingresa los 4 dígitos a continuación:' +
+                            '</div>';
+                    } else {
+                        otpNoticeText.innerHTML = '<div class="alert alert-warning p-3 text-center small mb-3 rounded-3 shadow-sm">' +
+                            '<i class="bi bi-whatsapp fs-4 d-block mb-1 text-success"></i>' +
+                            '<strong>No pudimos enviarte el WhatsApp automático.</strong><br>' +
+                            '<span class="text-muted d-block mb-2">Abre el chat para enviar tu código a la sucursal o ingrésalo abajo:</span>' +
+                            (data.wa_url ? '<a href="' + data.wa_url + '" target="_blank" class="btn btn-sm btn-success rounded-pill fw-bold mb-2"><i class="bi bi-whatsapp me-1"></i> Abrir WhatsApp</a>' : '') +
+                            (data.code ? '<div class="fw-bold text-dark mt-1">Tu código es: <span class="badge bg-dark fs-6">' + data.code + '</span></div>' : '') +
+                            '</div>';
+                    }
                 }
 
                 var codeInput = document.getElementById('otp_input_code');

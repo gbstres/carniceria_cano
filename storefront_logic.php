@@ -1335,6 +1335,7 @@ function storefront_send_evolution_whatsapp_otp(string $phone, string $code, int
     $apiUrl = (defined('EVOLUTION_API_URL') && EVOLUTION_API_URL !== '') ? rtrim(EVOLUTION_API_URL, '/') : 'https://wa.abstrings.com';
     $apiKey = (defined('EVOLUTION_API_KEY') && EVOLUTION_API_KEY !== '') ? EVOLUTION_API_KEY : 'CarniceriaCano2026ClaveSegura';
     $instance = '';
+    $defaultInstance = '';
     $branchName = 'Carnicería Cano';
 
     // 1. Si se especificó una sucursal, buscar sus datos e instancia
@@ -1356,62 +1357,90 @@ function storefront_send_evolution_whatsapp_otp(string $phone, string $code, int
         }
     }
 
-    // 2. Si no hay instancia aún, buscar la sucursal predeterminada (es_default = 1)
-    if (empty($instance) && $link instanceof mysqli) {
+    // 2. Obtener instancia predeterminada (es_default = 1) como base o fallback
+    if ($link instanceof mysqli) {
         $resDef = mysqli_query($link, "SELECT desc_sucursal, whatsapp, wa_instancia FROM cc_sucursales WHERE es_default = 1 AND activo = 1 LIMIT 1");
         if ($resDef && $rowDef = mysqli_fetch_assoc($resDef)) {
-            if (!empty($rowDef['desc_sucursal']) && $idSucursal <= 0) {
-                $branchName = 'Carnicería Cano (' . $rowDef['desc_sucursal'] . ')';
-            }
             if (!empty($rowDef['wa_instancia'])) {
-                $instance = trim((string)$rowDef['wa_instancia']);
+                $defaultInstance = trim((string)$rowDef['wa_instancia']);
+            }
+            if (empty($instance) && !empty($defaultInstance)) {
+                $instance = $defaultInstance;
+                if (!empty($rowDef['desc_sucursal']) && $idSucursal <= 0) {
+                    $branchName = 'Carnicería Cano (' . $rowDef['desc_sucursal'] . ')';
+                }
             }
         }
     }
 
     // 3. Fallback a constante global
+    $globalFallback = (defined('EVOLUTION_INSTANCE_NAME') && EVOLUTION_INSTANCE_NAME !== '') ? EVOLUTION_INSTANCE_NAME : 'pruebas';
     if (empty($instance)) {
-        $instance = (defined('EVOLUTION_INSTANCE_NAME') && EVOLUTION_INSTANCE_NAME !== '') ? EVOLUTION_INSTANCE_NAME : 'pruebas';
+        $instance = $globalFallback;
     }
 
     if (empty($apiUrl) || empty($apiKey) || empty($instance)) {
         return false;
     }
 
-    $endpoint = $apiUrl . '/message/sendText/' . rawurlencode($instance);
     if ($context === 'mis_pedidos') {
         $messageText = "🥩 *{$branchName}*\n\nTu código de verificación para consultar tus compras es: *{$code}*\n\nPor favor ingresa este código de 4 dígitos en la pantalla para ver tu historial de pedidos.";
     } else {
         $messageText = "🥩 *{$branchName}*\n\nTu código de verificación de pedido es: *{$code}*\n\nPor favor ingresa este código de 4 dígitos en la pantalla para confirmar tu pedido.";
     }
 
-    $data = [
-        'number' => $cleanPhone,
-        'text' => $messageText
-    ];
+    $sendAttempt = function(string $inst) use ($apiUrl, $apiKey, $cleanPhone, $messageText): ?array {
+        $endpoint = $apiUrl . '/message/sendText/' . rawurlencode($inst);
+        $data = [
+            'number' => $cleanPhone,
+            'text' => $messageText
+        ];
 
-    $ch = curl_init($endpoint);
-    curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-    curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
-    curl_setopt($ch, CURLOPT_POST, true);
-    curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data, JSON_UNESCAPED_UNICODE));
-    curl_setopt($ch, CURLOPT_HTTPHEADER, [
-        'Content-Type: application/json',
-        'apikey' => $apiKey
-    ]);
-    curl_setopt($ch, CURLOPT_TIMEOUT, 10);
-    $response = curl_exec($ch);
-    $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
-    curl_close($ch);
+        $ch = curl_init($endpoint);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, 0);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($data, JSON_UNESCAPED_UNICODE));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'apikey: ' . $apiKey
+        ]);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+        $response = curl_exec($ch);
+        $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+        curl_close($ch);
 
-    $responseData = json_decode((string)$response, true);
-    if ($httpCode === 200 || $httpCode === 201 || isset($responseData['key']['id']) || (isset($responseData['status']) && $responseData['status'] === 'PENDING')) {
-        // Guardar detalles del mensaje para revocar/eliminar cuando el usuario se firme
-        if (!empty($responseData['key']['id'])) {
-            $_SESSION['otp_msg_id'] = (string)$responseData['key']['id'];
-            $_SESSION['otp_remote_jid'] = (string)($responseData['key']['remoteJid'] ?? ($cleanPhone . '@s.whatsapp.net'));
-            $_SESSION['otp_instance'] = $instance;
+        $responseData = json_decode((string)$response, true);
+        if ($httpCode === 200 || $httpCode === 201 || isset($responseData['key']['id']) || (isset($responseData['status']) && $responseData['status'] === 'PENDING')) {
+            return [
+                'success' => true,
+                'instance' => $inst,
+                'msg_id' => (string)($responseData['key']['id'] ?? ''),
+                'remote_jid' => (string)($responseData['key']['remoteJid'] ?? ($cleanPhone . '@s.whatsapp.net'))
+            ];
+        }
+        return null;
+    };
+
+    // Intentar con la instancia asignada a la sucursal
+    $result = $sendAttempt($instance);
+
+    // Si falló y tenemos una instancia default distinta, intentar con el default
+    if (!$result && !empty($defaultInstance) && $defaultInstance !== $instance) {
+        $result = $sendAttempt($defaultInstance);
+    }
+
+    // Si aún falló y la global es distinta, intentar con la global
+    if (!$result && !empty($globalFallback) && $globalFallback !== $instance && $globalFallback !== $defaultInstance) {
+        $result = $sendAttempt($globalFallback);
+    }
+
+    if ($result && !empty($result['success'])) {
+        if (!empty($result['msg_id'])) {
+            $_SESSION['otp_msg_id'] = $result['msg_id'];
+            $_SESSION['otp_remote_jid'] = $result['remote_jid'];
+            $_SESSION['otp_instance'] = $result['instance'];
         }
         return true;
     }
@@ -1450,7 +1479,7 @@ function storefront_revoke_whatsapp_otp(?string $instance = null, ?string $remot
     curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
     curl_setopt($ch, CURLOPT_HTTPHEADER, [
         'Content-Type: application/json',
-        'apikey' => $apiKey
+        'apikey: ' . $apiKey
     ]);
     curl_setopt($ch, CURLOPT_TIMEOUT, 10);
     $response = curl_exec($ch);
