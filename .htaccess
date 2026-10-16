@@ -1,3 +1,10 @@
+﻿# 1.1 Redirección 301 Permanente de carniceriacano.com -> carniceriaselcinco.com
+<IfModule mod_rewrite.c>
+    RewriteEngine On
+    RewriteCond %{HTTP_HOST} ^(www\.)?carniceriacano\.com$ [NC]
+    RewriteRule ^(.*)$ https://carniceriaselcinco.com/$1 [R=301,L]
+</IfModule>
+
 # ==============================================================================
 # CARNICERÍA CANO - Optimización de Rendimiento, Compresión y Caché Apache
 # ==============================================================================
