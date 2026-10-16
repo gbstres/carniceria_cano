@@ -155,8 +155,8 @@ body.mobile-first-app {
 }
 
 .brand-logo {
-    width: 52px;
-    height: 52px;
+    width: 44px;
+    height: 44px;
     object-fit: cover;
     border-radius: 10px;
     border: 2px solid var(--cano-gold);
@@ -164,22 +164,30 @@ body.mobile-first-app {
     flex-shrink: 0;
 }
 
-@media (min-width: 992px) {
-    .brand-logo {
-        width: 60px;
-        height: 60px;
+.brand-title {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #FFFFFF !important;
+}
+
+@media (max-width: 991.98px) {
+    .brand-lockup {
+        max-width: calc(100% - 95px);
+    }
+    .brand-title {
+        font-size: 0.95rem;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+    }
+    .brand-lockup small {
+        font-size: 0.75rem;
+        white-space: nowrap;
     }
 }
 
-.brand-title {
-    font-size: clamp(0.85rem, 3.6vw, 1.12rem);
-    font-weight: 800;
-    color: #FFFFFF !important;
-    line-height: 1.15;
-}
-
-@media (max-width: 380px) {
-    .brand-subtitle {
+@media (max-width: 400px) {
+    .brand-lockup small {
         display: none !important;
     }
 }
