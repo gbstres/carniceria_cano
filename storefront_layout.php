@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 function storefront_render_header($title, $currentPage, array $cartTotals)
 {
     $cartCount = !empty($cartTotals['items']) ? (int)$cartTotals['items'] : 0;
@@ -14,26 +14,26 @@ function storefront_render_header($title, $currentPage, array $cartTotals)
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
         <title><?php echo storefront_escape($title); ?></title>
-        <meta name="description" content="Carnicería Cano en Ecatepec de Morelos. Sucursales en San Cristóbal Centro y Olímpica Jajalpa (La Principal). Carne fresca de res, cerdo, pollo y cortes para asar con servicio a domicilio hasta 30 km. ¡Pide en línea!">
+        <meta name="description" content="Carnicerías "EL Cinco" en Ecatepec de Morelos. Sucursales en San Cristóbal Centro y Olímpica Jajalpa (La Principal). Carne fresca de res, cerdo, pollo y cortes para asar con servicio a domicilio hasta 30 km. ¡Pide en línea!">
         <meta name="keywords" content="carnicería ecatepec, carnicería cano, carnicería la principal ecatepec, carnicería olimpica jajalpa, carnicería san cristobal centro, cortes finos ecatepec, carne a domicilio ecatepec">
         <meta name="robots" content="index, follow">
-        <link rel="canonical" href="https://carniceriacano.com/">
+        <link rel="canonical" href="https://carniceriaselcinco.com/">
         <link rel="shortcut icon" href="img/logo_1.png">
 
         <!-- Open Graph / Redes Sociales -->
         <meta property="og:type" content="website">
         <meta property="og:title" content="<?php echo storefront_escape($title); ?>">
         <meta property="og:description" content="Carnes frescas de res, cerdo, pollo y cortes selectos para parrilladas en Ecatepec (San Cristóbal Centro y Olímpica Jajalpa). Calidad, peso exacto y servicio a domicilio rápido.">
-        <meta property="og:url" content="https://carniceriacano.com/">
-        <meta property="og:site_name" content="Carnicería Cano">
+        <meta property="og:url" content="https://carniceriaselcinco.com/">
+        <meta property="og:site_name" content="Carnicerías "EL Cinco"">
         <meta property="og:locale" content="es_MX">
-        <meta property="og:image" content="https://carniceriacano.com/img/promo_asado.jpg">
+        <meta property="og:image" content="https://carniceriaselcinco.com/img/promo_asado.jpg">
 
         <!-- Twitter Card -->
         <meta name="twitter:card" content="summary_large_image">
         <meta name="twitter:title" content="<?php echo storefront_escape($title); ?>">
         <meta name="twitter:description" content="Carnes frescas y cortes selectos en Ecatepec (San Cristóbal y Olímpica Jajalpa). Reparto a domicilio hasta 30 km.">
-        <meta name="twitter:image" content="https://carniceriacano.com/img/promo_asado.jpg">
+        <meta name="twitter:image" content="https://carniceriaselcinco.com/img/promo_asado.jpg">
 
         <!-- Geoposicionamiento Local para Motores de Búsqueda -->
         <meta name="geo.region" content="MX-MEX">
@@ -48,10 +48,10 @@ function storefront_render_header($title, $currentPage, array $cartTotals)
           "@graph": [
             {
               "@type": "ButcherShop",
-              "@id": "https://carniceriacano.com/#sucursal-ecatepec",
-              "name": "Carnicería Cano - Sucursal Ecatepec (San Cristóbal Centro)",
-              "image": "https://carniceriacano.com/img/promo_asado.jpg",
-              "url": "https://carniceriacano.com/",
+              "@id": "https://carniceriaselcinco.com/#sucursal-ecatepec",
+              "name": "Carnicerías "EL Cinco" - Sucursal Ecatepec (San Cristóbal Centro)",
+              "image": "https://carniceriaselcinco.com/img/promo_asado.jpg",
+              "url": "https://carniceriaselcinco.com/",
               "telephone": "+525534208819",
               "priceRange": "$$",
               "servesCuisine": "Carnes frescas de res, cerdo, pollo y cortes selectos",
@@ -86,7 +86,7 @@ function storefront_render_header($title, $currentPage, array $cartTotals)
                 "@type": "OrderAction",
                 "target": {
                   "@type": "EntryPoint",
-                  "urlTemplate": "https://carniceriacano.com/",
+                  "urlTemplate": "https://carniceriaselcinco.com/",
                   "inLanguage": "es-MX",
                   "actionPlatform": [
                     "http://schema.org/DesktopWebPlatform",
@@ -98,10 +98,10 @@ function storefront_render_header($title, $currentPage, array $cartTotals)
             },
             {
               "@type": "ButcherShop",
-              "@id": "https://carniceriacano.com/#sucursal-la-principal",
-              "name": "Carnicería Cano - Sucursal La Principal (Olímpica Jajalpa)",
-              "image": "https://carniceriacano.com/img/promo_asado.jpg",
-              "url": "https://carniceriacano.com/",
+              "@id": "https://carniceriaselcinco.com/#sucursal-la-principal",
+              "name": "Carnicerías "EL Cinco" - Sucursal La Principal (Olímpica Jajalpa)",
+              "image": "https://carniceriaselcinco.com/img/promo_asado.jpg",
+              "url": "https://carniceriaselcinco.com/",
               "telephone": "+525521458855",
               "priceRange": "$$",
               "servesCuisine": "Carnes frescas de res, cerdo, pollo y cortes selectos",
@@ -136,7 +136,7 @@ function storefront_render_header($title, $currentPage, array $cartTotals)
                 "@type": "OrderAction",
                 "target": {
                   "@type": "EntryPoint",
-                  "urlTemplate": "https://carniceriacano.com/",
+                  "urlTemplate": "https://carniceriaselcinco.com/",
                   "inLanguage": "es-MX",
                   "actionPlatform": [
                     "http://schema.org/DesktopWebPlatform",
@@ -192,9 +192,9 @@ function storefront_render_header($title, $currentPage, array $cartTotals)
             <div class="container">
                 <nav class="navbar navbar-expand-lg storefront-nav-mobile">
                     <a class="navbar-brand brand-lockup d-flex align-items-center" href="index.php">
-                        <img src="img/logo_1.jpeg" alt="Carnicería Cano" class="brand-logo me-2">
+                        <img src="img/logo_1.jpeg" alt="Carnicerías "EL Cinco"" class="brand-logo me-2">
                         <div class="d-flex flex-column">
-                            <span class="brand-title">CARNICERÍA CANO</span>
+                            <span class="brand-title">CARNICERÍAS "EL CINCO"</span>
                             <div class="d-flex align-items-center gap-1">
                                 <small class="text-gold fw-bold"><i class="bi bi-check-circle-fill text-warning"></i> Calidad y Peso Exacto</small>
                             </div>
@@ -368,8 +368,8 @@ function storefront_render_footer()
         <!-- Footer con Información de Sucursales en Carrusel Horizontal -->
         <footer class="store-footer-centered py-4 bg-white border-top">
             <div class="container text-center">
-                <img src="img/logo_1.jpeg" alt="Carnicería Cano" class="footer-logo-only mb-3" loading="lazy" decoding="async">
-                <h5 class="fw-bold text-dark font-serif mb-1">Carnicería Cano · Sucursales en Ecatepec</h5>
+                <img src="img/logo_1.jpeg" alt="Carnicerías "EL Cinco"" class="footer-logo-only mb-3" loading="lazy" decoding="async">
+                <h5 class="fw-bold text-dark font-serif mb-1">Carnicerías "EL Cinco" · Sucursales en Ecatepec</h5>
                 <p class="text-muted small mb-3">Calidad, frescura, higiene y peso exacto en cada uno de tus cortes.</p>
                 
                 <!-- Contenedor de Sucursales: Grid completo en PC / Carrusel en Móviles y Pantallas Pequeñas -->
@@ -389,7 +389,7 @@ function storefront_render_footer()
                                 $lng = trim((string)($branch['longitud'] ?? ''));
                                 $mapsUrl = (!empty($lat) && !empty($lng))
                                     ? 'https://www.google.com/maps?q=' . rawurlencode($lat . ',' . $lng)
-                                    : 'https://maps.google.com/?q=' . rawurlencode($branch['direccion'] ?? 'Carniceria Cano Ecatepec');
+                                    : 'https://maps.google.com/?q=' . rawurlencode($branch['direccion'] ?? 'Carnicerías "EL Cinco" Ecatepec');
                                 
                                 $waRaw = trim((string)($branch['whatsapp'] ?? ''));
                                 $cleanWa = preg_replace('/[^0-9]/', '', $waRaw);
@@ -397,7 +397,7 @@ function storefront_render_footer()
                                     ? preg_replace('/(\d{2})(\d{4})(\d{4})/', '$1 $2 $3', $cleanWa)
                                     : ($waRaw ?: '55 3420 8819');
                                 
-                                $waMsg = 'Hola Carnicería Cano (' . $branchName . '), quisiera hacer un pedido.';
+                                $waMsg = 'Hola Carnicerías "EL Cinco" (' . $branchName . '), quisiera hacer un pedido.';
                                 $waUrl = !empty($cleanWa)
                                     ? 'https://wa.me/52' . $cleanWa . '?text=' . rawurlencode($waMsg)
                                     : 'https://wa.me/?text=' . rawurlencode($waMsg);

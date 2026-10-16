@@ -38,7 +38,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && (($_POST['action'] ?? '') === 'run_
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Carniceria Cano">
+    <meta name="description" content="Carnicerías "EL Cinco"">
     <meta name="author" content="Gerardo Bautista">
     <link rel="shortcut icon" href="../img/logo_1.png">
     <title>Respaldo</title>

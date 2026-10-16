@@ -25,7 +25,7 @@ if (!isset($branchNames[$idSucursalSel])) {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Gestión de Pedidos Web | Carnicería Cano</title>
+    <title>Gestión de Pedidos Web | Carnicerías "EL Cinco"</title>
     <link href="css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
     <style>
@@ -48,7 +48,7 @@ if (!isset($branchNames[$idSucursalSel])) {
 <nav class="navbar navbar-expand-lg navbar-dark navbar-admin shadow-sm">
     <div class="container-fluid px-4">
         <a class="navbar-brand fw-bold d-flex align-items-center" href="admin_pedidos_web.php">
-            <i class="bi bi-shop me-2"></i> Carnicería Cano - Panel de Pedidos Web
+            <i class="bi bi-shop me-2"></i> Carnicerías "EL Cinco" - Panel de Pedidos Web
         </a>
         <div class="d-flex align-items-center gap-2 flex-wrap">
             <a href="main/inicio.php" class="btn btn-sm btn-outline-light">
@@ -432,7 +432,7 @@ function printOrderTicket(orderId) {
         '@media print { body{width:100%;padding:0;} }' +
         '</style></head><body>' +
         '<div class="text-center">' +
-            '<h2 style="margin:0;font-size:17px;">CARNICERÍA CANO</h2>' +
+            '<h2 style="margin:0;font-size:17px;">CARNICERÍAS "EL CINCO"</h2>' +
             '<div style="font-size:12px;font-weight:bold;margin:2px 0;">COMANDA DE PEDIDO ONLINE</div>' +
             '<div style="font-size:11px;">' + escapeHtml(order.desc_sucursal || ('Sucursal ' + order.id_sucursal)) + '</div>' +
         '</div>' +

@@ -139,7 +139,7 @@ while ($row = mysqli_fetch_assoc($qCierres)) {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Reconstruir Stock - Carnicería Cano</title>
+    <title>Reconstruir Stock - Carnicerías "EL Cinco"</title>
     <link href="../css/bootstrap.css" rel="stylesheet">
     <link href="../css/navbar.css" rel="stylesheet">
     <link rel="stylesheet" href="../css/bootstrap-icons.css">

@@ -309,7 +309,7 @@ if ($tableExists) {
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="description" content="Carniceria Cano">
+        <meta name="description" content="Carnicerías "EL Cinco"">
         <link rel="shortcut icon" href="../img/logo_1.png">
         <title>Fotos de producto</title>
         <link href="../css/bootstrap.css" rel="stylesheet">

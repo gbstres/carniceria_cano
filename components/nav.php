@@ -1,4 +1,4 @@
-<link rel="stylesheet" href="../css/bootstrap-icons.css">
+﻿<link rel="stylesheet" href="../css/bootstrap-icons.css">
 <?php
 $ccHost = strtolower($_SERVER['HTTP_HOST'] ?? '');
 $ccHost = preg_replace('/:\d+$/', '', $ccHost);
@@ -8,8 +8,8 @@ $ccEntornoClase = 'bg-secondary';
 if (in_array($ccHost, ['localhost', '127.0.0.1', '::1'], true)) {
     $ccEntorno = 'LOCAL';
     $ccEntornoClase = 'bg-warning text-dark';
-} elseif ($ccHost === 'sastreriabb.com' || $ccHost === 'www.sastreriabb.com') {
-    $ccEntorno = 'GCP sastreriabb.com';
+} elseif (in_array($ccHost, ['carniceriaselcinco.com', 'www.carniceriaselcinco.com', 'sastreriabb.com', 'www.sastreriabb.com'], true)) {
+    $ccEntorno = 'PROD carniceriaselcinco.com';
     $ccEntornoClase = 'bg-success';
 }
 ?>
@@ -19,7 +19,7 @@ if (in_array($ccHost, ['localhost', '127.0.0.1', '::1'], true)) {
     </div>
     <div class="container-fluid">
 <?php $esRepartidor = ((int) ($_SESSION['rol'] ?? 0) === 4); ?>
-        <a class="navbar-brand fw-bold" href="<?php echo $esRepartidor ? '../repartidor/pedidos.php' : '../main/inicio.php'; ?>">Carnicería Cano<?php echo $esRepartidor ? ' <span class="badge bg-primary text-white ms-1 fs-6"><i class="bi bi-bicycle me-1"></i>Repartidor</span>' : ''; ?></a>
+        <a class="navbar-brand fw-bold" href="<?php echo $esRepartidor ? '../repartidor/pedidos.php' : '../main/inicio.php'; ?>">Carnicerías "EL Cinco"<?php echo $esRepartidor ? ' <span class="badge bg-primary text-white ms-1 fs-6"><i class="bi bi-bicycle me-1"></i>Repartidor</span>' : ''; ?></a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarsExample09" aria-controls="navbarsExample09" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>

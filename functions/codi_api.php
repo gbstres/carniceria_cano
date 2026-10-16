@@ -1,7 +1,7 @@
 <?php
 /**
  * Módulo de Integración con el Servicio Web REST API de CoDi® (Banxico / Banco Acreditar)
- * Proyecto: Carnicería Cano
+ * Proyecto: Carnicerías "EL Cinco"
  */
 
 // Configuración de Credenciales CoDi® de Banxico

@@ -67,6 +67,6 @@ function enviarWhatsApp($numero, $mensaje) {
  * @return array
  */
 function enviarCodigoOTP($numero, $codigoOTP) {
-    $mensaje = "🔐 *Carnicería Cano*\n\nTu código de verificación es: *{$codigoOTP}*\n\nEste código vencerá en 5 minutos. No lo compartas con nadie.";
+    $mensaje = "🔐 *Carnicerías \"EL Cinco\"*\n\nTu código de verificación es: *{$codigoOTP}*\n\nEste código vencerá en 5 minutos. No lo compartas con nadie.";
     return enviarWhatsApp($numero, $mensaje);
 }

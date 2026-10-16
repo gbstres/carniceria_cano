@@ -773,8 +773,8 @@ if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
             }
         }
         $introText = ($context === 'mis_pedidos') 
-            ? "Hola Carnicería Cano, mi código para consultar mis compras es: CANO-" . $code
-            : "Hola Carnicería Cano, mi código de verificación para mi pedido online es: CANO-" . $code;
+            ? "Hola Carnicerías \"EL Cinco\", mi código para consultar mis compras es: CANO-" . $code
+            : "Hola Carnicerías \"EL Cinco\", mi código de verificación para mi pedido online es: CANO-" . $code;
         $text = urlencode($introText);
         $waUrl = "https://api.whatsapp.com/send?phone=" . $branchPhone . "&text=" . $text;
 
@@ -1366,7 +1366,7 @@ function storefront_send_evolution_whatsapp_otp(string $phone, string $code, int
     $apiKey = (defined('EVOLUTION_API_KEY') && EVOLUTION_API_KEY !== '') ? EVOLUTION_API_KEY : 'CarniceriaCano2026ClaveSegura';
     $instance = '';
     $defaultInstance = '';
-    $branchName = 'Carnicería Cano';
+    $branchName = 'Carnicerías "EL Cinco"';
 
     // 1. Si se especificó una sucursal, buscar sus datos e instancia
     if ($link instanceof mysqli && $idSucursal > 0) {
@@ -1377,7 +1377,7 @@ function storefront_send_evolution_whatsapp_otp(string $phone, string $code, int
             $res = mysqli_stmt_get_result($stmt);
             if ($row = mysqli_fetch_assoc($res)) {
                 if (!empty($row['desc_sucursal'])) {
-                    $branchName = 'Carnicería Cano (' . $row['desc_sucursal'] . ')';
+                    $branchName = 'Carnicerías "EL Cinco" (' . $row['desc_sucursal'] . ')';
                 }
                 if (!empty($row['wa_instancia'])) {
                     $instance = trim((string)$row['wa_instancia']);
@@ -1397,7 +1397,7 @@ function storefront_send_evolution_whatsapp_otp(string $phone, string $code, int
             if (empty($instance) && !empty($defaultInstance)) {
                 $instance = $defaultInstance;
                 if (!empty($rowDef['desc_sucursal']) && $idSucursal <= 0) {
-                    $branchName = 'Carnicería Cano (' . $rowDef['desc_sucursal'] . ')';
+                    $branchName = 'Carnicerías "EL Cinco" (' . $rowDef['desc_sucursal'] . ')';
                 }
             }
         }

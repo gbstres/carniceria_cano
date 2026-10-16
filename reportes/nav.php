@@ -18,7 +18,7 @@ if (in_array($ccHost, ['localhost', '127.0.0.1', '::1'], true)) {
         <?php echo htmlspecialchars($ccEntorno, ENT_QUOTES, 'UTF-8'); ?>
     </div>
     <div class="container-fluid">
-        <a class="navbar-brand" href="#">Carnicería Cano</a>
+        <a class="navbar-brand" href="#">Carnicerías "EL Cinco"</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarsExample09" aria-controls="navbarsExample09" aria-expanded="false" aria-label="Toggle navigation">
             <span class="navbar-toggler-icon"></span>
         </button>

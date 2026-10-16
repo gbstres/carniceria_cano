@@ -163,7 +163,7 @@ $totGlobalPctMargen = ($totCatVentasImp > 0) ? ($totCatGananciaImp / $totCatVent
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="description" content="Carnicería Cano">
+        <meta name="description" content="Carnicerías "EL Cinco"">
         <meta name="author" content="Gerardo Bautista">
         <link rel="shortcut icon" href="../img/logo_1.png">
         <title>Reporte de Compras vs Ventas (por Categoría)</title>
@@ -354,7 +354,7 @@ $totGlobalPctMargen = ($totCatVentasImp > 0) ? ($totCatGananciaImp / $totCatVent
                     h5 { margin: 8px 0 4px 0; }
                 </style>
                 <div style="text-align: center">
-                    <h3><?php echo htmlspecialchars($_SESSION["desc_sucursal"] ?? "Carnicería Cano", ENT_QUOTES, "UTF-8"); ?></h3>
+                    <h3><?php echo htmlspecialchars($_SESSION["desc_sucursal"] ?? 'Carnicerías "EL Cinco"', ENT_QUOTES, "UTF-8"); ?></h3>
                     <h4>Reporte de Compras vs Ventas (por Categoría)</h4>
                 </div>
                 <div style="text-align: center">
@@ -366,7 +366,7 @@ $totGlobalPctMargen = ($totCatVentasImp > 0) ? ($totCatGananciaImp / $totCatVent
                         </table>
                     </div>
                     <div style="text-align: center; margin-top: 5px;">
-                        <img src="../img/logo_1.jpeg" alt="Carnicería Cano" width="80" height="80">
+                        <img src="../img/logo_1.jpeg" alt="Carnicerías "EL Cinco"" width="80" height="80">
                     </div>
                 </div>
                 <br>

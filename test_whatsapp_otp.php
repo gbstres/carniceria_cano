@@ -22,7 +22,7 @@ if (!empty($numeroPrueba)) {
 <html lang="es">
 <head>
     <meta charset="UTF-8">
-    <title>Prueba de Envío WhatsApp OTP - Carnicería Cano</title>
+    <title>Prueba de Envío WhatsApp OTP - Carnicerías "EL Cinco"</title>
     <style>
         body { font-family: sans-serif; padding: 30px; background: #f4f6f9; }
         .card { max-width: 500px; margin: 0 auto; background: white; padding: 25px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }

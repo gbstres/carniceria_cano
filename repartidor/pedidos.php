@@ -186,10 +186,10 @@ if ($esAdmin) {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="Módulo de Repartos - Carnicería Cano">
-    <meta name="author" content="Carnicería Cano">
+    <meta name="description" content="Módulo de Repartos - Carnicerías "EL Cinco"">
+    <meta name="author" content="Carnicerías "EL Cinco"">
     <link rel="shortcut icon" href="../img/logo_1.png">
-    <title>Repartidor - Carnicería Cano</title>
+    <title>Repartidor - Carnicerías "EL Cinco"</title>
     <link rel="stylesheet" href="../css/bootstrap.css">
     <link rel="stylesheet" href="../css/bootstrap-icons.css">
     <script src="../js/jquery-3.5.1.js"></script>
@@ -405,7 +405,7 @@ if ($esAdmin) {
                         $urlMaps = $tieneCoords 
                             ? "https://www.google.com/maps/dir/?api=1&destination=" . urlencode($ped['latitud'] . ',' . $ped['longitud'])
                             : "https://www.google.com/maps/dir/?api=1&destination=" . urlencode($direccionTxt);
-                        $msjWa = "Hola " . ($ped['cliente_nombre'] ?: 'Cliente') . ", te escribo de Carnicería Cano para la entrega de tu pedido #" . $idPed . ".";
+                        $msjWa = "Hola " . ($ped['cliente_nombre'] ?: 'Cliente') . ", te escribo de Carnicerías \"EL Cinco\" para la entrega de tu pedido #" . $idPed . ".";
                         $urlWa = "https://wa.me/52" . $telLimpio . "?text=" . urlencode($msjWa);
                         
                         $statusClass = 'status-' . $ped['estatus'];
@@ -874,7 +874,7 @@ if ($esAdmin) {
             '.text-right { text-align: right; }' +
             '.bold { font-weight: bold; }' +
             '</style></head><body>' +
-            '<h3>CARNICERÍA CANO</h3>' +
+            '<h3>CARNICERÍAS "EL CINCO"</h3>' +
             '<p>TICKET DE ENTREGA A DOMICILIO</p>' +
             '<div class="divider"></div>' +
             '<div><strong>FOLIO:</strong> #' + order.id_pedido + '</div>' +

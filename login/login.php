@@ -111,10 +111,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="description" content="Carnicería Cano">
+        <meta name="description" content="Carnicerías "EL Cinco"">
         <meta name="author" content="Gerardo Bautista">
         <link rel="shortcut icon" href="../img/logo_1.png">
-        <title>Carnicería Cano</title>
+        <title>Carnicerías "EL Cinco"</title>
 
         <script src="https://code.jquery.com/jquery-3.5.1.js"></script>
 
@@ -186,7 +186,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             </div>
                         </div>
                         <div class="text-center mt-5 text-muted">
-                            Copyright &copy; 2022-2023 &mdash; Carnicerías Cano
+                            Copyright &copy; 2022-<?php echo date('Y'); ?> &mdash; Carnicerías "EL Cinco"
                         </div>
                     </div>
                 </div>

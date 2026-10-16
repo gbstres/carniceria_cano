@@ -12,3 +12,6 @@ uploads/*
 !uploads/.gitkeep
 *.orig
 *.bak
+
+# Respaldo local de logos anteriores
+*_cano_bak.*

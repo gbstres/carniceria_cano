@@ -141,7 +141,7 @@ $cartSubtotal = (float)($cartTotals['subtotal'] ?? 0.0);
                                 <h6 class="fw-bold text-primary mb-2"><i class="bi bi-bank me-1"></i> Datos Oficiales para Transferencia SPEI:</h6>
                                 <ul class="list-unstyled small mb-2 text-dark">
                                     <li><strong>Banco:</strong> BBVA Bancomer</li>
-                                    <li><strong>Beneficiario:</strong> Carnicería Cano S.A. de C.V.</li>
+                                    <li><strong>Beneficiario:</strong> Carnicerías "EL Cinco" S.A. de C.V.</li>
                                     <li><strong>CLABE:</strong> 0121 8000 1234 5678 90</li>
                                     <li><strong>Concepto / Referencia:</strong> Folio #<?php echo storefront_escape($orderSuccess['id']); ?></li>
                                 </ul>
@@ -160,7 +160,7 @@ $cartSubtotal = (float)($cartTotals['subtotal'] ?? 0.0);
                                 }
                             }
                         }
-                        $waText = urlencode("Hola Carnicería Cano, acabo de realizar el pedido #" . $orderSuccess['id'] . " por " . storefront_money($orderSuccess['total']) . ". Envío mis datos para seguimiento.");
+                        $waText = urlencode("Hola Carnicerías \"EL Cinco\", acabo de realizar el pedido #" . $orderSuccess['id'] . " por " . storefront_money($orderSuccess['total']) . ". Envío mis datos para seguimiento.");
                         $waUrl = "https://api.whatsapp.com/send?phone=" . $branchWa . "&text=" . $waText;
                         ?>
 
@@ -438,7 +438,7 @@ $cartSubtotal = (float)($cartTotals['subtotal'] ?? 0.0);
                                         <h6 class="fw-bold text-primary m-0 mb-2"><i class="bi bi-bank me-1"></i> Datos Oficiales para Transferencia SPEI:</h6>
                                         <ul class="list-unstyled small mb-0 text-dark">
                                             <li><strong>Banco:</strong> BBVA Bancomer</li>
-                                            <li><strong>Beneficiario:</strong> Carnicería Cano S.A. de C.V.</li>
+                                            <li><strong>Beneficiario:</strong> Carnicerías "EL Cinco" S.A. de C.V.</li>
                                             <li><strong>CLABE Interbancaria:</strong> 0121 8000 1234 5678 90</li>
                                             <li><strong>Concepto:</strong> Tu Nombre y Teléfono</li>
                                         </ul>

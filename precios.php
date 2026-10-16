@@ -19,9 +19,9 @@ foreach ($products as $product) {
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="description" content="Lista de precios de menudeo por sucursal de Carniceria Cano.">
+        <meta name="description" content="Lista de precios de menudeo por sucursal de Carnicerías "EL Cinco".">
         <link rel="shortcut icon" href="img/logo_1.png">
-        <title>Precios | Carniceria Cano</title>
+        <title>Precios | Carnicerías "EL Cinco"</title>
         <link href="css/bootstrap.min.css" rel="stylesheet">
         <style>
             :root {
@@ -144,10 +144,10 @@ foreach ($products as $product) {
             <div class="container">
                 <div class="brand-row">
                     <div class="brand-title">
-                        <img src="img/logo_1.jpeg" alt="Carniceria Cano">
+                        <img src="img/logo_1.jpeg" alt="Carnicerías "EL Cinco"">
                         <div>
                             <h1>Precios de menudeo</h1>
-                            <div>Carniceria Cano</div>
+                            <div>Carnicerías "EL Cinco"</div>
                         </div>
                     </div>
                     <div class="branch-pill"><?php echo storefront_escape($branchName); ?></div>

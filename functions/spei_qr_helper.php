@@ -1,7 +1,7 @@
 <?php
 /**
  * Helper para generación de Códigos QR bancarios estándar EMVCo / SPEI (México)
- * Proyecto: Carnicería Cano
+ * Proyecto: Carnicerías "EL Cinco"
  */
 
 define('SPEI_CLABE', '012180015930849331');

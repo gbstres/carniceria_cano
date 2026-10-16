@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 // Initialize session and verify login
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -502,7 +502,7 @@ if ($producto === null) {
 if (isset($_GET['msg'])) {
     if ($_GET['msg'] === 'principal_ok') {
         $feedbackType = 'success';
-        $feedbackMessage = 'La fotografía seleccionada ahora es la PRINCIPAL para carniceriacano.com.';
+        $feedbackMessage = 'La fotografía seleccionada ahora es la PRINCIPAL para carniceriaselcinco.com.';
     } elseif ($_GET['msg'] === 'eliminada_ok') {
         $feedbackType = 'success';
         $feedbackMessage = 'Fotografía eliminada correctamente.';
@@ -547,7 +547,7 @@ if ($tableFotosExists) {
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="description" content="Edición de Producto y Gestión de Fotografías">
     <link rel="shortcut icon" href="../img/logo_1.png">
-    <title>Editar Producto: <?php echo htmlspecialchars($producto['descripcion'], ENT_QUOTES, 'UTF-8'); ?> - Carnicería Cano</title>
+    <title>Editar Producto: <?php echo htmlspecialchars($producto['descripcion'], ENT_QUOTES, 'UTF-8'); ?> - Carnicerías "EL Cinco"</title>
 
     <!-- Estilos base -->
     <link href="../css/bootstrap.css" rel="stylesheet">
@@ -773,7 +773,7 @@ if ($tableFotosExists) {
                         <h5 class="card-title mb-0 fw-bold text-dark">
                             <i class="bi bi-camera-fill text-primary me-2"></i>Fotografías del Producto
                         </h5>
-                        <small class="text-muted">Gestión de imágenes para catálogo y visualización en carniceriacano.com</small>
+                        <small class="text-muted">Gestión de imágenes para catálogo y visualización en carniceriaselcinco.com</small>
                     </div>
                     <span class="badge bg-primary fs-6 px-3 py-2 rounded-pill">
                         <i class="bi bi-images me-1"></i> <?php echo count($fotos); ?> foto(s) registrada(s)
@@ -938,7 +938,7 @@ if ($tableFotosExists) {
                     <!-- Instrucciones breves -->
                     <div class="alert alert-warning py-2 px-3 small mb-2 d-flex align-items-center gap-2">
                         <i class="bi bi-aspect-ratio fs-5"></i>
-                        <span>El estándar de Carnicería Cano es <strong>4:3</strong> (800×600 y 1600×1200). Encuadra el producto en el recuadro para que se vea óptimo en la tienda.</span>
+                        <span>El estándar de Carnicerías "EL Cinco" es <strong>4:3</strong> (800×600 y 1600×1200). Encuadra el producto en el recuadro para que se vea óptimo en la tienda.</span>
                     </div>
 
                     <!-- Contenedor de la imagen a recortar -->

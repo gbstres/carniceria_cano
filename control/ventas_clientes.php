@@ -148,7 +148,7 @@ function recalcula($link, $id_sucursal, $importe, $id_cliente, $fecha_act, $hora
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="description" content="Carnicería Cano">
+        <meta name="description" content="Carnicerías "EL Cinco"">
         <meta name="author" content="Gerardo Bautista">
         <link rel="shortcut icon" href="../img/logo_1.png">
         <title>Ventas y pagos x cliente</title>

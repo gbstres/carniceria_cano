@@ -134,7 +134,7 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && !empty($accion)) {
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Reconstruir Cierres - Carnicería Cano</title>
+    <title>Reconstruir Cierres - Carnicerías "EL Cinco"</title>
     <link href="../css/bootstrap.css" rel="stylesheet">
     <link href="../css/navbar.css" rel="stylesheet">
     <link rel="stylesheet" href="../css/bootstrap-icons.css">

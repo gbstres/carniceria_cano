@@ -155,7 +155,7 @@ try {
 }
 ?>
 <!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<meta name="description" content="Carnicería Cano"><meta name="author" content="Gerardo Bautista"><link rel="shortcut icon" href="../img/logo_1.png">
+<meta name="description" content="Carnicerías "EL Cinco""><meta name="author" content="Gerardo Bautista"><link rel="shortcut icon" href="../img/logo_1.png">
 <title>Ventas por sucursal</title>
 <style>@import "../css/bootstrap.css";.reporte th,.reporte td{white-space:nowrap;vertical-align:middle}.reporte thead th{text-align:center}.reporte .concepto{position:sticky;left:0;z-index:1;background:#fff}.reporte thead .concepto,.reporte tfoot .concepto{background:#f8f9fa;z-index:2}</style>
 <link href="../css/navbar.css" rel="stylesheet">

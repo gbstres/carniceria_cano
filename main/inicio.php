@@ -87,10 +87,10 @@ $qr_precio = file_exists(__DIR__ . '/../img/qr_precios_sucursal_' . $id_sucursal
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <meta name="description" content="Carnicería Cano">
+        <meta name="description" content="Carnicerías "EL Cinco"">
         <meta name="author" content="Gerardo Bautista">
         <link rel="shortcut icon" href="../img/logo_1.png">
-        <title>Carnicería Cano</title>
+        <title>Carnicerías "EL Cinco"</title>
         <script src="../js/jquery-3.5.1.js"></script>
         <script src="../js/jquery.dataTables.min.js"></script>
         <script src="../js/sum().js"></script>
@@ -2010,7 +2010,7 @@ if ($descripcion_corta == 1) {
             '@media print { body{width:100%;padding:0;} }' +
             '</style></head><body>' +
             '<div class="text-center">' +
-                '<h2 style="margin:0;font-size:17px;">CARNICERÍA CANO</h2>' +
+                '<h2 style="margin:0;font-size:17px;">CARNICERÍAS "EL CINCO"</h2>' +
                 '<div style="font-size:12px;font-weight:bold;margin:2px 0;">COMANDA DE PEDIDO ONLINE</div>' +
                 '<div style="font-size:11px;">' + escapeHtmlInicio(order.desc_sucursal || ('Sucursal ' + order.id_sucursal)) + '</div>' +
             '</div>' +

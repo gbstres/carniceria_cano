@@ -56,7 +56,7 @@ if ($isPhoneVerified) {
     setcookie('cano_last_verified_phone', $requestedPhone, time() + (180 * 86400), '/');
 }
 
-storefront_render_header('Mis Pedidos - Carnicería Cano', 'mis_pedidos', $cartTotals);
+storefront_render_header('Mis Pedidos - Carnicerías "EL Cinco"', 'mis_pedidos', $cartTotals);
 ?>
 
 <section class="mis-pedidos-section py-4">
