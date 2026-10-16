@@ -1,4 +1,4 @@
-﻿<link rel="stylesheet" href="../css/bootstrap-icons.css">
+<link rel="stylesheet" href="../css/bootstrap-icons.css">
 <?php
 $ccHost = strtolower($_SERVER['HTTP_HOST'] ?? '');
 $ccHost = preg_replace('/:\d+$/', '', $ccHost);
@@ -21,7 +21,7 @@ if (in_array($ccHost, ['localhost', '127.0.0.1', '::1'], true)) {
 <?php $esRepartidor = ((int) ($_SESSION['rol'] ?? 0) === 4); ?>
         <?php $navLogoPath = (file_exists('img/logo_1.jpeg')) ? 'img/logo_1.jpeg' : '../img/logo_1.jpeg'; ?>
         <a class="navbar-brand d-inline-flex align-items-center py-0" href="<?php echo $esRepartidor ? '../repartidor/pedidos.php' : '../main/inicio.php'; ?>">
-            <img src="<?php echo $navLogoPath; ?>" alt="Carnicerías &quot;EL Cinco&quot;" height="40" style="max-height: 40px; width: auto;" class="d-inline-block align-text-top rounded">
+            <img src="<?php echo $navLogoPath; ?>" alt="Carnicerías &quot;EL Cinco&quot;" height="60" style="height: 60px; max-height: 62px; width: auto;" class="d-inline-block align-text-top rounded">
             <?php echo $esRepartidor ? ' <span class="badge bg-primary text-white ms-1 fs-6"><i class="bi bi-bicycle me-1"></i>Repartidor</span>' : ''; ?>
         </a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarsExample09" aria-controls="navbarsExample09" aria-expanded="false" aria-label="Toggle navigation">
