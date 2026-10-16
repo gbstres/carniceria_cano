@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 function storefront_render_header($title, $currentPage, array $cartTotals)
 {
     $cartCount = !empty($cartTotals['items']) ? (int)$cartTotals['items'] : 0;
@@ -191,28 +191,30 @@ function storefront_render_header($title, $currentPage, array $cartTotals)
         <header class="store-header sticky-top">
             <div class="container">
                 <nav class="navbar navbar-expand-lg storefront-nav-mobile">
-                    <a class="navbar-brand brand-lockup d-flex align-items-center" href="index.php">
-                        <img src="img/logo_1.jpeg" alt="Carnicerías "EL Cinco"" class="brand-logo me-2">
-                        <div class="d-flex flex-column">
-                            <span class="brand-title">CARNICERÍAS "EL CINCO"</span>
-                            <div class="d-flex align-items-center gap-1">
-                                <small class="text-gold fw-bold"><i class="bi bi-check-circle-fill text-warning"></i> Calidad y Peso Exacto</small>
+                    <div class="d-flex align-items-center justify-content-between w-100 flex-nowrap">
+                        <a class="navbar-brand brand-lockup d-flex align-items-center me-2 min-w-0" href="index.php">
+                            <img src="img/logo_1.jpeg" alt="Carnicerías &quot;El Cinco&quot;" class="brand-logo me-2">
+                            <div class="d-flex flex-column min-w-0">
+                                <span class="brand-title text-truncate">CARNICERÍAS "EL CINCO"</span>
+                                <div class="d-flex align-items-center gap-1 brand-subtitle">
+                                    <small class="text-gold fw-bold text-nowrap"><i class="bi bi-check-circle-fill text-warning"></i> Calidad y Peso Exacto</small>
+                                </div>
                             </div>
-                        </div>
-                    </a>
-                    
-                    <div class="d-flex align-items-center gap-2">
-                        <!-- Carrito en Header Móvil -->
-                        <a href="carrito.php" class="btn-quick-cart-header position-relative d-lg-none" aria-label="Ver carrito">
-                            <i class="bi bi-bag-fill fs-5 text-white"></i>
-                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger shadow-sm header-cart-badge cart-items-counter <?php echo $cartCount > 0 ? '' : 'd-none'; ?>">
-                                <?php echo storefront_escape($cartCount); ?>
-                            </span>
                         </a>
+                        
+                        <div class="d-flex align-items-center gap-2 flex-shrink-0">
+                            <!-- Carrito en Header Móvil -->
+                            <a href="carrito.php" class="btn-quick-cart-header position-relative d-lg-none" aria-label="Ver carrito">
+                                <i class="bi bi-bag-fill fs-5 text-white"></i>
+                                <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger shadow-sm header-cart-badge cart-items-counter <?php echo $cartCount > 0 ? '' : 'd-none'; ?>">
+                                    <?php echo storefront_escape($cartCount); ?>
+                                </span>
+                            </a>
 
-                        <button class="navbar-toggler border-0 text-white p-1" type="button" data-bs-toggle="collapse" data-bs-target="#storefrontNav" aria-controls="storefrontNav" aria-expanded="false" aria-label="Abrir menú">
-                            <i class="bi bi-list fs-2 text-gold"></i>
-                        </button>
+                            <button class="navbar-toggler border-0 text-white p-1" type="button" data-bs-toggle="collapse" data-bs-target="#storefrontNav" aria-controls="storefrontNav" aria-expanded="false" aria-label="Abrir menú">
+                                <i class="bi bi-list fs-2 text-gold"></i>
+                            </button>
+                        </div>
                     </div>
 
                     <div class="collapse navbar-collapse" id="storefrontNav">
@@ -369,7 +371,7 @@ function storefront_render_footer()
         <footer class="store-footer-centered py-4 bg-white border-top">
             <div class="container text-center">
                 <img src="img/logo_1.jpeg" alt="Carnicerías "EL Cinco"" class="footer-logo-only mb-3" loading="lazy" decoding="async">
-                <h5 class="fw-bold text-dark font-serif mb-1">Carnicerías "EL Cinco" · Sucursales en Ecatepec</h5>
+                <h5 class="fw-bold text-dark font-serif mb-1">Carnicerías "El Cinco" - Sucursales en Ecatepec</h5>
                 <p class="text-muted small mb-3">Calidad, frescura, higiene y peso exacto en cada uno de tus cortes.</p>
                 
                 <!-- Contenedor de Sucursales: Grid completo en PC / Carrusel en Móviles y Pantallas Pequeñas -->
