@@ -171,11 +171,15 @@ body.mobile-first-app {
 }
 
 @media (max-width: 991.98px) {
+    .brand-logo {
+        width: 48px;
+        height: 48px;
+    }
     .brand-lockup {
-        max-width: calc(100% - 95px);
+        max-width: calc(100% - 50px);
     }
     .brand-title {
-        font-size: 0.95rem;
+        font-size: 1.05rem;
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;

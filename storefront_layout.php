@@ -201,19 +201,9 @@ function storefront_render_header($title, $currentPage, array $cartTotals)
                         </div>
                     </a>
                     
-                    <div class="d-flex align-items-center gap-2">
-                        <!-- Carrito en Header Móvil -->
-                        <a href="carrito.php" class="btn-quick-cart-header position-relative d-lg-none" aria-label="Ver carrito">
-                            <i class="bi bi-bag-fill fs-5 text-white"></i>
-                            <span class="position-absolute top-0 start-100 translate-middle badge rounded-pill bg-danger shadow-sm header-cart-badge cart-items-counter <?php echo $cartCount > 0 ? '' : 'd-none'; ?>">
-                                <?php echo storefront_escape($cartCount); ?>
-                            </span>
-                        </a>
-
-                        <button class="navbar-toggler border-0 text-white p-1" type="button" data-bs-toggle="collapse" data-bs-target="#storefrontNav" aria-controls="storefrontNav" aria-expanded="false" aria-label="Abrir menú">
-                            <i class="bi bi-list fs-2 text-gold"></i>
-                        </button>
-                    </div>
+                    <button class="navbar-toggler border-0 text-white p-1" type="button" data-bs-toggle="collapse" data-bs-target="#storefrontNav" aria-controls="storefrontNav" aria-expanded="false" aria-label="Abrir menú">
+                        <i class="bi bi-list fs-2 text-gold"></i>
+                    </button>
 
                     <div class="collapse navbar-collapse" id="storefrontNav">
                         <ul class="navbar-nav ms-auto align-items-lg-center">
