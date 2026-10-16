@@ -12,7 +12,11 @@
     --cano-card-mobile: #FFFFFF;
     --cano-text-main: #211917;
     --cano-text-muted: #665B55;
-    --cano-shadow-mobile: 0 4px 14px rgba(0, 0, 0, 0.08);
+}
+
+html {
+    scrollbar-gutter: stable;
+    overflow-y: scroll;
 }
 
 /* Sistema Tipográfico Homogéneo */
