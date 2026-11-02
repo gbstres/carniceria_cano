@@ -23,7 +23,7 @@ $fecha2 = $_POST['fecha2'] ?? date('Y-m-d');
 $fecha1Escaped = mysqli_real_escape_string($link, $fecha1);
 $fecha2Escaped = mysqli_real_escape_string($link, $fecha2);
 
-// Consulta de Categorías (Compras vs Ventas y Suma de Stock de Productos por Categoría)
+// Consulta de Categorías (Compras vs Ventas y Suma Total de Stock de Cierre por Categoría)
 $sqlCategoriasQuery = "
     SELECT
         cat.id_categoria,
@@ -33,7 +33,7 @@ $sqlCategoriasQuery = "
         COALESCE(vent.ventas_cant, 0) AS ventas_cant,
         COALESCE(vent.ventas_costo, 0) AS ventas_costo,
         COALESCE(vent.ventas_importe, 0) AS ventas_importe,
-        COALESCE(stk.stock_cierre, p_curr.stock_actual, 0) AS stock_cierre
+        COALESCE(stk.stock_cierre, (COALESCE(cat.almacen, 0) + COALESCE(p_curr.stock_actual, 0)), 0) AS stock_cierre
     FROM cc_categorias cat
     LEFT JOIN (
         SELECT
@@ -72,10 +72,10 @@ $sqlCategoriasQuery = "
           AND v.estatus <> 2
         GROUP BY p.id_categoria
     ) vent ON vent.id_categoria = cat.id_categoria
-    -- Suma del stock real de los productos de cada categoría al cierre del día (tipo = 'PRODUCTO')
+    -- Suma total del stock al cierre del día (categoría centralizada + productos individuales)
     LEFT JOIN (
         SELECT 
-            cs.id_categoria,
+            COALESCE(NULLIF(cs.id_categoria, 0), CAST(cs.codigo AS UNSIGNED)) AS id_categoria,
             SUM(cs.stock) AS stock_cierre
         FROM cc_cierre_stock cs
         INNER JOIN (
@@ -86,14 +86,18 @@ $sqlCategoriasQuery = "
             GROUP BY id_sucursal
         ) u_cierre ON cs.id_sucursal = u_cierre.id_sucursal AND cs.id_cierre = u_cierre.max_cierre
         WHERE cs.id_sucursal = $id_sucursal
-          AND cs.tipo = 'PRODUCTO'
-        GROUP BY cs.id_categoria
+          AND (
+              cs.tipo = 'CATEGORIA'
+              OR (cs.tipo = 'PRODUCTO' AND (cs.centraliza <> 'CAT' OR cs.centraliza IS NULL OR cs.centraliza = ''))
+          )
+        GROUP BY 1
     ) stk ON stk.id_categoria = cat.id_categoria
-    -- Suma de stock actual en línea por producto
+    -- Suma de stock actual en línea por producto individual
     LEFT JOIN (
         SELECT id_categoria, SUM(almacen) AS stock_actual
         FROM cc_productos
         WHERE id_sucursal = $id_sucursal
+          AND (centralizar_almacen <> 2 OR centralizar_almacen IS NULL)
         GROUP BY id_categoria
     ) p_curr ON p_curr.id_categoria = cat.id_categoria
     WHERE cat.id_sucursal = $id_sucursal
@@ -101,7 +105,7 @@ $sqlCategoriasQuery = "
            OR COALESCE(comp.compras_importe, 0) <> 0 
            OR COALESCE(vent.ventas_cant, 0) <> 0 
            OR COALESCE(vent.ventas_importe, 0) <> 0
-           OR COALESCE(stk.stock_cierre, p_curr.stock_actual, 0) <> 0)
+           OR COALESCE(stk.stock_cierre, (COALESCE(cat.almacen, 0) + COALESCE(p_curr.stock_actual, 0)), 0) <> 0)
     ORDER BY cat.desc_categoria
 ";
 
@@ -260,7 +264,7 @@ $totGlobalPctMargen = ($totCatVentasImp > 0) ? ($totCatGananciaImp / $totCatVent
                                 <div class="card-body">
                                     <h6 class="card-title text-uppercase text-white-50 small fw-bold mb-1">Stock Cierre (Fecha Fin)</h6>
                                     <h3 class="card-text mb-1"><?php echo number_format($totCatStockCierre, 1); ?> kg</h3>
-                                    <small class="text-white-50">Suma de productos al <?php echo htmlspecialchars($fecha2, ENT_QUOTES, 'UTF-8'); ?></small>
+                                    <small class="text-white-50">Total inventario al <?php echo htmlspecialchars($fecha2, ENT_QUOTES, 'UTF-8'); ?></small>
                                 </div>
                             </div>
                         </div>
