@@ -88,7 +88,7 @@
 
                 <div class="product-detail-card p-4 bg-white rounded-4 shadow-sm border">
                     <span class="eyebrow-badge mb-2"><i class="bi bi-tag-fill me-1"></i> <?php echo storefront_escape($product['categoria']); ?></span>
-                    <h2 class="fw-bold text-dark mb-2"><?php echo storefront_escape($product['descripcion']); ?></h2>
+                    <h2 class="product-detail-title fw-bold text-dark mb-2"><?php echo storefront_escape($product['descripcion']); ?></h2>
                     <p class="product-detail-code text-muted mb-3"><i class="bi bi-barcode me-1"></i> Código: <?php echo storefront_escape($product['codigo']); ?></p>
 
                     <div class="product-detail-price-row d-flex justify-content-between align-items-center mb-4 p-3 bg-light rounded-3">
@@ -510,6 +510,8 @@ function stepQtyDetail(step) {
                 updateSlide(currentIndex + 1);
             }
         }
+    });
+
     // Manejador AJAX con Modal de Notas para formulario de detalle de producto
     var detailForm = document.querySelector('.product-detail-form');
     if (detailForm) {
