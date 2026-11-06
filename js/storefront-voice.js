@@ -199,6 +199,10 @@
             try { window.speechSynthesis.cancel(); } catch (e) {}
         }
 
+        if (typeof window.stopCanoCommentDictation === 'function') {
+            try { window.stopCanoCommentDictation(); } catch (e) {}
+        }
+
         if (!voiceModal) {
             var modalEl = document.getElementById('voiceSearchModal');
             if (modalEl && window.bootstrap && window.bootstrap.Modal) {
@@ -501,44 +505,10 @@
     }
 
     /**
-     * Respuesta hablada del carnicero mediante SpeechSynthesis
+     * Respuesta hablada desactivada para evitar colisiones con el micrófono en móviles
      */
     function speakButcherResponse(message, callback) {
-        if (!('speechSynthesis' in window)) {
-            if (callback) callback();
-            return;
-        }
-
-        try {
-            window.speechSynthesis.cancel();
-            var utterance = new SpeechSynthesisUtterance(message);
-            utterance.lang = 'es-MX';
-            utterance.rate = 1.0;
-            utterance.pitch = 0.95;
-
-            var voices = window.speechSynthesis.getVoices();
-            var esVoice = voices.find(function (v) { return v.lang === 'es-MX'; }) ||
-                          voices.find(function (v) { return v.lang && v.lang.startsWith('es'); });
-            if (esVoice) utterance.voice = esVoice;
-
-            var finished = false;
-            var handleDone = function () {
-                if (!finished) {
-                    finished = true;
-                    if (callback) callback();
-                }
-            };
-
-            utterance.onend = handleDone;
-            utterance.onerror = handleDone;
-
-            // En móviles si tarda mucho, no bloquear la navegación
-            setTimeout(handleDone, 2200);
-
-            window.speechSynthesis.speak(utterance);
-        } catch (e) {
-            if (callback) callback();
-        }
+        if (callback) callback();
     }
 
     /**

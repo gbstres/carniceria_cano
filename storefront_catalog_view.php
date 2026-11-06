@@ -530,23 +530,9 @@ document.addEventListener('DOMContentLoaded', function () {
         openCommentModalForForm(cartForm);
     });
 
-    // Voz: Preguntar amablemente "¿Cómo lo va a querer?"
+    // Voz: Preguntar amablemente "¿Cómo lo va a querer?" (desactivado TTS para proteger el micrófono en móviles)
     function askHowWouldYouLikeIt() {
-        if (!('speechSynthesis' in window)) return;
-        try {
-            window.speechSynthesis.cancel();
-            var utterance = new SpeechSynthesisUtterance('¿Cómo lo va a querer? ¿Alguna preparación especial?');
-            utterance.lang = 'es-MX';
-            utterance.rate = 1.0;
-            utterance.pitch = 1.0;
-
-            var voices = window.speechSynthesis.getVoices();
-            var esVoice = voices.find(function (v) { return v.lang === 'es-MX'; }) ||
-                          voices.find(function (v) { return v.lang && v.lang.startsWith('es'); });
-            if (esVoice) utterance.voice = esVoice;
-
-            window.speechSynthesis.speak(utterance);
-        } catch (err) {}
+        // No se reproduce audio sintético para evitar bloqueos del driver de audio en celulares
     }
 
     // Detección y auto-apertura cuando la búsqueda arrojó un único producto
@@ -556,7 +542,6 @@ document.addEventListener('DOMContentLoaded', function () {
             autoForm.setAttribute('data-modal-triggered', '1');
             setTimeout(function () {
                 openCommentModalForForm(autoForm);
-                askHowWouldYouLikeIt();
             }, 450);
         }
     }
@@ -587,6 +572,14 @@ document.addEventListener('DOMContentLoaded', function () {
                 } catch (e) {}
                 dictationRecognition = null;
             }
+        }
+
+        window.stopCanoCommentDictation = stopCommentDictation;
+
+        if (commentModalEl) {
+            commentModalEl.addEventListener('hidden.bs.modal', function () {
+                stopCommentDictation();
+            });
         }
 
         btnDictateComment.addEventListener('click', function (e) {

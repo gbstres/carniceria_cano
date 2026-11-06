@@ -649,29 +649,7 @@ function storefront_render_footer()
         // Carnicero Atento: "¿Se le ofrece algo más marchante?"
         // ======================================================================
         window.askIfNeedsAnythingElse = function () {
-            if (!('speechSynthesis' in window)) return;
-            try {
-                window.speechSynthesis.cancel();
-                var butcherPhrases = [
-                    '¡Listo marchante! ¿Se le ofrece algo más?',
-                    '¡Agregado con gusto! ¿Le despachamos algo más?',
-                    '¡Ya quedó en su bolsa! ¿Desea que le preparemos algo más marchante?'
-                ];
-                var phrase = butcherPhrases[Math.floor(Math.random() * butcherPhrases.length)];
-                var utterance = new SpeechSynthesisUtterance(phrase);
-                utterance.lang = 'es-MX';
-                utterance.rate = 1.0;
-                utterance.pitch = 0.95;
-
-                var voices = window.speechSynthesis.getVoices();
-                var esVoice = voices.find(function (v) { return v.lang === 'es-MX'; }) ||
-                              voices.find(function (v) { return v.lang && v.lang.startsWith('es'); });
-                if (esVoice) utterance.voice = esVoice;
-
-                setTimeout(function () {
-                    window.speechSynthesis.speak(utterance);
-                }, 350);
-            } catch (e) {}
+            // Desactivado para no bloquear el driver de audio ni el micrófono en dispositivos móviles
         };
 
         window.showButcherAskMorePrompt = function (productMessage, totalItems) {
@@ -691,9 +669,6 @@ function storefront_render_footer()
             promptEl.classList.remove('d-none');
             promptEl.classList.add('d-block');
 
-            // Preguntar amablemente por voz
-            window.askIfNeedsAnythingElse();
-
             if (window.askMoreTimeout) clearTimeout(window.askMoreTimeout);
             window.askMoreTimeout = setTimeout(function () {
                 window.closeButcherAskMorePrompt();
@@ -711,6 +686,9 @@ function storefront_render_footer()
 
         window.triggerAskMoreVoice = function () {
             window.closeButcherAskMorePrompt();
+            if ('speechSynthesis' in window) {
+                try { window.speechSynthesis.cancel(); } catch (e) {}
+            }
             if (typeof window.openCanoVoiceSearch === 'function') {
                 window.openCanoVoiceSearch();
             }
