@@ -573,63 +573,76 @@ document.addEventListener('DOMContentLoaded', function () {
 
     var SpeechRecClass = window.SpeechRecognition || window.webkitSpeechRecognition || null;
     if (btnDictateComment && commentTextarea && SpeechRecClass) {
-        try {
-            dictationRecognition = new SpeechRecClass();
-            dictationRecognition.lang = 'es-MX';
-            dictationRecognition.continuous = false;
-            dictationRecognition.interimResults = false;
+        function stopCommentDictation() {
+            isDictatingComment = false;
+            btnDictateComment.classList.remove('is-dictating');
+            btnDictateComment.setAttribute('title', 'Dictar indicaciones por voz');
+            if (dictationRecognition) {
+                try {
+                    dictationRecognition.onstart = null;
+                    dictationRecognition.onresult = null;
+                    dictationRecognition.onerror = null;
+                    dictationRecognition.onend = null;
+                    dictationRecognition.abort();
+                } catch (e) {}
+                dictationRecognition = null;
+            }
+        }
 
-            dictationRecognition.onstart = function () {
-                isDictatingComment = true;
-                btnDictateComment.classList.add('is-dictating');
-                btnDictateComment.setAttribute('title', 'Escuchando... presiona para detener');
-            };
-
-            dictationRecognition.onresult = function (event) {
-                var transcript = '';
-                for (var i = event.resultIndex; i < event.results.length; ++i) {
-                    if (event.results[i].isFinal) {
-                        transcript += event.results[i][0].transcript;
-                    }
-                }
-                transcript = transcript.trim();
-                if (transcript) {
-                    var current = commentTextarea.value.trim();
-                    commentTextarea.value = current ? (current + ', ' + transcript) : transcript;
-                    commentTextarea.focus();
-                }
-            };
-
-            dictationRecognition.onerror = function () {
+        btnDictateComment.addEventListener('click', function (e) {
+            e.preventDefault();
+            if (isDictatingComment) {
                 stopCommentDictation();
-            };
-
-            dictationRecognition.onend = function () {
-                stopCommentDictation();
-            };
-
-            function stopCommentDictation() {
-                isDictatingComment = false;
-                btnDictateComment.classList.remove('is-dictating');
-                btnDictateComment.setAttribute('title', 'Dictar indicaciones por voz');
+                return;
             }
 
-            btnDictateComment.addEventListener('click', function (e) {
-                e.preventDefault();
-                if (isDictatingComment) {
-                    try { dictationRecognition.stop(); } catch (err) {}
-                    stopCommentDictation();
-                } else {
-                    try {
-                        dictationRecognition.start();
-                    } catch (err) {
-                        stopCommentDictation();
+            // Cancelar cualquier síntesis de voz en curso para liberar el audio del dispositivo móvil
+            if ('speechSynthesis' in window) {
+                try { window.speechSynthesis.cancel(); } catch (err) {}
+            }
+
+            stopCommentDictation();
+
+            try {
+                dictationRecognition = new SpeechRecClass();
+                dictationRecognition.lang = 'es-MX';
+                dictationRecognition.continuous = false;
+                dictationRecognition.interimResults = false;
+
+                dictationRecognition.onstart = function () {
+                    isDictatingComment = true;
+                    btnDictateComment.classList.add('is-dictating');
+                    btnDictateComment.setAttribute('title', 'Escuchando... presiona para detener');
+                };
+
+                dictationRecognition.onresult = function (event) {
+                    var transcript = '';
+                    for (var i = event.resultIndex; i < event.results.length; ++i) {
+                        if (event.results[i].isFinal) {
+                            transcript += event.results[i][0].transcript;
+                        }
                     }
-                }
-            });
-        } catch (e) {
-            console.warn('SpeechRecognition no se pudo inicializar:', e);
-        }
+                    transcript = transcript.trim();
+                    if (transcript) {
+                        var current = commentTextarea.value.trim();
+                        commentTextarea.value = current ? (current + ', ' + transcript) : transcript;
+                        commentTextarea.focus();
+                    }
+                };
+
+                dictationRecognition.onerror = function (ev) {
+                    stopCommentDictation();
+                };
+
+                dictationRecognition.onend = function () {
+                    stopCommentDictation();
+                };
+
+                dictationRecognition.start();
+            } catch (err) {
+                stopCommentDictation();
+            }
+        });
     } else if (btnDictateComment) {
         btnDictateComment.addEventListener('click', function (e) {
             e.preventDefault();

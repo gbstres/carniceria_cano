@@ -178,6 +178,10 @@
     }
 
     function openVoiceModal() {
+        if ('speechSynthesis' in window) {
+            try { window.speechSynthesis.cancel(); } catch (e) {}
+        }
+
         if (!voiceModal) {
             var modalEl = document.getElementById('voiceSearchModal');
             if (modalEl && window.bootstrap && window.bootstrap.Modal) {
@@ -195,10 +199,8 @@
             return;
         }
 
-        // Iniciar escucha automáticamente al abrir el modal tras un breve instante
-        setTimeout(function () {
-            startListening();
-        }, 350);
+        // Iniciar de inmediato mientras la activación por toque/clic del usuario está fresca
+        startListening();
     }
 
     function resetVoiceModalState() {
@@ -249,7 +251,24 @@
             return;
         }
 
+        // Detener cualquier audio que esté reproduciéndose en el dispositivo
+        if ('speechSynthesis' in window) {
+            try { window.speechSynthesis.cancel(); } catch (e) {}
+        }
+
         if (isListening) return;
+
+        // Limpiar cualquier instancia colgada previa
+        if (recognition) {
+            try {
+                recognition.onstart = null;
+                recognition.onresult = null;
+                recognition.onerror = null;
+                recognition.onend = null;
+                recognition.abort();
+            } catch (e) {}
+            recognition = null;
+        }
 
         try {
             recognition = new SpeechRecognition();
@@ -301,14 +320,17 @@
                 isListening = false;
                 setMicVisualState(false);
                 var statusEl = document.getElementById('voiceStatusText');
-                if (statusEl) statusEl.textContent = 'No logramos captar el audio';
 
                 if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
-                    showVoiceAlert('Permiso de micrófono denegado. Permite el acceso al micrófono en tu navegador.', 'danger');
+                    if (statusEl) statusEl.textContent = 'Permiso no otorgado';
+                    showVoiceAlert('Permiso requerido: Toca el botón rojo del micrófono para permitir el acceso.', 'warning');
                 } else if (event.error === 'no-speech') {
-                    showVoiceAlert('No detectamos sonido. Presiona el micrófono e intenta de nuevo.', 'warning');
+                    if (statusEl) statusEl.textContent = 'No escuchamos sonido. Toca el micrófono para hablar';
+                } else if (event.error === 'aborted') {
+                    // Acción abortada voluntariamente
                 } else {
-                    showVoiceAlert('Ocurrió un detalle al captar la voz: ' + event.error, 'warning');
+                    if (statusEl) statusEl.textContent = 'Micrófono en espera';
+                    showVoiceAlert('Detalle al captar la voz: ' + event.error + '. Toca el micrófono para reintentar.', 'warning');
                 }
             };
 
@@ -317,6 +339,11 @@
                 setMicVisualState(false);
                 if (currentCleanedQuery && !searchTriggered) {
                     triggerAutoSearch();
+                } else if (!currentCleanedQuery && !searchTriggered) {
+                    var statusEl = document.getElementById('voiceStatusText');
+                    if (statusEl && !currentRawTranscript) {
+                        statusEl.textContent = 'Toca el micrófono para volver a hablar';
+                    }
                 }
             };
 
@@ -324,7 +351,7 @@
         } catch (err) {
             isListening = false;
             setMicVisualState(false);
-            showVoiceAlert('Error al iniciar el micrófono: ' + err.message, 'danger');
+            showVoiceAlert('Toca el botón rojo del micrófono para iniciar.', 'warning');
         }
     }
 
