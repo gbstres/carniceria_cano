@@ -182,6 +182,8 @@
             try { window.speechSynthesis.cancel(); } catch (e) {}
         }
 
+        stopListening(false);
+
         if (!voiceModal) {
             var modalEl = document.getElementById('voiceSearchModal');
             if (modalEl && window.bootstrap && window.bootstrap.Modal) {
@@ -208,6 +210,7 @@
         currentCleanedQuery = '';
         currentDetectedQty = null;
         searchTriggered = false;
+        isListening = false;
         var statusEl = document.getElementById('voiceStatusText');
         var displayEl = document.getElementById('voiceTranscriptDisplay');
         var cleanedPreview = document.getElementById('voiceCleanedPreview');
@@ -256,9 +259,7 @@
             try { window.speechSynthesis.cancel(); } catch (e) {}
         }
 
-        if (isListening) return;
-
-        // Limpiar cualquier instancia colgada previa
+        // Limpiar cualquier instancia colgada previa para asegurar que el hardware esté libre
         if (recognition) {
             try {
                 recognition.onstart = null;
@@ -269,6 +270,7 @@
             } catch (e) {}
             recognition = null;
         }
+        isListening = false;
 
         try {
             recognition = new SpeechRecognition();
@@ -360,13 +362,19 @@
             clearTimeout(silenceTimer);
             silenceTimer = null;
         }
-        if (recognition) {
-            try {
-                recognition.stop();
-            } catch (e) {}
-        }
         isListening = false;
         setMicVisualState(false);
+
+        if (recognition) {
+            try {
+                recognition.onstart = null;
+                recognition.onresult = null;
+                recognition.onerror = null;
+                recognition.onend = null;
+                recognition.abort();
+            } catch (e) {}
+            recognition = null;
+        }
 
         if (triggerSearchIfReady) {
             var query = currentCleanedQuery || currentRawTranscript;
@@ -481,6 +489,9 @@
      */
     function executeSearch(query) {
         if (!query) return;
+
+        // Liberar el micrófono inmediatamente
+        stopListening(false);
 
         if (voiceModal) {
             voiceModal.hide();
