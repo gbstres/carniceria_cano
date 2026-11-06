@@ -166,6 +166,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['actualizar_producto']
     $mayoreo = isset($_POST['mayoreo']) ? 1 : 0;
     $centralizar_almacen = trim($_POST["centralizar_almacen"] ?? '');
     $activo = isset($_POST['activo']) ? 1 : 0;
+    $para_venta = isset($_POST['para_venta']) ? 1 : 0;
 
     $id_usuario_act = $id_usuario;
     $fecha_act = date('Y-m-d');
@@ -186,6 +187,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['actualizar_producto']
             mayoreo = '$mayoreo',
             centralizar_almacen = '$caSql',
             activo = '$activo',
+            para_venta = '$para_venta',
             fecha_act = '$fecha_act',
             hora_act = '$hora_act',
             id_usuario_act = '$id_usuario_act'
@@ -748,6 +750,10 @@ if ($tableFotosExists) {
                                 <div class="form-check form-check-inline pt-1">
                                     <input class="form-check-input" type="checkbox" id="activo" name="activo" value="1" <?php echo ((int) $producto['activo'] === 1) ? 'checked' : ''; ?>>
                                     <label class="form-check-label" for="activo">Producto Activo</label>
+                                </div>
+                                <div class="form-check form-check-inline pt-1">
+                                    <input class="form-check-input" type="checkbox" id="para_venta" name="para_venta" value="1" <?php echo ((int) ($producto['para_venta'] ?? 1) === 1) ? 'checked' : ''; ?>>
+                                    <label class="form-check-label fw-bold text-success" for="para_venta"><i class="bi bi-cart-check me-1"></i>Para Venta en Mostrador</label>
                                 </div>
                             </div>
                         </div>

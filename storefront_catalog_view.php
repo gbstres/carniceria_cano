@@ -42,13 +42,13 @@
             <!-- Sidebar de Filtros en Escritorio -->
             <aside class="filter-sidebar d-none d-lg-block">
                 <div class="filter-panel search-box-panel shadow-sm border-0 mb-3">
-                    <form method="get" action="index.php" class="filter-form ajax-search-form">
+                    <form method="get" action="index.php" class="filter-form">
                         <label class="filter-label" for="buscar">
                             <i class="bi bi-search me-1 text-warning"></i> Buscar en la tienda
                         </label>
                         <div class="input-group mb-2">
                             <input id="buscar" name="buscar" type="text" class="form-control filter-input" placeholder="Bistec, Chuleta, Arrachera..." value="<?php echo storefront_escape($searchTerm); ?>">
-                            <button type="submit" class="btn btn-warning">
+                            <button type="submit" class="btn btn-warning" title="Buscar">
                                 <i class="bi bi-search"></i>
                             </button>
                         </div>
@@ -144,7 +144,8 @@
                                 <article class="product-card-mobile shadow-sm">
                                     <div class="product-card-header position-relative">
                                         <a href="<?php echo storefront_escape(storefront_product_url($product['codigo'])); ?>" class="product-image-wrap">
-                                            <img src="<?php echo storefront_escape($product['image_small']); ?>" alt="<?php echo storefront_escape($product['image_alt']); ?>" class="product-image" loading="lazy" decoding="async">
+                                            <?php $isFallback = (!empty($product['is_fallback_logo']) || strpos($product['image_small'], 'logo_1') !== false); ?>
+                                            <img src="<?php echo storefront_escape($product['image_small']); ?>" alt="<?php echo storefront_escape($product['image_alt']); ?>" class="product-image <?php echo $isFallback ? 'is-fallback-logo' : ''; ?>" loading="lazy" decoding="async">
                                         </a>
                                     </div>
 
@@ -158,18 +159,21 @@
                                         
                                         <div class="product-price-row-mobile">
                                             <strong class="price-text"><?php echo storefront_escape(storefront_money($product['precio_venta'])); ?></strong>
-                                            <span class="stock-badge <?php echo $isAvailable ? 'text-success' : 'text-warning'; ?>">
-                                                <?php echo storefront_escape($stockStatus); ?>
-                                            </span>
+                                            <?php if (!empty($stockStatus)): ?>
+                                                <span class="stock-badge <?php echo $isAvailable ? 'text-success' : 'text-warning'; ?>">
+                                                    <?php echo storefront_escape($stockStatus); ?>
+                                                </span>
+                                            <?php endif; ?>
                                         </div>
 
-                                        <form method="post" class="product-add-form-mobile ajax-add-cart-form mt-2">
+                                        <?php $cardInitialQty = (!empty($defaultSearchQuantity) && $defaultSearchQuantity > 0) ? $defaultSearchQuantity : 1; ?>
+                                        <form method="post" class="product-add-form-mobile ajax-add-cart-form mt-2" <?php echo (!empty($isUniqueSearchResult)) ? 'data-auto-open-modal="1"' : ''; ?>>
                                             <input type="hidden" name="action" value="add_to_cart">
                                             <input type="hidden" name="product_code" value="<?php echo storefront_escape($product['codigo']); ?>">
                                             
                                             <div class="quantity-touch-stepper mb-2">
                                                 <button type="button" class="btn-step-touch" onclick="stepQty('qty-<?php echo storefront_escape($product['codigo']); ?>', -0.25)">-</button>
-                                                <input id="qty-<?php echo storefront_escape($product['codigo']); ?>" type="number" name="quantity" min="0.25" step="0.25" value="1" class="form-control qty-touch-input text-center fw-bold">
+                                                <input id="qty-<?php echo storefront_escape($product['codigo']); ?>" type="number" name="quantity" min="0.25" step="0.25" value="<?php echo storefront_escape($cardInitialQty); ?>" class="form-control qty-touch-input text-center fw-bold">
                                                 <button type="button" class="btn-step-touch" onclick="stepQty('qty-<?php echo storefront_escape($product['codigo']); ?>', 0.25)">+</button>
                                             </div>
 
@@ -232,9 +236,12 @@
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden">
             <div class="modal-header bg-dark text-white border-bottom border-warning py-3">
-                <h5 class="modal-title h6 m-0 font-serif fw-bold text-white d-flex align-items-center" id="productCommentModalLabel">
-                    <i class="bi bi-pencil-square text-warning me-2 fs-5"></i> Notas de preparación para tu corte
-                </h5>
+                <div class="d-flex flex-column">
+                    <h5 class="modal-title h5 m-0 font-serif fw-bold text-white d-flex align-items-center" id="productCommentModalLabel">
+                        <i class="bi bi-chat-quote-fill text-warning me-2 fs-4"></i> ¿Cómo lo va a querer?
+                    </h5>
+                    <span class="small text-white-50 mt-1">Notas de preparación e indicaciones para su corte</span>
+                </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
             </div>
             <div class="modal-body p-3 p-md-4">
@@ -251,6 +258,8 @@
                     <button type="button" class="comment-chip-btn" onclick="toggleCommentChip(this)">🔪 Trozos delgados</button>
                     <button type="button" class="comment-chip-btn" onclick="toggleCommentChip(this)">📦 En paq. de 1 kg</button>
                     <button type="button" class="comment-chip-btn" onclick="toggleCommentChip(this)">🥩 En paq. de 1/2 kg</button>
+                    <button type="button" class="comment-chip-btn" onclick="toggleCommentChip(this)">⚙️ Moler dos veces</button>
+                    <button type="button" class="comment-chip-btn" onclick="toggleCommentChip(this)">🔪 Bien aplanado</button>
                     <button type="button" class="comment-chip-btn" onclick="toggleCommentChip(this)">🔥 Para asar</button>
                     <button type="button" class="comment-chip-btn" onclick="toggleCommentChip(this)">🧼 Sin grasa</button>
                     <button type="button" class="comment-chip-btn" onclick="toggleCommentChip(this)">🧂 Marinado</button>
@@ -258,7 +267,12 @@
 
                 <div class="mb-2">
                     <label for="modalCommentTextarea" class="form-label small fw-bold text-dark mb-1">Comentarios especiales para el carnicero:</label>
-                    <textarea id="modalCommentTextarea" class="form-control rounded-3" rows="2" placeholder="Ej: Empacar por separado, moler dos veces..."></textarea>
+                    <div class="position-relative">
+                        <textarea id="modalCommentTextarea" class="form-control rounded-3 pe-5" rows="2" placeholder="Ej: Empacar por separado, moler dos veces..."></textarea>
+                        <button type="button" id="btnVoiceDictateComment" class="btn border-0 bg-transparent text-danger p-0 position-absolute end-0 bottom-0 mb-2 me-2 d-flex align-items-center justify-content-center shadow-none" title="Dictar indicaciones por voz" aria-label="Dictar por voz" style="z-index: 5; width: 32px; height: 32px;">
+                            <i class="bi bi-mic-fill fs-5" id="dictateMicIcon"></i>
+                        </button>
+                    </div>
                 </div>
             </div>
             <div class="modal-footer bg-light p-3 d-flex justify-content-between align-items-center gap-2">
@@ -358,10 +372,49 @@ document.addEventListener('DOMContentLoaded', function () {
             currentFeedback.remove();
         }
 
+        // 4. Sincronizar visibilidad del frame promocional del hero
+        var isSearchingNow = false;
+        if (targetUrl) {
+            isSearchingNow = targetUrl.indexOf('buscar=') !== -1 && targetUrl.indexOf('buscar=&') === -1;
+        } else {
+            isSearchingNow = window.location.search.indexOf('buscar=') !== -1;
+        }
+        var promoCard = document.querySelector('.promo-card-marketing');
+        if (promoCard) {
+            var promoCol = promoCard.closest('.col-lg-5');
+            if (promoCol) {
+                promoCol.style.display = isSearchingNow ? 'none' : '';
+            }
+        }
+
         if (targetUrl) {
             history.pushState(null, '', targetUrl);
         }
+        checkAndTriggerUniqueModal();
     }
+
+    // Exponer API para que la búsqueda por voz pueda actualizar el catálogo SPA sin recargar toda la página
+    window.canoUpdateCatalog = function (targetUrl) {
+        var cleanUrl = targetUrl.replace(/#.*$/, '');
+        var fetchUrl = cleanUrl + (cleanUrl.indexOf('?') !== -1 ? '&ajax=1' : '?ajax=1');
+        var currentMain = document.getElementById('catalog-main-content');
+        if (currentMain) currentMain.style.opacity = '0.55';
+
+        return fetch(fetchUrl)
+            .then(function (res) { return res.text(); })
+            .then(function (html) {
+                var parser = new DOMParser();
+                var doc = parser.parseFromString(html, 'text/html');
+                updateCatalogContent(doc, targetUrl);
+                var catEl = document.getElementById('catalogo');
+                if (catEl) {
+                    catEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                }
+            })
+            .catch(function () {
+                window.location.href = targetUrl;
+            });
+    };
 
     // Interceptor de Navegación AJAX (Categorías, Paginación, Limpiar Filtros)
     document.addEventListener('click', function (e) {
@@ -432,12 +485,10 @@ document.addEventListener('DOMContentLoaded', function () {
             });
     });
 
-    // Interceptor de Agregar al Carrito: Despliega Modal de Comentarios
-    document.addEventListener('submit', function (e) {
-        var cartForm = e.target.closest('.ajax-add-cart-form');
+    // Despliega el Modal de Comentarios para un formulario de producto
+    function openCommentModalForForm(cartForm) {
         if (!cartForm) return;
 
-        e.preventDefault();
         pendingCartForm = cartForm;
         pendingSubmitBtn = cartForm.querySelector('button[type="submit"]');
 
@@ -448,10 +499,15 @@ document.addEventListener('DOMContentLoaded', function () {
         var qty = qtyInput ? qtyInput.value : '1';
 
         // Llenar datos en el Modal
-        document.getElementById('modalProductName').textContent = title;
-        document.getElementById('modalProductQty').textContent = 'Cantidad: ' + qty + ' unidad(es)/kg';
-        document.getElementById('modalProductImg').src = img;
-        document.getElementById('modalCommentTextarea').value = '';
+        var nameEl = document.getElementById('modalProductName');
+        var qtyEl = document.getElementById('modalProductQty');
+        var imgEl = document.getElementById('modalProductImg');
+        var commentEl = document.getElementById('modalCommentTextarea');
+
+        if (nameEl) nameEl.textContent = title;
+        if (qtyEl) qtyEl.textContent = 'Cantidad: ' + qty + ' unidad(es)/kg';
+        if (imgEl) imgEl.src = img;
+        if (commentEl) commentEl.value = '';
 
         // Resetear fichas de comentarios
         var chips = document.querySelectorAll('.comment-chip-btn');
@@ -463,7 +519,123 @@ document.addEventListener('DOMContentLoaded', function () {
             // Fallback directo si no hay modal Bootstrap
             executeAddToCart('', pendingCartForm, pendingSubmitBtn);
         }
+    }
+
+    // Interceptor de Agregar al Carrito: Despliega Modal de Comentarios
+    document.addEventListener('submit', function (e) {
+        var cartForm = e.target.closest('.ajax-add-cart-form');
+        if (!cartForm) return;
+
+        e.preventDefault();
+        openCommentModalForForm(cartForm);
     });
+
+    // Voz: Preguntar amablemente "¿Cómo lo va a querer?"
+    function askHowWouldYouLikeIt() {
+        if (!('speechSynthesis' in window)) return;
+        try {
+            window.speechSynthesis.cancel();
+            var utterance = new SpeechSynthesisUtterance('¿Cómo lo va a querer? ¿Alguna preparación especial?');
+            utterance.lang = 'es-MX';
+            utterance.rate = 1.0;
+            utterance.pitch = 1.0;
+
+            var voices = window.speechSynthesis.getVoices();
+            var esVoice = voices.find(function (v) { return v.lang === 'es-MX'; }) ||
+                          voices.find(function (v) { return v.lang && v.lang.startsWith('es'); });
+            if (esVoice) utterance.voice = esVoice;
+
+            window.speechSynthesis.speak(utterance);
+        } catch (err) {}
+    }
+
+    // Detección y auto-apertura cuando la búsqueda arrojó un único producto
+    function checkAndTriggerUniqueModal() {
+        var autoForm = document.querySelector('.ajax-add-cart-form[data-auto-open-modal="1"]');
+        if (autoForm && !autoForm.getAttribute('data-modal-triggered')) {
+            autoForm.setAttribute('data-modal-triggered', '1');
+            setTimeout(function () {
+                openCommentModalForForm(autoForm);
+                askHowWouldYouLikeIt();
+            }, 450);
+        }
+    }
+
+    // Disparar chequeo inicial en carga de página
+    checkAndTriggerUniqueModal();
+
+    // Dictado por voz en el campo de comentarios especiales
+    var btnDictateComment = document.getElementById('btnVoiceDictateComment');
+    var commentTextarea = document.getElementById('modalCommentTextarea');
+    var dictateMicIcon = document.getElementById('dictateMicIcon');
+    var isDictatingComment = false;
+    var dictationRecognition = null;
+
+    var SpeechRecClass = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+    if (btnDictateComment && commentTextarea && SpeechRecClass) {
+        try {
+            dictationRecognition = new SpeechRecClass();
+            dictationRecognition.lang = 'es-MX';
+            dictationRecognition.continuous = false;
+            dictationRecognition.interimResults = false;
+
+            dictationRecognition.onstart = function () {
+                isDictatingComment = true;
+                btnDictateComment.classList.add('is-dictating');
+                btnDictateComment.setAttribute('title', 'Escuchando... presiona para detener');
+            };
+
+            dictationRecognition.onresult = function (event) {
+                var transcript = '';
+                for (var i = event.resultIndex; i < event.results.length; ++i) {
+                    if (event.results[i].isFinal) {
+                        transcript += event.results[i][0].transcript;
+                    }
+                }
+                transcript = transcript.trim();
+                if (transcript) {
+                    var current = commentTextarea.value.trim();
+                    commentTextarea.value = current ? (current + ', ' + transcript) : transcript;
+                    commentTextarea.focus();
+                }
+            };
+
+            dictationRecognition.onerror = function () {
+                stopCommentDictation();
+            };
+
+            dictationRecognition.onend = function () {
+                stopCommentDictation();
+            };
+
+            function stopCommentDictation() {
+                isDictatingComment = false;
+                btnDictateComment.classList.remove('is-dictating');
+                btnDictateComment.setAttribute('title', 'Dictar indicaciones por voz');
+            }
+
+            btnDictateComment.addEventListener('click', function (e) {
+                e.preventDefault();
+                if (isDictatingComment) {
+                    try { dictationRecognition.stop(); } catch (err) {}
+                    stopCommentDictation();
+                } else {
+                    try {
+                        dictationRecognition.start();
+                    } catch (err) {
+                        stopCommentDictation();
+                    }
+                }
+            });
+        } catch (e) {
+            console.warn('SpeechRecognition no se pudo inicializar:', e);
+        }
+    } else if (btnDictateComment) {
+        btnDictateComment.addEventListener('click', function (e) {
+            e.preventDefault();
+            alert('El dictado por voz no está disponible en este navegador. Puedes escribir directamente en el campo de texto.');
+        });
+    }
 
     // Acción del Modal: Guardar y Agregar con Comentario
     var btnSave = document.getElementById('btnModalSaveComment');
@@ -535,18 +707,22 @@ document.addEventListener('DOMContentLoaded', function () {
                     }, 2500);
                 }
 
-                // 4. Notificación Toast Sutil
-                var toast = document.getElementById('ajax-toast');
-                var toastMsg = document.getElementById('toast-message');
-                if (toast && toastMsg) {
-                    toastMsg.textContent = data.message;
-                    toast.classList.remove('d-none');
-                    toast.classList.add('d-flex');
+                // 4. Solicitar si necesita algo más (Prompt Interactivo + Voz del Carnicero)
+                if (typeof window.showButcherAskMorePrompt === 'function') {
+                    window.showButcherAskMorePrompt(data.message, data.cartTotals ? data.cartTotals.items : null);
+                } else {
+                    var toast = document.getElementById('ajax-toast');
+                    var toastMsg = document.getElementById('toast-message');
+                    if (toast && toastMsg) {
+                        toastMsg.textContent = data.message;
+                        toast.classList.remove('d-none');
+                        toast.classList.add('d-flex');
 
-                    setTimeout(function () {
-                        toast.classList.remove('d-flex');
-                        toast.classList.add('d-none');
-                    }, 2800);
+                        setTimeout(function () {
+                            toast.classList.remove('d-flex');
+                            toast.classList.add('d-none');
+                        }, 2800);
+                    }
                 }
             }
         })

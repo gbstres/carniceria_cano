@@ -55,7 +55,24 @@ if ($_SERVER["REQUEST_METHOD"] === "POST" && isset($_POST['id_cierre'])) {
               AND estatus <> 2
             GROUP BY codigo
         ) e ON p.codigo = e.codigo COLLATE utf8_spanish_ci
-        SET p.almacen = ROUND(COALESCE(cs.stock, 0) + COALESCE(c.cant_comprada, 0) + COALESCE(e.cant_entrada, 0) - COALESCE(v.cant_vendida, 0), 3)
+        LEFT JOIN (
+            SELECT codigo, SUM(cantidad) AS cant_producida
+            FROM cc_produccion
+            WHERE id_sucursal = $id_sucursal 
+              AND TIMESTAMP(fecha_ingreso, hora_ingreso) > TIMESTAMP('$fecha_cierre', '$hora_cierre')
+              AND estatus <> 2
+            GROUP BY codigo
+        ) prod_in ON p.codigo = prod_in.codigo COLLATE utf8_spanish_ci
+        LEFT JOIN (
+            SELECT pd.codigo_insumo AS codigo, SUM(pd.cantidad_utilizada) AS cant_insumo_usado
+            FROM cc_produccion_detalle pd
+            INNER JOIN cc_produccion ph ON pd.id_sucursal = ph.id_sucursal AND pd.id_produccion = ph.id_produccion
+            WHERE pd.id_sucursal = $id_sucursal 
+              AND TIMESTAMP(ph.fecha_ingreso, ph.hora_ingreso) > TIMESTAMP('$fecha_cierre', '$hora_cierre')
+              AND ph.estatus <> 2
+            GROUP BY pd.codigo_insumo
+        ) prod_out ON p.codigo = prod_out.codigo COLLATE utf8_spanish_ci
+        SET p.almacen = ROUND(COALESCE(cs.stock, 0) + COALESCE(c.cant_comprada, 0) + COALESCE(e.cant_entrada, 0) - COALESCE(v.cant_vendida, 0) + COALESCE(prod_in.cant_producida, 0) - COALESCE(prod_out.cant_insumo_usado, 0), 3)
         WHERE p.id_sucursal = $id_sucursal
           AND (p.centralizar_almacen = 1 OR p.centralizar_almacen IS NULL OR p.centralizar_almacen = 0);
         ";

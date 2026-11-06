@@ -26,7 +26,12 @@ if ($longitud == 13 && is_numeric($busqueda)) {
 }
 
 
-$rowproducto = mysqli_fetch_assoc(mysqli_query($link, "SELECT codigo,descripcion,precio_venta FROM cc_productos WHERE id_sucursal = '$id_sucursal' and codigo = $codigo"));
+$rowproducto = mysqli_fetch_assoc(mysqli_query($link, "SELECT codigo,descripcion,precio_venta,para_venta FROM cc_productos WHERE id_sucursal = '$id_sucursal' and codigo = $codigo AND (para_venta = 1 OR para_venta IS NULL)"));
+
+if (!$rowproducto) {
+    echo json_encode([]);
+    exit;
+}
 
 $precio_venta = $rowproducto['precio_venta'];
 $total = $precio_venta * $peso;

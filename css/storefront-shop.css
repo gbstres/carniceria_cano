@@ -474,6 +474,32 @@ body.mobile-first-app {
     object-fit: cover;
 }
 
+/* Ajuste para que el logotipo de relleno se visualice completo sin recortes */
+.product-image.is-fallback-logo {
+    object-fit: contain !important;
+    padding: 0.75rem !important;
+    background-color: #FFFFFF !important;
+}
+
+.product-image-wrap:has(.is-fallback-logo) {
+    background-color: #FFFFFF !important;
+}
+
+.product-detail-image.is-fallback-logo {
+    object-fit: contain !important;
+    padding: 1.25rem !important;
+    background-color: #FFFFFF !important;
+}
+
+.product-detail-main-image.has-fallback-logo {
+    background-color: #FFFFFF !important;
+    cursor: default !important;
+}
+
+.product-detail-main-image.has-fallback-logo .product-gallery-zoom-badge {
+    display: none !important;
+}
+
 .product-cat-name {
     font-size: 0.72rem;
     text-transform: uppercase;
@@ -896,6 +922,75 @@ body.mobile-first-app {
     box-shadow: 0 3px 8px rgba(126, 20, 20, 0.3) !important;
 }
 
+#btnVoiceDictateComment {
+    transition: transform 0.15s ease, opacity 0.15s ease;
+    opacity: 0.75;
+}
+
+#btnVoiceDictateComment:hover {
+    transform: scale(1.12);
+    opacity: 1;
+}
+
+#btnVoiceDictateComment.is-dictating i {
+    animation: canoMicPulse 0.8s infinite alternate ease-in-out;
+    color: #DC2626 !important;
+}
+
+@keyframes canoMicPulse {
+    0% { transform: scale(1); filter: drop-shadow(0 0 2px rgba(220, 38, 38, 0.4)); }
+    100% { transform: scale(1.28); filter: drop-shadow(0 0 8px rgba(220, 38, 38, 0.85)); }
+}
+
+/* ==========================================================================
+   Prompt Interactivo del Carnicero: ¿Se le ofrece algo más?
+   ========================================================================== */
+.butcher-ask-more-card {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    max-width: 420px;
+    background: #FFFFFF;
+    border: 2px solid var(--cano-gold, #D4AF37);
+    border-radius: 18px;
+    padding: 1rem 1.15rem;
+    z-index: 1080;
+    box-shadow: 0 14px 38px rgba(0, 0, 0, 0.22);
+    animation: canoPromptSlideUp 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.butcher-prompt-icon {
+    width: 44px;
+    height: 44px;
+    background: #FDF6E2;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border: 1px solid rgba(212, 175, 55, 0.4);
+}
+
+@keyframes canoPromptSlideUp {
+    from {
+        opacity: 0;
+        transform: translateY(24px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@media (max-width: 991px) {
+    .butcher-ask-more-card {
+        bottom: 74px; /* Elevado sobre la barra de navegación móvil */
+        left: 12px;
+        right: 12px;
+        max-width: none;
+        padding: 0.85rem 1rem;
+    }
+}
+
 /* ==========================================================================
    Mapa Interactivo de Sucursales & Radio de Cobertura (5 km)
    ========================================================================== */
@@ -1288,3 +1383,205 @@ body.mobile-first-app {
         right: 10px;
     }
 }
+
+/* ==========================================================================
+   Asistente de Pedido por Voz ("El Carnicero")
+   ========================================================================== */
+
+/* Botón de micrófono dentro de inputs de búsqueda */
+.btn-voice-search {
+    cursor: pointer;
+    transition: transform 0.2s ease, color 0.2s ease;
+}
+
+.btn-voice-search:hover {
+    transform: scale(1.12);
+}
+
+.btn-voice-search:active {
+    transform: scale(0.95);
+}
+
+/* Botón Flotante para Pedidos por Voz */
+.floating-voice-btn {
+    position: fixed;
+    right: 20px;
+    bottom: 28px;
+    z-index: 1040;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.65rem 1.15rem;
+    background: linear-gradient(135deg, #8B1E1E 0%, #580B0B 100%);
+    color: #FFFFFF !important;
+    border: 2px solid var(--cano-gold, #D4AF37);
+    border-radius: 50px;
+    box-shadow: 0 8px 24px rgba(126, 20, 20, 0.4), 0 2px 6px rgba(0, 0, 0, 0.25);
+    text-decoration: none;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+    cursor: pointer;
+    transition: all 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.floating-voice-btn:hover {
+    background: linear-gradient(135deg, #A82020 0%, #6E1212 100%);
+    border-color: #F3E5AB;
+    transform: translateY(-3px) scale(1.04);
+    box-shadow: 0 12px 28px rgba(126, 20, 20, 0.55), 0 4px 10px rgba(0, 0, 0, 0.3);
+}
+
+.floating-voice-btn:active {
+    transform: translateY(1px) scale(0.97);
+}
+
+.floating-voice-icon-box {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 26px;
+    height: 26px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 50%;
+    font-size: 1.05rem;
+    color: var(--cano-gold, #D4AF37);
+}
+
+/* En móviles se ubica justo sobre la barra inferior de navegación */
+@media (max-width: 991.98px) {
+    .floating-voice-btn {
+        bottom: 74px;
+        right: 14px;
+        padding: 0.55rem 0.95rem;
+        font-size: 0.82rem;
+    }
+}
+
+@media (max-width: 480px) {
+    .floating-voice-btn {
+        padding: 0.5rem 0.85rem;
+    }
+    .floating-voice-label {
+        font-size: 0.8rem;
+    }
+}
+
+/* Modal del Asistente de Voz */
+.voice-modal-content {
+    background: #FFFFFF;
+    border-radius: 20px;
+    overflow: hidden;
+}
+
+.voice-mic-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 1.2rem 0;
+}
+
+.voice-mic-main-btn {
+    position: relative;
+    width: 88px;
+    height: 88px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #A82020 0%, #7E1414 100%);
+    border: 3px solid var(--cano-gold, #D4AF37);
+    color: #FFFFFF;
+    font-size: 2.2rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    box-shadow: 0 6px 20px rgba(126, 20, 20, 0.35);
+    transition: all 0.25s ease;
+    outline: none;
+}
+
+.voice-mic-main-btn:hover {
+    transform: scale(1.06);
+    border-color: #F8E7B2;
+}
+
+/* Ondas sonoras animadas al estar en modo escucha */
+.voice-mic-main-btn.is-listening {
+    background: linear-gradient(135deg, #DC3545 0%, #A81B1B 100%);
+    animation: voiceButtonPulse 1.6s infinite;
+}
+
+.voice-mic-main-btn.is-listening .voice-pulse-wave,
+.voice-mic-main-btn.is-listening .voice-pulse-wave-2 {
+    position: absolute;
+    top: -8px;
+    left: -8px;
+    right: -8px;
+    bottom: -8px;
+    border: 2px solid rgba(220, 53, 69, 0.65);
+    border-radius: 50%;
+    animation: voiceWaveExpand 1.8s infinite cubic-bezier(0.215, 0.61, 0.355, 1);
+    pointer-events: none;
+}
+
+.voice-mic-main-btn.is-listening .voice-pulse-wave-2 {
+    animation-delay: 0.5s;
+}
+
+@keyframes voiceButtonPulse {
+    0% {
+        box-shadow: 0 0 0 0 rgba(220, 53, 69, 0.7);
+        transform: scale(1);
+    }
+    50% {
+        box-shadow: 0 0 0 16px rgba(220, 53, 69, 0);
+        transform: scale(1.04);
+    }
+    100% {
+        box-shadow: 0 0 0 0 rgba(220, 53, 69, 0);
+        transform: scale(1);
+    }
+}
+
+@keyframes voiceWaveExpand {
+    0% {
+        transform: scale(1);
+        opacity: 0.8;
+    }
+    100% {
+        transform: scale(1.55);
+        opacity: 0;
+    }
+}
+
+/* Tarjeta de visualización de transcripción */
+.voice-transcript-card {
+    background: #FAF7F2;
+    border: 1px solid #EAE2D7;
+    min-height: 76px;
+    box-shadow: inset 0 2px 4px rgba(0, 0, 0, 0.03);
+}
+
+.voice-transcript-text {
+    font-size: 1.08rem;
+    line-height: 1.4;
+    word-break: break-word;
+}
+
+/* Chips de sugerencias */
+.voice-suggestion-chip {
+    background: #FDFBF8 !important;
+    border: 1px solid #E2D9CD !important;
+    color: #554433 !important;
+    font-size: 0.82rem !important;
+    font-weight: 500 !important;
+    padding: 0.35rem 0.75rem !important;
+    transition: all 0.15s ease !important;
+}
+
+.voice-suggestion-chip:hover {
+    background: #7E1414 !important;
+    color: #FFFFFF !important;
+    border-color: #7E1414 !important;
+    transform: translateY(-1px);
+}
+

@@ -34,8 +34,9 @@
 
             <div class="product-detail-shell">
                 <div class="product-detail-gallery">
-                    <div class="product-detail-main-image rounded-4 overflow-hidden shadow-sm border position-relative" id="mainImageContainer">
-                        <img id="mainProductImage" src="<?php echo storefront_escape($product['image_large']); ?>" alt="<?php echo storefront_escape($product['image_alt']); ?>" class="product-detail-image w-100" fetchpriority="high">
+                    <?php $isDetailFallback = (!empty($product['is_fallback_logo']) || strpos($product['image_large'], 'logo_1') !== false); ?>
+                    <div class="product-detail-main-image rounded-4 overflow-hidden shadow-sm border position-relative <?php echo $isDetailFallback ? 'has-fallback-logo' : ''; ?>" id="mainImageContainer">
+                        <img id="mainProductImage" src="<?php echo storefront_escape($product['image_large']); ?>" alt="<?php echo storefront_escape($product['image_alt']); ?>" class="product-detail-image w-100 <?php echo $isDetailFallback ? 'is-fallback-logo' : ''; ?>" fetchpriority="high">
                         
                         <!-- Indicador visual de Lupa interactiva (Desktop) -->
                         <div class="product-gallery-zoom-badge d-none d-md-inline-flex" id="zoomHintBadge">
@@ -95,9 +96,13 @@
                             <span class="text-muted small d-block">Precio por unidad/kg:</span>
                             <strong class="h2 fw-bold text-danger mb-0"><?php echo storefront_escape(storefront_money($product['precio_venta'])); ?></strong>
                         </div>
-                        <span class="badge bg-success bg-opacity-10 text-success fs-6 px-3 py-2 rounded-pill">
-                            <i class="bi bi-check-circle-fill me-1"></i> <?php echo storefront_escape(storefront_stock_label($product['almacen'])); ?>
-                        </span>
+                        <?php 
+                        $stockLabel = storefront_stock_label($product['almacen']);
+                        if (!empty($stockLabel)): ?>
+                            <span class="badge bg-success bg-opacity-10 text-success fs-6 px-3 py-2 rounded-pill">
+                                <i class="bi bi-check-circle-fill me-1"></i> <?php echo storefront_escape($stockLabel); ?>
+                            </span>
+                        <?php endif; ?>
                     </div>
 
                     <div class="product-detail-meta row g-3 mb-4">
@@ -505,6 +510,63 @@ function stepQtyDetail(step) {
                 updateSlide(currentIndex + 1);
             }
         }
-    });
+    // Manejador AJAX para formulario de detalle de producto
+    var detailForm = document.querySelector('.product-detail-form');
+    if (detailForm) {
+        detailForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var submitBtn = detailForm.querySelector('button[type="submit"]');
+            var formData = new FormData(detailForm);
+            formData.append('ajax', '1');
+
+            fetch('index.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(function (res) { return res.json(); })
+            .then(function (data) {
+                if (data && data.ok) {
+                    // 1. Actualizar contadores del carrito
+                    var counters = document.querySelectorAll('.cart-items-counter, .nav-cart-badge, .header-cart-badge, .mobile-bottom-cart-badge');
+                    counters.forEach(function (c) {
+                        c.textContent = data.cartTotals.items;
+                        c.classList.remove('d-none');
+                    });
+
+                    // 2. Animación de rebote en bolsa
+                    var cartIcons = document.querySelectorAll('.btn-quick-cart-header, .nav-link-cart i, .mobile-bottom-nav a[href="carrito.php"] i, .cart-items-counter');
+                    cartIcons.forEach(function (icon) {
+                        icon.classList.remove('bag-bounce-anim');
+                        void icon.offsetWidth;
+                        icon.classList.add('bag-bounce-anim');
+                        setTimeout(function () { icon.classList.remove('bag-bounce-anim'); }, 700);
+                    });
+
+                    // 3. Botón "¡Agregado!"
+                    if (submitBtn) {
+                        submitBtn.classList.remove('btn-danger');
+                        submitBtn.classList.add('btn-success');
+                        var originalHtml = submitBtn.innerHTML;
+                        submitBtn.innerHTML = '<i class="bi bi-check-circle-fill me-1"></i> ¡Agregado!';
+                        setTimeout(function () {
+                            submitBtn.classList.remove('btn-success');
+                            submitBtn.classList.add('btn-danger');
+                            submitBtn.innerHTML = originalHtml;
+                        }, 2500);
+                    }
+
+                    // 4. Solicitar si necesita algo más
+                    if (typeof window.showButcherAskMorePrompt === 'function') {
+                        window.showButcherAskMorePrompt(data.message, data.cartTotals ? data.cartTotals.items : null);
+                    }
+                } else {
+                    detailForm.submit();
+                }
+            })
+            .catch(function () {
+                detailForm.submit();
+            });
+        });
+    }
 })();
 </script>

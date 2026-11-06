@@ -144,6 +144,15 @@ function cc_sync_get_entity_config(string $entityType): ?array
             'table' => 'cc_activos_bitacora',
             'keys' => ['id_bitacora'],
         ],
+    
+        'produccion' => [
+            'table' => 'cc_produccion',
+            'keys' => ['id_produccion'],
+        ],
+        'produccion_detalle' => [
+            'table' => 'cc_produccion_detalle',
+            'keys' => ['id_produccion', 'id_renglon'],
+        ],
     ];
 
     return $map[$entityType] ?? null;

@@ -111,7 +111,7 @@ function storefront_stock_label($stock)
     if ($stock > 0) {
         return 'Pocas piezas';
     }
-    return 'Bajo pedido';
+    return '';
 }
 
 function storefront_normalize_quantity($value)
@@ -157,6 +157,7 @@ function storefront_attach_product_images(mysqli $link, array $products)
         $product['image_small'] = storefront_default_product_image();
         $product['image_large'] = storefront_default_product_image();
         $product['image_alt'] = $product['descripcion'];
+        $product['is_fallback_logo'] = true;
     }
     unset($product);
 
@@ -196,6 +197,7 @@ function storefront_attach_product_images(mysqli $link, array $products)
             $products[$code]['image_small'] = trim((string) $row['ruta_small']) !== '' ? trim((string) $row['ruta_small']) : storefront_default_product_image();
             $products[$code]['image_large'] = trim((string) $row['ruta_large']) !== '' ? trim((string) $row['ruta_large']) : $products[$code]['image_small'];
             $products[$code]['image_alt'] = trim((string) $row['alt_text']) !== '' ? trim((string) $row['alt_text']) : $products[$code]['descripcion'];
+            $products[$code]['is_fallback_logo'] = (strpos($products[$code]['image_small'], 'logo_1') !== false);
         }
         mysqli_free_result($result);
     }
@@ -417,6 +419,74 @@ function storefront_fetch_products(mysqli $link)
     ]);
 }
 
+function storefront_fetch_top_selling_products(mysqli $link, int $limit = 8): array
+{
+    $cacheKey = 'cano_top_products_cache';
+    $cacheTimeKey = 'cano_top_products_time';
+    if (
+        !empty($_SESSION[$cacheKey]) &&
+        !empty($_SESSION[$cacheTimeKey]) &&
+        (time() - (int) $_SESSION[$cacheTimeKey] < 1800)
+    ) {
+        return $_SESSION[$cacheKey];
+    }
+
+    $limit = max(1, min(20, (int) $limit));
+    $sucursalId = defined('STOREFRONT_SUCURSAL_ID') ? (int) STOREFRONT_SUCURSAL_ID : 9;
+
+    // Consultar solo las ventas de los últimos 30 días de actividad para no saturar el servidor
+    $sql = "
+        SELECT 
+            p.codigo,
+            p.descripcion,
+            COUNT(v.id_venta) as total_ventas
+        FROM cc_ventas v
+        JOIN cc_productos p ON p.codigo = v.codigo AND p.id_sucursal = $sucursalId
+        WHERE v.fecha_ingreso >= DATE_SUB(COALESCE((SELECT MAX(fecha_ingreso) FROM cc_ventas), CURDATE()), INTERVAL 30 DAY)
+          AND v.estatus <> 2
+          AND p.activo = 1
+        GROUP BY p.codigo, p.descripcion
+        ORDER BY total_ventas DESC
+        LIMIT $limit
+    ";
+
+    $topProducts = [];
+    if ($result = mysqli_query($link, $sql)) {
+        while ($row = mysqli_fetch_assoc($result)) {
+            $rawDesc = trim((string) $row['descripcion']);
+            // Limpieza y formato amigable
+            $titleDesc = mb_convert_case(mb_strtolower($rawDesc), MB_CASE_TITLE, "UTF-8");
+            $titleDesc = preg_replace_callback('/\b(De|Con|Sin|En|Para|La|El)\b/u', function ($m) {
+                return mb_strtolower($m[0]);
+            }, $titleDesc);
+
+            $topProducts[] = [
+                'codigo' => $row['codigo'],
+                'descripcion' => $titleDesc,
+                'search_term' => $rawDesc,
+                'ventas' => (int) $row['total_ventas']
+            ];
+        }
+    }
+
+    if (empty($topProducts)) {
+        $fallbacks = ['Bistec de res', 'Costilla', 'Bistec de cerdo', 'Longaniza', 'Carne molida', 'Maciza de cerdo'];
+        foreach ($fallbacks as $fb) {
+            $topProducts[] = [
+                'codigo' => '',
+                'descripcion' => $fb,
+                'search_term' => $fb,
+                'ventas' => 0
+            ];
+        }
+    }
+
+    $_SESSION[$cacheKey] = $topProducts;
+    $_SESSION[$cacheTimeKey] = time();
+
+    return $topProducts;
+}
+
 function storefront_fetch_price_products(mysqli $link, $idSucursal)
 {
     $products = [];
@@ -628,9 +698,81 @@ if ($link instanceof mysqli) {
         $formData['id_sucursal'] = (string) array_key_first($storefrontBranches);
     }
 }
+function storefront_extract_quantity_and_term(string $rawQuery): array
+{
+    $text = trim($rawQuery);
+    $qty = null;
+
+    // Limpiar saludos y modismos comunes de carnicería ("quiero", "me das", "deme", etc.)
+    $text = trim(preg_replace('/^(?:hola|buenos\s+dias|buenas\s+tardes|buenas|a\s+ver)\s+/iu', '', $text));
+    $text = trim(preg_replace('/^(?:me\s+das|me\s+da|deme|dame|quiero|quisiera|deseo|busco|tienes|tienen|hay|vendame|véndame|pongame|póngame|ponme|echame|échame)\s+/iu', '', $text));
+
+    $patterns = [
+        // Fracciones compuestas (kilo y medio, kilogramo y medio)
+        '/^(?:(?:un|1)\s+)?(?:kilos?|kilogramos?|kg)\s+y\s+medio(?:\s+de)?\s+/iu' => 1.5,
+        '/^(?:(?:dos|2)\s+)?(?:kilos|kilogramos|kg)\s+y\s+medio(?:\s+de)?\s+/iu' => 2.5,
+        '/^(?:(?:tres|3)\s+)?(?:kilos|kilogramos|kg)\s+y\s+medio(?:\s+de)?\s+/iu' => 3.5,
+
+        // Tres cuartos
+        '/^(?:tres\s+cuartos|3\/4)(?:\s+de)?(?:\s+(?:kilos?|kilogramos?|kgs?|k))?(?:\s+de)?\s+/iu' => 0.75,
+
+        // Medio kilo / medio kilogramo / medio de / 1/2
+        '/^(?:medio|1\/2)(?:\s+de)?(?:\s+(?:kilos?|kilogramos?|kgs?|k))?(?:\s+de)?\s+/iu' => 0.5,
+
+        // Un cuarto / 1/4
+        '/^(?:(?:un\s+)?cuarto|1\/4)(?:\s+de)?(?:\s+(?:kilos?|kilogramos?|kgs?|k))?(?:\s+de)?\s+/iu' => 0.25,
+
+        // Kilos enteros
+        '/^(?:un|uno|1)\s+(?:kilos?|kilogramos?|kg)(?:\s+de)?\s+/iu' => 1.0,
+        '/^(?:kilos?|kilogramos?)\s+(?:de\s+)?/iu' => 1.0,
+        '/^(?:dos|2)\s+(?:kilos|kilogramos|kg|k)(?:\s+de)?\s+/iu' => 2.0,
+        '/^(?:tres|3)\s+(?:kilos|kilogramos|kg|k)(?:\s+de)?\s+/iu' => 3.0,
+        '/^(?:cuatro|4)\s+(?:kilos|kilogramos|kg|k)(?:\s+de)?\s+/iu' => 4.0,
+        '/^(?:cinco|5)\s+(?:kilos|kilogramos|kg|k)(?:\s+de)?\s+/iu' => 5.0,
+        '/^(\d+(?:\.\d+)?)\s*(?:kilos?|kilogramos?|kgs?|k)(?:\s+de)?\s+/iu' => -1,
+
+        // Gramos
+        '/^(\d+)\s*(?:gramos?|grs?|gr|g)(?:\s+de)?\s+/iu' => -2,
+    ];
+
+    foreach ($patterns as $pattern => $val) {
+        if (preg_match($pattern, $text, $matches)) {
+            if ($val === -1) {
+                $qty = (float)$matches[1];
+            } elseif ($val === -2) {
+                $qty = round((float)$matches[1] / 1000, 2);
+            } else {
+                $qty = $val;
+            }
+            $text = trim(preg_replace($pattern, '', $text));
+            break;
+        }
+    }
+
+    // Limpieza posterior de remanentes de medida y preposiciones
+    $text = trim(preg_replace('/^(?:kilogramos?|kilos?|kgs?|gramos?|grs?|gr|k|g)\s+/iu', '', $text));
+    $text = trim(preg_replace('/^(?:de\s+la|de\s+el|del|de)\s+/iu', '', $text));
+    $text = trim(preg_replace('/\s+(?:por\s+favor|gracias|muchas\s+gracias)$/iu', '', $text));
+    $text = trim(preg_replace('/\s+(?:para\s+llevar|para\s+el\s+domingo|para\s+hoy)$/iu', '', $text));
+
+    return [
+        'qty' => $qty,
+        'term' => $text
+    ];
+}
+
 $showAll = isset($_GET['mostrar']) && trim((string) $_GET['mostrar']) === 'todos';
 $selectedCategory = isset($_GET['categoria']) ? trim((string) $_GET['categoria']) : '';
 $searchTerm = isset($_GET['buscar']) ? trim((string) $_GET['buscar']) : '';
+$requestedQty = (isset($_GET['qty']) && is_numeric($_GET['qty'])) ? (float) $_GET['qty'] : null;
+
+// Extracción inteligente de cantidad y producto
+$parsedSearch = storefront_extract_quantity_and_term($searchTerm);
+if ($requestedQty === null && $parsedSearch['qty'] !== null) {
+    $requestedQty = $parsedSearch['qty'];
+}
+$effectiveSearchTerm = $parsedSearch['term'] !== '' ? $parsedSearch['term'] : $searchTerm;
+$defaultSearchQuantity = ($requestedQty !== null && $requestedQty > 0) ? $requestedQty : 1.0;
 $currentPage = isset($_GET['page']) ? max(1, (int) $_GET['page']) : 1;
 
 if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST') {
@@ -1046,8 +1188,22 @@ uksort($categoryCounts, function ($catA, $catB) use ($categoryCounts) {
     return strcasecmp($catA, $catB);
 });
 
+if (!function_exists('storefront_clean_accents')) {
+    function storefront_clean_accents(string $text): string
+    {
+        $replacements = [
+            'á'=>'a', 'é'=>'e', 'í'=>'i', 'ó'=>'o', 'ú'=>'u',
+            'Á'=>'a', 'É'=>'e', 'Í'=>'i', 'Ó'=>'o', 'Ú'=>'u',
+            'ü'=>'u', 'Ü'=>'u', 'ñ'=>'n', 'Ñ'=>'n'
+        ];
+        return strtr($text, $replacements);
+    }
+}
+
 $filteredProducts = [];
 $isInitialCatalog = $selectedCategory === '' && $searchTerm === '' && !$showAll;
+
+$searchQueryToMatch = $effectiveSearchTerm !== '' ? $effectiveSearchTerm : $searchTerm;
 
 foreach ($products as $product) {
     if ($isInitialCatalog) {
@@ -1055,18 +1211,101 @@ foreach ($products as $product) {
     }
 
     $matchesCategory = $selectedCategory === '' || $product['categoria'] === $selectedCategory;
-    $matchesSearch = $searchTerm === ''
-        || stripos($product['descripcion'], $searchTerm) !== false
-        || stripos($product['codigo'], $searchTerm) !== false
-        || stripos($product['categoria'], $searchTerm) !== false;
+    
+    $matchesSearch = false;
+    if ($searchQueryToMatch === '') {
+        $matchesSearch = true;
+    } else {
+        // 1. Coincidencia directa insensible a mayúsculas
+        $directMatch = (stripos($product['descripcion'], $searchQueryToMatch) !== false
+            || stripos($product['codigo'], $searchQueryToMatch) !== false
+            || stripos($product['categoria'], $searchQueryToMatch) !== false);
+
+        if ($directMatch) {
+            $matchesSearch = true;
+        } else {
+            // 2. Coincidencia normalizada sin acentos (ej. "carbon" -> "CARBÓN")
+            $cleanTerm = storefront_clean_accents(mb_strtolower($searchQueryToMatch));
+            $cleanHaystack = storefront_clean_accents(mb_strtolower($product['descripcion'] . ' ' . $product['categoria'] . ' ' . $product['codigo']));
+
+            if (strpos($cleanHaystack, $cleanTerm) !== false) {
+                $matchesSearch = true;
+            } else {
+                // 3. Coincidencia inteligente por palabras clave, stop-words, medidas y preparaciones culinarias
+                $stopWords = [
+                    'para', 'de', 'del', 'la', 'el', 'los', 'las', 'un', 'una', 'unos', 'unas', 'en', 'y', 'o', 'al', 'por', 'con', 'sin',
+                    'medio', 'cuarto', 'kilo', 'kilos', 'kilogramo', 'kilogramos', 'kg', 'kgs', 'gramo', 'gramos', 'gr', 'grs', 'k', 'g',
+                    'quiero', 'quisiera', 'dame', 'deme', 'busco'
+                ];
+                $rawWords = array_filter(preg_split('/\s+/', $cleanTerm), function ($w) {
+                    return mb_strlen(trim($w)) >= 2;
+                });
+
+                $meaningfulWords = array_values(array_filter($rawWords, function ($w) use ($stopWords) {
+                    return !in_array($w, $stopWords, true);
+                }));
+
+                if (empty($meaningfulWords)) {
+                    $meaningfulWords = array_values($rawWords);
+                }
+
+                // 3.1 ¿Coinciden TODAS las palabras significativas?
+                $allWordsFound = true;
+                foreach ($meaningfulWords as $word) {
+                    $matchWord = ($word === 'asar') ? 'asad' : $word;
+                    if (strpos($cleanHaystack, $matchWord) === false && strpos($cleanHaystack, $word) === false) {
+                        $allWordsFound = false;
+                        break;
+                    }
+                }
+
+                if ($allWordsFound && !empty($meaningfulWords)) {
+                    $matchesSearch = true;
+                } else {
+                    // 3.2 Si no coinciden todas, separar palabras de preparación culinaria de cortes de carne
+                    $prepWords = [
+                        'asar', 'asado', 'asada', 'asados', 'asadas', 'parrilla', 'parrillada',
+                        'caldo', 'cocer', 'cocido', 'guisar', 'guisado', 'deshebrar', 'empanizar',
+                        'freir', 'frito', 'tacos'
+                    ];
+
+                    $productKeywords = array_values(array_filter($meaningfulWords, function ($w) use ($prepWords) {
+                        return !in_array($w, $prepWords, true);
+                    }));
+
+                    if (!empty($productKeywords)) {
+                        $productMatch = true;
+                        foreach ($productKeywords as $pw) {
+                            if (strpos($cleanHaystack, $pw) === false) {
+                                $productMatch = false;
+                                break;
+                            }
+                        }
+                        if ($productMatch) {
+                            $matchesSearch = true;
+                        }
+                    } else {
+                        foreach ($meaningfulWords as $w) {
+                            $matchWord = ($w === 'asar') ? 'asad' : $w;
+                            if (strpos($cleanHaystack, $matchWord) !== false || strpos($cleanHaystack, $w) !== false) {
+                                $matchesSearch = true;
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
 
     if ($matchesCategory && $matchesSearch) {
         $filteredProducts[] = $product;
     }
 }
 
-$productsPerPage =9;
+$productsPerPage = 9;
 $totalFilteredProducts = count($filteredProducts);
+$isUniqueSearchResult = ($totalFilteredProducts === 1 && $searchTerm !== '');
 $totalPages = max(1, (int) ceil($totalFilteredProducts / $productsPerPage));
 
 if ($currentPage > $totalPages) {

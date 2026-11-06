@@ -422,6 +422,10 @@ if (isset($_POST['fecha_cierre'])) {
                         . "fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act='$id_usuario_act' "
                         . "WHERE id_sucursal='$id_sucursal' and estatus = 0 and id_cierre = 0")
                 or die(mysqli_error());
+        mysqli_query($link, "UPDATE cc_produccion SET "
+                        . "id_cierre=$id_cierre, "
+                        . "fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act='$id_usuario_act' "
+                        . "WHERE id_sucursal='$id_sucursal' and estatus = 1 and id_cierre = 0");
 
         cc_sync_enqueue_cierre_movimientos($link, (int) $id_sucursal, (int) $id_cierre, (int) $estatus);
     }

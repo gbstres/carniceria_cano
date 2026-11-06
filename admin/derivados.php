@@ -430,7 +430,7 @@ if (isset($_GET['aksi']) && $_GET['aksi'] == 'delete') {
 
                 var idproducto = $("#alert_producto").children().first().attr("id");
 
-                if ($('#alert_producto').children().length != 1 || $('#alert_derivado').children().length <= 1)
+                if ($('#alert_producto').children().length != 1 || $('#alert_derivado').children().length < 1)
                     alert('Asignación incorrecta');
                 else if (sumPorcentaje != 100)
                     alert('Porcentaje incorrecto');
@@ -439,17 +439,17 @@ if (isset($_GET['aksi']) && $_GET['aksi'] == 'delete') {
                 else if (arregloComponentes.includes(idproducto))
                     alert('No puede usar el mismo producto en derivado');
                 else {
-                    edita_derivado(idproducto, 0, 0, 2);
-                    setTimeout(() => {
-                    }, 500);
-                    derivados.each(function () {
-                        sumPorcentaje = sumPorcentaje + Number($(this).attr('attribute1'));
-                        arregloComponentes.push($(this).attr('id'));
-                        codigo_d = $(this).attr('id');
-                        porcentaje = Number($(this).attr('attribute1'));
-                        edita_derivado(idproducto, codigo_d, porcentaje, 1);
+                    $.when(edita_derivado(idproducto, 0, 0, 2)).done(function () {
+                        var peticiones = [];
+                        derivados.each(function () {
+                            var codigo_d = $(this).attr("id");
+                            var porcentaje = Number($(this).attr("attribute1"));
+                            peticiones.push(edita_derivado(idproducto, codigo_d, porcentaje, 1));
+                        });
+                        $.when.apply($, peticiones).always(function () {
+                            window.location = "derivados.php";
+                        });
                     });
-                    window.location = 'derivados.php';
                 }
             }
             function tieneRepetidos(arreglo) {
@@ -466,7 +466,7 @@ if (isset($_GET['aksi']) && $_GET['aksi'] == 'delete') {
             function edita_derivado(codigo_p, codigo_d, porcentaje, movimiento)
             {
                 var parametros = {"codigo_p": codigo_p, "codigo_d": codigo_d, "porcentaje": porcentaje, "movimiento": movimiento};
-                $.ajax({
+                return $.ajax({
                     url: "../functions/edita_derivado.php",
                     data: parametros,
                     dataType: "json",
