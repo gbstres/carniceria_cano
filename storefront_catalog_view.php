@@ -591,6 +591,13 @@ document.addEventListener('DOMContentLoaded', function () {
 
         btnDictateComment.addEventListener('click', function (e) {
             e.preventDefault();
+            var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+            var isIOSNonSafari = isIOS && (/CriOS|FxiOS|EdgiOS|OPiOS/i.test(navigator.userAgent) || !/Safari/i.test(navigator.userAgent));
+            if (isIOSNonSafari) {
+                alert('En iPhone, Apple restringe el micrófono al navegador Safari. Puedes escribir tu indicación directamente en el campo de texto o abrir en Safari.');
+                return;
+            }
+
             if (isDictatingComment) {
                 stopCommentDictation();
                 return;
