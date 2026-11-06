@@ -15,6 +15,7 @@
     var searchTriggered = false;
     var voiceModal = null;
     var silenceTimer = null;
+    var lastActionTimestamp = 0;
 
     document.addEventListener('DOMContentLoaded', function () {
         initVoiceAssistant();
@@ -27,6 +28,7 @@
 
             modalEl.addEventListener('hidden.bs.modal', function () {
                 stopListening(false);
+                resetVoiceModalState();
             });
         }
 
@@ -35,6 +37,9 @@
             var btn = e.target.closest('.btn-voice-search');
             if (!btn) return;
             e.preventDefault();
+            var now = Date.now();
+            if (now - lastActionTimestamp < 350) return;
+            lastActionTimestamp = now;
             openVoiceModal();
         });
 
@@ -42,6 +47,10 @@
         var micModalBtn = document.getElementById('voiceModalMicBtn');
         if (micModalBtn) {
             micModalBtn.addEventListener('click', function () {
+                var now = Date.now();
+                if (now - lastActionTimestamp < 350) return;
+                lastActionTimestamp = now;
+
                 if (isListening) {
                     stopListening(true);
                 } else {
@@ -182,8 +191,6 @@
             try { window.speechSynthesis.cancel(); } catch (e) {}
         }
 
-        stopListening(false);
-
         if (!voiceModal) {
             var modalEl = document.getElementById('voiceSearchModal');
             if (modalEl && window.bootstrap && window.bootstrap.Modal) {
@@ -254,6 +261,10 @@
             return;
         }
 
+        if (isListening) {
+            return;
+        }
+
         // Detener cualquier audio que esté reproduciéndose en el dispositivo
         if ('speechSynthesis' in window) {
             try { window.speechSynthesis.cancel(); } catch (e) {}
@@ -261,14 +272,15 @@
 
         // Limpiar cualquier instancia colgada previa para asegurar que el hardware esté libre
         if (recognition) {
-            try {
-                recognition.onstart = null;
-                recognition.onresult = null;
-                recognition.onerror = null;
-                recognition.onend = null;
-                recognition.abort();
-            } catch (e) {}
+            var oldRec = recognition;
             recognition = null;
+            try {
+                oldRec.onstart = null;
+                oldRec.onresult = null;
+                oldRec.onerror = null;
+                oldRec.onend = null;
+                oldRec.abort();
+            } catch (e) {}
         }
         isListening = false;
 
@@ -283,7 +295,7 @@
                 isListening = true;
                 setMicVisualState(true);
                 var statusEl = document.getElementById('voiceStatusText');
-                if (statusEl) statusEl.textContent = '🎙️ Escuchando... Hable claro a su micrófono';
+                if (statusEl) statusEl.textContent = '🎙️ Escuchando... Di lo que buscas';
                 hideVoiceAlert();
             };
 
@@ -314,20 +326,21 @@
                         if (!searchTriggered && currentCleanedQuery) {
                             triggerAutoSearch();
                         }
-                    }, 1100);
+                    }, 1000);
                 }
             };
 
             recognition.onerror = function (event) {
                 isListening = false;
                 setMicVisualState(false);
+                recognition = null;
                 var statusEl = document.getElementById('voiceStatusText');
 
                 if (event.error === 'not-allowed' || event.error === 'service-not-allowed') {
                     if (statusEl) statusEl.textContent = 'Permiso no otorgado';
                     showVoiceAlert('Permiso requerido: Toca el botón rojo del micrófono para permitir el acceso.', 'warning');
                 } else if (event.error === 'no-speech') {
-                    if (statusEl) statusEl.textContent = 'No escuchamos sonido. Toca el micrófono para hablar';
+                    if (statusEl) statusEl.textContent = 'No escuchamos sonido. Toca el micrófono para intentar de nuevo';
                 } else if (event.error === 'aborted') {
                     // Acción abortada voluntariamente
                 } else {
@@ -339,12 +352,13 @@
             recognition.onend = function () {
                 isListening = false;
                 setMicVisualState(false);
+                recognition = null;
                 if (currentCleanedQuery && !searchTriggered) {
                     triggerAutoSearch();
                 } else if (!currentCleanedQuery && !searchTriggered) {
                     var statusEl = document.getElementById('voiceStatusText');
                     if (statusEl && !currentRawTranscript) {
-                        statusEl.textContent = 'Toca el micrófono para volver a hablar';
+                        statusEl.textContent = 'Toca el micrófono para hablar';
                     }
                 }
             };
@@ -352,6 +366,7 @@
             recognition.start();
         } catch (err) {
             isListening = false;
+            recognition = null;
             setMicVisualState(false);
             showVoiceAlert('Toca el botón rojo del micrófono para iniciar.', 'warning');
         }
@@ -366,14 +381,15 @@
         setMicVisualState(false);
 
         if (recognition) {
-            try {
-                recognition.onstart = null;
-                recognition.onresult = null;
-                recognition.onerror = null;
-                recognition.onend = null;
-                recognition.abort();
-            } catch (e) {}
+            var recToStop = recognition;
             recognition = null;
+            try {
+                recToStop.onstart = null;
+                recToStop.onresult = null;
+                recToStop.onerror = null;
+                recToStop.onend = null;
+                recToStop.abort();
+            } catch (e) {}
         }
 
         if (triggerSearchIfReady) {
@@ -509,11 +525,9 @@
         }
         targetUrl += '#catalogo';
 
-        if (window.canoUpdateCatalog && document.getElementById('catalog-main-content')) {
-            window.canoUpdateCatalog(targetUrl);
-        } else {
-            window.location.href = targetUrl;
-        }
+        // Navegación directa obligatoria para recargar la página limpia y reiniciar por completo
+        // los sockets y procesos de audio en Android Chrome e iOS Safari
+        window.location.href = targetUrl;
     }
 
     // Exponer función global para abrir modal por si se desea llamar externamente
