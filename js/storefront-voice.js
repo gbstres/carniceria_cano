@@ -503,37 +503,16 @@
             inp.value = query;
         });
 
-        // Frases amables con tono de carnicería
-        var qtyPrefix = (currentDetectedQty !== null && currentDetectedQty > 0) ? (currentDetectedQty + ' kg de ') : '';
-        var butcherPhrases = [
-            '¡Enseguida marchante! Buscando ' + qtyPrefix + query,
-            '¡Con gusto! Le muestro ' + qtyPrefix + query,
-            'Buscando ' + qtyPrefix + query + ' fresco para usted'
-        ];
-        var phrase = butcherPhrases[Math.floor(Math.random() * butcherPhrases.length)];
-
-        var audioToggle = document.getElementById('voiceAudioFeedbackToggle');
-        var playAudio = audioToggle ? audioToggle.checked : true;
-
         var targetUrl = 'index.php?buscar=' + encodeURIComponent(query);
         if (currentDetectedQty !== null && currentDetectedQty > 0) {
             targetUrl += '&qty=' + encodeURIComponent(currentDetectedQty);
         }
         targetUrl += '#catalogo';
 
-        var doSearch = function () {
-            if (window.canoUpdateCatalog && document.getElementById('catalog-main-content')) {
-                window.canoUpdateCatalog(targetUrl);
-            } else {
-                window.location.href = targetUrl;
-            }
-        };
-
-        if (playAudio) {
-            speakButcherResponse(phrase);
-            doSearch();
+        if (window.canoUpdateCatalog && document.getElementById('catalog-main-content')) {
+            window.canoUpdateCatalog(targetUrl);
         } else {
-            doSearch();
+            window.location.href = targetUrl;
         }
     }
 

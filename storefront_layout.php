@@ -154,7 +154,7 @@ function storefront_render_header($title, $currentPage, array $cartTotals)
         <link rel="dns-prefetch" href="https://cdn.jsdelivr.net">
         <link href="css/bootstrap.min.css" rel="stylesheet">
         <link href="css/storefront.css" rel="stylesheet">
-        <link href="css/storefront-shop.css" rel="stylesheet">
+        <link href="css/storefront-shop.css?v=<?php echo file_exists(__DIR__ . '/css/storefront-shop.css') ? filemtime(__DIR__ . '/css/storefront-shop.css') : '2'; ?>" rel="stylesheet">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
         <?php 
         // Leaflet / Google Maps se cargan condicionalmente ÚNICAMENTE en la página de checkout (pedido.php)
@@ -531,13 +531,7 @@ function storefront_render_footer()
                             </div>
                         </div>
                     </div>
-                    <div class="modal-footer border-0 pt-0 px-4 pb-4 d-flex justify-content-between align-items-center">
-                        <div class="form-check form-switch text-start mb-0">
-                            <input class="form-check-input" type="checkbox" role="switch" id="voiceAudioFeedbackToggle" checked>
-                            <label class="form-check-label small text-muted" for="voiceAudioFeedbackToggle">
-                                <i class="bi bi-volume-up-fill me-1"></i> Voz del carnicero
-                            </label>
-                        </div>
+                    <div class="modal-footer border-0 pt-0 px-4 pb-4 d-flex justify-content-end align-items-center">
                         <div class="d-flex gap-2">
                             <button type="button" class="btn btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">Cerrar</button>
                             <button type="button" id="voiceModalSubmitBtn" class="btn btn-warning rounded-pill px-4 fw-bold shadow-sm" disabled>
@@ -604,7 +598,7 @@ function storefront_render_footer()
         </nav>
 
         <script src="js/bootstrap.bundle.min.js"></script>
-        <script src="js/storefront-voice.js" defer></script>
+        <script src="js/storefront-voice.js?v=<?php echo file_exists(__DIR__ . '/js/storefront-voice.js') ? filemtime(__DIR__ . '/js/storefront-voice.js') : '2'; ?>" defer></script>
         <script>
         function scrollBranchCarousel(distance) {
             var track = document.getElementById('branchCarouselTrack');
