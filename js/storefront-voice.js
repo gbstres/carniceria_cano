@@ -16,8 +16,6 @@
     var voiceModal = null;
     var silenceTimer = null;
     var lastActionTimestamp = 0;
-    var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    var isIOSNonSafari = isIOS && (/CriOS|FxiOS|EdgiOS|OPiOS/i.test(navigator.userAgent) || !/Safari/i.test(navigator.userAgent));
     var watchdogTimer = null;
 
     document.addEventListener('DOMContentLoaded', function () {
@@ -53,11 +51,6 @@
                 var now = Date.now();
                 if (now - lastActionTimestamp < 350) return;
                 lastActionTimestamp = now;
-
-                if (isIOSNonSafari) {
-                    showVoiceAlert('En iPhone, Apple restringe el micrófono al navegador Safari. Por favor abre carniceriaselcinco.com en Safari para usar la voz.', 'info');
-                    return;
-                }
 
                 if (isListening) {
                     stopListening(true);
@@ -214,13 +207,6 @@
         }
 
         resetVoiceModalState();
-
-        if (isIOSNonSafari) {
-            showVoiceAlert('En iPhone, Apple restringe el uso del micrófono al navegador Safari. Para dictar por voz, por favor abre carniceriaselcinco.com en Safari, o escribe tu búsqueda.', 'info');
-            var statusEl = document.getElementById('voiceStatusText');
-            if (statusEl) statusEl.textContent = 'En iPhone, la voz está disponible en Safari';
-            return;
-        }
 
         if (!SpeechRecognition) {
             showVoiceAlert('Tu navegador no cuenta con soporte nativo de voz. Te invitamos a utilizar el buscador escrito.', 'warning');

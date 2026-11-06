@@ -510,14 +510,36 @@ function stepQtyDetail(step) {
                 updateSlide(currentIndex + 1);
             }
         }
-    // Manejador AJAX para formulario de detalle de producto
+    // Manejador AJAX con Modal de Notas para formulario de detalle de producto
     var detailForm = document.querySelector('.product-detail-form');
     if (detailForm) {
         detailForm.addEventListener('submit', function (e) {
             e.preventDefault();
+
+            var titleEl = document.querySelector('.product-detail-title');
+            var imgEl = document.getElementById('mainProductImage');
+            var qtyEl = document.getElementById('qty-product-detail');
+
+            var title = titleEl ? titleEl.textContent.trim() : 'Producto';
+            var img = imgEl ? imgEl.src : 'img/logo_1.jpeg';
+            var qty = qtyEl ? qtyEl.value : '1';
+
+            if (typeof window.openCanoCommentModal === 'function') {
+                window.openCanoCommentModal({ name: title, img: img, qty: qty }, function (comment) {
+                    executeDetailAddToCart(comment);
+                });
+            } else {
+                executeDetailAddToCart('');
+            }
+        });
+
+        function executeDetailAddToCart(commentText) {
             var submitBtn = detailForm.querySelector('button[type="submit"]');
             var formData = new FormData(detailForm);
             formData.append('ajax', '1');
+            if (commentText) {
+                formData.append('comentario', commentText);
+            }
 
             fetch('index.php', {
                 method: 'POST',
@@ -566,7 +588,7 @@ function stepQtyDetail(step) {
             .catch(function () {
                 detailForm.submit();
             });
-        });
+        }
     }
 })();
 </script>

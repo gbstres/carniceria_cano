@@ -231,62 +231,6 @@
     </div>
 </section>
 
-<!-- Modal Interactivo para Comentarios / Notas de Preparación de Carnicería -->
-<div class="modal fade" id="productCommentModal" tabindex="-1" aria-labelledby="productCommentModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
-        <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden">
-            <div class="modal-header bg-dark text-white border-bottom border-warning py-3">
-                <div class="d-flex flex-column">
-                    <h5 class="modal-title h5 m-0 font-serif fw-bold text-white d-flex align-items-center" id="productCommentModalLabel">
-                        <i class="bi bi-chat-quote-fill text-warning me-2 fs-4"></i> ¿Cómo lo va a querer?
-                    </h5>
-                    <span class="small text-white-50 mt-1">Notas de preparación e indicaciones para su corte</span>
-                </div>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
-            </div>
-            <div class="modal-body p-3 p-md-4">
-                <div class="d-flex align-items-center gap-3 mb-3 p-2.5 rounded-3 bg-light border">
-                    <img id="modalProductImg" src="img/logo_1.jpeg" alt="Producto" class="rounded-3 shadow-sm" style="width: 58px; height: 58px; object-fit: cover;">
-                    <div>
-                        <h6 id="modalProductName" class="fw-bold m-0 text-dark font-serif fs-6">Bistec de Cerdo</h6>
-                        <span id="modalProductQty" class="badge bg-danger bg-opacity-10 text-danger fw-bold mt-1">Cantidad: 1.00 kg</span>
-                    </div>
-                </div>
-
-                <label class="form-label small fw-bold text-muted mb-2">Indicaciones frecuentes (toca para añadir):</label>
-                <div class="d-flex flex-wrap gap-2 mb-3">
-                    <button type="button" class="comment-chip-btn" onclick="toggleCommentChip(this)">🔪 Trozos delgados</button>
-                    <button type="button" class="comment-chip-btn" onclick="toggleCommentChip(this)">📦 En paq. de 1 kg</button>
-                    <button type="button" class="comment-chip-btn" onclick="toggleCommentChip(this)">🥩 En paq. de 1/2 kg</button>
-                    <button type="button" class="comment-chip-btn" onclick="toggleCommentChip(this)">⚙️ Moler dos veces</button>
-                    <button type="button" class="comment-chip-btn" onclick="toggleCommentChip(this)">🔪 Bien aplanado</button>
-                    <button type="button" class="comment-chip-btn" onclick="toggleCommentChip(this)">🔥 Para asar</button>
-                    <button type="button" class="comment-chip-btn" onclick="toggleCommentChip(this)">🧼 Sin grasa</button>
-                    <button type="button" class="comment-chip-btn" onclick="toggleCommentChip(this)">🧂 Marinado</button>
-                </div>
-
-                <div class="mb-2">
-                    <label for="modalCommentTextarea" class="form-label small fw-bold text-dark mb-1">Comentarios especiales para el carnicero:</label>
-                    <div class="position-relative">
-                        <textarea id="modalCommentTextarea" class="form-control rounded-3 pe-5" rows="2" placeholder="Ej: Empacar por separado, moler dos veces..."></textarea>
-                        <button type="button" id="btnVoiceDictateComment" class="btn border-0 bg-transparent text-danger p-0 position-absolute end-0 bottom-0 mb-2 me-2 d-flex align-items-center justify-content-center shadow-none" title="Dictar indicaciones por voz" aria-label="Dictar por voz" style="z-index: 5; width: 32px; height: 32px;">
-                            <i class="bi bi-mic-fill fs-5" id="dictateMicIcon"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-            <div class="modal-footer bg-light p-3 d-flex justify-content-between align-items-center gap-2">
-                <button type="button" id="btnModalSkipComment" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-bold">
-                    Solo Agregar sin Nota
-                </button>
-                <button type="button" id="btnModalSaveComment" class="btn btn-warning btn-sm rounded-pill px-4 fw-bold shadow-sm">
-                    <i class="bi bi-cart-plus-fill me-1"></i> Guardar y Agregar
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
-
 <script>
 function stepQty(inputId, step) {
     var el = document.getElementById(inputId);
@@ -303,16 +247,10 @@ function scrollCategoryCarousel(distance) {
     }
 }
 
-function toggleCommentChip(btn) {
-    btn.classList.toggle('active');
-}
-
 // Arquitectura SPA-Lite / AJAX Fetch Engine con Modal & Feedback
 document.addEventListener('DOMContentLoaded', function () {
     var pendingCartForm = null;
     var pendingSubmitBtn = null;
-    var commentModalEl = document.getElementById('productCommentModal');
-    var commentModal = commentModalEl && typeof bootstrap !== 'undefined' ? new bootstrap.Modal(commentModalEl) : null;
 
     // Persistencia y estabilidad del scroll del carrusel de categorías
     var carouselTrack = document.getElementById('categoryCarouselTrack');
@@ -498,25 +436,11 @@ document.addEventListener('DOMContentLoaded', function () {
         var qtyInput = cartForm.querySelector('input[name="quantity"]');
         var qty = qtyInput ? qtyInput.value : '1';
 
-        // Llenar datos en el Modal
-        var nameEl = document.getElementById('modalProductName');
-        var qtyEl = document.getElementById('modalProductQty');
-        var imgEl = document.getElementById('modalProductImg');
-        var commentEl = document.getElementById('modalCommentTextarea');
-
-        if (nameEl) nameEl.textContent = title;
-        if (qtyEl) qtyEl.textContent = 'Cantidad: ' + qty + ' unidad(es)/kg';
-        if (imgEl) imgEl.src = img;
-        if (commentEl) commentEl.value = '';
-
-        // Resetear fichas de comentarios
-        var chips = document.querySelectorAll('.comment-chip-btn');
-        chips.forEach(function (c) { c.classList.remove('active'); });
-
-        if (commentModal) {
-            commentModal.show();
+        if (typeof window.openCanoCommentModal === 'function') {
+            window.openCanoCommentModal({ name: title, img: img, qty: qty }, function (comment) {
+                executeAddToCart(comment, pendingCartForm, pendingSubmitBtn);
+            });
         } else {
-            // Fallback directo si no hay modal Bootstrap
             executeAddToCart('', pendingCartForm, pendingSubmitBtn);
         }
     }
@@ -529,11 +453,6 @@ document.addEventListener('DOMContentLoaded', function () {
         e.preventDefault();
         openCommentModalForForm(cartForm);
     });
-
-    // Voz: Preguntar amablemente "¿Cómo lo va a querer?" (desactivado TTS para proteger el micrófono en móviles)
-    function askHowWouldYouLikeIt() {
-        // No se reproduce audio sintético para evitar bloqueos del driver de audio en celulares
-    }
 
     // Detección y auto-apertura cuando la búsqueda arrojó un único producto
     function checkAndTriggerUniqueModal() {
@@ -548,132 +467,6 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Disparar chequeo inicial en carga de página
     checkAndTriggerUniqueModal();
-
-    // Dictado por voz en el campo de comentarios especiales
-    var btnDictateComment = document.getElementById('btnVoiceDictateComment');
-    var commentTextarea = document.getElementById('modalCommentTextarea');
-    var dictateMicIcon = document.getElementById('dictateMicIcon');
-    var isDictatingComment = false;
-    var dictationRecognition = null;
-
-    var SpeechRecClass = window.SpeechRecognition || window.webkitSpeechRecognition || null;
-    if (btnDictateComment && commentTextarea && SpeechRecClass) {
-        function stopCommentDictation() {
-            isDictatingComment = false;
-            btnDictateComment.classList.remove('is-dictating');
-            btnDictateComment.setAttribute('title', 'Dictar indicaciones por voz');
-            if (dictationRecognition) {
-                try {
-                    dictationRecognition.onstart = null;
-                    dictationRecognition.onresult = null;
-                    dictationRecognition.onerror = null;
-                    dictationRecognition.onend = null;
-                    dictationRecognition.abort();
-                } catch (e) {}
-                dictationRecognition = null;
-            }
-        }
-
-        window.stopCanoCommentDictation = stopCommentDictation;
-
-        if (commentModalEl) {
-            commentModalEl.addEventListener('hidden.bs.modal', function () {
-                stopCommentDictation();
-            });
-        }
-
-        btnDictateComment.addEventListener('click', function (e) {
-            e.preventDefault();
-            var isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-            var isIOSNonSafari = isIOS && (/CriOS|FxiOS|EdgiOS|OPiOS/i.test(navigator.userAgent) || !/Safari/i.test(navigator.userAgent));
-            if (isIOSNonSafari) {
-                alert('En iPhone, Apple restringe el micrófono al navegador Safari. Puedes escribir tu indicación directamente en el campo de texto o abrir en Safari.');
-                return;
-            }
-
-            if (isDictatingComment) {
-                stopCommentDictation();
-                return;
-            }
-
-            // Cancelar cualquier síntesis de voz en curso para liberar el audio del dispositivo móvil
-            if ('speechSynthesis' in window) {
-                try { window.speechSynthesis.cancel(); } catch (err) {}
-            }
-
-            stopCommentDictation();
-
-            try {
-                dictationRecognition = new SpeechRecClass();
-                dictationRecognition.lang = 'es-MX';
-                dictationRecognition.continuous = false;
-                dictationRecognition.interimResults = false;
-
-                dictationRecognition.onstart = function () {
-                    isDictatingComment = true;
-                    btnDictateComment.classList.add('is-dictating');
-                    btnDictateComment.setAttribute('title', 'Escuchando... presiona para detener');
-                };
-
-                dictationRecognition.onresult = function (event) {
-                    var transcript = '';
-                    for (var i = event.resultIndex; i < event.results.length; ++i) {
-                        if (event.results[i].isFinal) {
-                            transcript += event.results[i][0].transcript;
-                        }
-                    }
-                    transcript = transcript.trim();
-                    if (transcript) {
-                        var current = commentTextarea.value.trim();
-                        commentTextarea.value = current ? (current + ', ' + transcript) : transcript;
-                        commentTextarea.focus();
-                    }
-                };
-
-                dictationRecognition.onerror = function (ev) {
-                    stopCommentDictation();
-                };
-
-                dictationRecognition.onend = function () {
-                    stopCommentDictation();
-                };
-
-                dictationRecognition.start();
-            } catch (err) {
-                stopCommentDictation();
-            }
-        });
-    } else if (btnDictateComment) {
-        btnDictateComment.addEventListener('click', function (e) {
-            e.preventDefault();
-            alert('El dictado por voz no está disponible en este navegador. Puedes escribir directamente en el campo de texto.');
-        });
-    }
-
-    // Acción del Modal: Guardar y Agregar con Comentario
-    var btnSave = document.getElementById('btnModalSaveComment');
-    if (btnSave) {
-        btnSave.addEventListener('click', function () {
-            var activeChips = document.querySelectorAll('.comment-chip-btn.active');
-            var chipTexts = [];
-            activeChips.forEach(function (c) { chipTexts.push(c.textContent.trim()); });
-
-            var customNote = document.getElementById('modalCommentTextarea').value.trim();
-            var fullComment = chipTexts.concat(customNote ? [customNote] : []).join(' | ');
-
-            if (commentModal) commentModal.hide();
-            executeAddToCart(fullComment, pendingCartForm, pendingSubmitBtn);
-        });
-    }
-
-    // Acción del Modal: Solo Agregar sin Nota
-    var btnSkip = document.getElementById('btnModalSkipComment');
-    if (btnSkip) {
-        btnSkip.addEventListener('click', function () {
-            if (commentModal) commentModal.hide();
-            executeAddToCart('', pendingCartForm, pendingSubmitBtn);
-        });
-    }
 
     // Función Ejecutora de AJAX Add To Cart & Animaciones
     function executeAddToCart(commentText, cartForm, submitBtn) {

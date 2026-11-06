@@ -543,6 +543,50 @@ function storefront_render_footer()
             </div>
         </div>
 
+        <!-- Modal Interactivo para Comentarios / Notas de Preparación de Carnicería -->
+        <div class="modal fade" id="productCommentModal" tabindex="-1" aria-labelledby="productCommentModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content border-0 rounded-4 shadow-lg overflow-hidden">
+                    <div class="modal-header bg-dark text-white border-bottom border-warning py-3">
+                        <div class="d-flex flex-column">
+                            <h5 class="modal-title h5 m-0 font-serif fw-bold text-white d-flex align-items-center" id="productCommentModalLabel">
+                                <i class="bi bi-chat-quote-fill text-warning me-2 fs-4"></i> ¿Cómo lo va a querer?
+                            </h5>
+                            <span class="small text-white-50 mt-1">Notas de preparación e indicaciones para su corte</span>
+                        </div>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body p-3 p-md-4">
+                        <div class="d-flex align-items-center gap-3 mb-3 p-2.5 rounded-3 bg-light border">
+                            <img id="modalProductImg" src="img/logo_1.jpeg" alt="Producto" class="rounded-3 shadow-sm" style="width: 58px; height: 58px; object-fit: cover;">
+                            <div>
+                                <h6 id="modalProductName" class="fw-bold m-0 text-dark font-serif fs-6">Producto</h6>
+                                <span id="modalProductQty" class="badge bg-danger bg-opacity-10 text-danger fw-bold mt-1">Cantidad: 1.00 kg</span>
+                            </div>
+                        </div>
+
+                        <div class="mb-2">
+                            <label for="modalCommentTextarea" class="form-label small fw-bold text-dark mb-1">Indicaciones o notas de preparación para el carnicero:</label>
+                            <div class="position-relative">
+                                <textarea id="modalCommentTextarea" class="form-control rounded-3 pe-5" rows="3" placeholder="Escriba o dicte sus notas (ej: empacar por separado, rebanar delgado, sin grasa...)"></textarea>
+                                <button type="button" id="btnVoiceDictateComment" class="btn border-0 bg-transparent text-danger p-0 position-absolute end-0 bottom-0 mb-2 me-2 d-flex align-items-center justify-content-center shadow-none" title="Dictar indicaciones por voz" aria-label="Dictar por voz" style="z-index: 5; width: 36px; height: 36px;">
+                                    <i class="bi bi-mic-fill fs-5" id="dictateMicIcon"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light p-3 d-flex justify-content-between align-items-center gap-2">
+                        <button type="button" id="btnModalSkipComment" class="btn btn-outline-secondary btn-sm rounded-pill px-3 fw-bold">
+                            Solo Agregar sin Nota
+                        </button>
+                        <button type="button" id="btnModalSaveComment" class="btn btn-warning btn-sm rounded-pill px-4 fw-bold shadow-sm">
+                            <i class="bi bi-cart-plus-fill me-1"></i> Guardar y Agregar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Prompt Interactivo del Carnicero: ¿Se le ofrece algo más? -->
         <div id="butcherAskMorePrompt" class="butcher-ask-more-card d-none shadow-lg" role="dialog" aria-live="polite">
             <div class="d-flex align-items-start gap-2.5">
@@ -643,6 +687,164 @@ function storefront_render_footer()
             }
             updateBranchCarouselArrows();
             window.addEventListener('resize', updateBranchCarouselArrows);
+        });
+
+        // ======================================================================
+        // Modal Unificado de Notas de Preparación ("¿Cómo lo va a querer?")
+        // ======================================================================
+        window.toggleCommentChip = function (btn) {
+            btn.classList.toggle('active');
+        };
+
+        var canoCommentCallback = null;
+        var canoCommentModalInstance = null;
+        var dictationRecognition = null;
+        var isDictatingComment = false;
+
+        function getCommentModalInstance() {
+            if (!canoCommentModalInstance) {
+                var el = document.getElementById('productCommentModal');
+                if (el && typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+                    canoCommentModalInstance = new bootstrap.Modal(el);
+                    el.addEventListener('hidden.bs.modal', function () {
+                        if (typeof window.stopCanoCommentDictation === 'function') {
+                            window.stopCanoCommentDictation();
+                        }
+                    });
+                }
+            }
+            return canoCommentModalInstance;
+        }
+
+        window.openCanoCommentModal = function (data, onConfirm) {
+            canoCommentCallback = onConfirm;
+            var modal = getCommentModalInstance();
+
+            var nameEl = document.getElementById('modalProductName');
+            var qtyEl = document.getElementById('modalProductQty');
+            var imgEl = document.getElementById('modalProductImg');
+            var commentEl = document.getElementById('modalCommentTextarea');
+
+            if (nameEl) nameEl.textContent = data.name || 'Producto';
+            if (qtyEl) qtyEl.textContent = 'Cantidad: ' + (data.qty || '1') + ' unidad(es)/kg';
+            if (imgEl) imgEl.src = data.img || 'img/logo_1.jpeg';
+            if (commentEl) commentEl.value = '';
+
+            if (modal) {
+                modal.show();
+            } else {
+                if (typeof canoCommentCallback === 'function') {
+                    canoCommentCallback('');
+                    canoCommentCallback = null;
+                }
+            }
+        };
+
+        window.stopCanoCommentDictation = function () {
+            isDictatingComment = false;
+            var btnDictateComment = document.getElementById('btnVoiceDictateComment');
+            if (btnDictateComment) {
+                btnDictateComment.classList.remove('is-dictating');
+                btnDictateComment.setAttribute('title', 'Dictar indicaciones por voz');
+            }
+            if (dictationRecognition) {
+                try {
+                    dictationRecognition.onstart = null;
+                    dictationRecognition.onresult = null;
+                    dictationRecognition.onerror = null;
+                    dictationRecognition.onend = null;
+                    dictationRecognition.abort();
+                } catch (e) {}
+                dictationRecognition = null;
+            }
+        };
+
+        document.addEventListener('click', function (e) {
+            var saveBtn = e.target.closest('#btnModalSaveComment');
+            if (saveBtn) {
+                var customNote = document.getElementById('modalCommentTextarea') ? document.getElementById('modalCommentTextarea').value.trim() : '';
+
+                var modal = getCommentModalInstance();
+                if (modal) modal.hide();
+
+                if (typeof canoCommentCallback === 'function') {
+                    var cb = canoCommentCallback;
+                    canoCommentCallback = null;
+                    cb(customNote);
+                }
+                return;
+            }
+
+            var skipBtn = e.target.closest('#btnModalSkipComment');
+            if (skipBtn) {
+                var modal = getCommentModalInstance();
+                if (modal) modal.hide();
+
+                if (typeof canoCommentCallback === 'function') {
+                    var cb = canoCommentCallback;
+                    canoCommentCallback = null;
+                    cb('');
+                }
+                return;
+            }
+
+            var dictateBtn = e.target.closest('#btnVoiceDictateComment');
+            if (dictateBtn) {
+                e.preventDefault();
+                if (isDictatingComment) {
+                    window.stopCanoCommentDictation();
+                    return;
+                }
+
+                var SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition || null;
+                if (!SpeechRec) {
+                    alert('El dictado por voz no está disponible en este navegador. Puedes escribir en el recuadro.');
+                    return;
+                }
+
+                window.stopCanoCommentDictation();
+
+                try {
+                    dictationRecognition = new SpeechRec();
+                    dictationRecognition.lang = 'es-MX';
+                    dictationRecognition.continuous = false;
+                    dictationRecognition.interimResults = false;
+
+                    dictationRecognition.onstart = function () {
+                        isDictatingComment = true;
+                        dictateBtn.classList.add('is-dictating');
+                        dictateBtn.setAttribute('title', 'Escuchando... presiona para detener');
+                    };
+
+                    dictationRecognition.onresult = function (ev) {
+                        var transcript = '';
+                        for (var i = ev.resultIndex; i < ev.results.length; ++i) {
+                            if (ev.results[i].isFinal) {
+                                transcript += ev.results[i][0].transcript;
+                            }
+                        }
+                        transcript = transcript.trim();
+                        var commentTextarea = document.getElementById('modalCommentTextarea');
+                        if (transcript && commentTextarea) {
+                            var cur = commentTextarea.value.trim();
+                            commentTextarea.value = cur ? (cur + ', ' + transcript) : transcript;
+                            commentTextarea.focus();
+                        }
+                    };
+
+                    dictationRecognition.onerror = function () {
+                        window.stopCanoCommentDictation();
+                    };
+
+                    dictationRecognition.onend = function () {
+                        window.stopCanoCommentDictation();
+                    };
+
+                    dictationRecognition.start();
+                } catch (err) {
+                    window.stopCanoCommentDictation();
+                }
+            }
         });
 
         // ======================================================================
