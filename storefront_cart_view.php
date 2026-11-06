@@ -22,8 +22,8 @@
                             <div class="empty-icon mb-3"><i class="bi bi-cart-x text-muted display-4"></i></div>
                             <h3 class="fw-bold text-dark">Tu carrito está vacío</h3>
                             <p class="text-muted">Explora el catálogo de Carnicerías "EL Cinco" y agrega productos frescos.</p>
-                            <a href="index.php" class="btn-hero btn-hero-primary mt-2">
-                                <i class="bi bi-grid-fill me-1"></i> Ir al Catálogo
+                            <a href="index.php" class="btn btn-danger px-4 py-2.5 rounded-3 fw-bold shadow-sm mt-3">
+                                <i class="bi bi-grid me-1"></i> Ver Catálogo de Productos
                             </a>
                         </div>
                     <?php else: ?>

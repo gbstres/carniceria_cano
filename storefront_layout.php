@@ -251,7 +251,12 @@ function storefront_render_header($title, $currentPage, array $cartTotals)
                         <div class="container">
                             <div class="search-hero-box mx-auto" style="max-width: 680px;">
                                 <form method="get" action="index.php" class="d-flex align-items-stretch gap-2">
-                                    <input type="text" name="buscar" class="form-control form-control-lg rounded-pill shadow-sm" placeholder="🔍 ¿Qué producto buscas? Ej: Bistec, Milanesa, Arrachera..." value="<?php echo storefront_escape($heroSearchTerm); ?>">
+                                    <div class="position-relative flex-grow-1">
+                                        <input type="text" name="buscar" class="form-control form-control-lg rounded-pill shadow-sm pe-5" placeholder="🔍 ¿Qué producto buscas? Ej: Bistec, Milanesa, Arrachera..." value="<?php echo storefront_escape($heroSearchTerm); ?>">
+                                        <button type="button" class="btn btn-voice-search position-absolute end-0 top-50 translate-middle-y me-2 border-0 bg-transparent text-danger p-2" title="Pedir por voz" aria-label="Búsqueda por voz">
+                                            <i class="bi bi-mic-fill fs-5"></i>
+                                        </button>
+                                    </div>
                                     <button type="submit" class="btn btn-warning btn-lg rounded-pill px-4 font-weight-bold shadow-sm d-inline-flex align-items-center justify-content-center">Buscar</button>
                                 </form>
                                 <div class="d-flex justify-content-between align-items-center mt-2 px-2 flex-wrap gap-1">
@@ -284,7 +289,12 @@ function storefront_render_header($title, $currentPage, array $cartTotals)
                                     <!-- Buscador Rápido -->
                                     <div class="search-hero-box my-3">
                                         <form method="get" action="index.php" class="d-flex align-items-stretch gap-2">
-                                            <input type="text" name="buscar" class="form-control form-control-lg rounded-pill shadow-sm" placeholder="🔍 ¿Qué producto buscas? Ej: Bistec, Milanesa, Arrachera..." value="<?php echo storefront_escape($heroSearchTerm); ?>">
+                                            <div class="position-relative flex-grow-1">
+                                                <input type="text" name="buscar" class="form-control form-control-lg rounded-pill shadow-sm pe-5" placeholder="🔍 ¿Qué producto buscas? Ej: Bistec, Milanesa, Arrachera..." value="<?php echo storefront_escape($heroSearchTerm); ?>">
+                                                <button type="button" class="btn btn-voice-search position-absolute end-0 top-50 translate-middle-y me-2 border-0 bg-transparent text-danger p-2" title="Pedir por voz" aria-label="Búsqueda por voz">
+                                                    <i class="bi bi-mic-fill fs-5"></i>
+                                                </button>
+                                            </div>
                                             <button type="submit" class="btn btn-warning btn-lg rounded-pill px-4 font-weight-bold shadow-sm d-inline-flex align-items-center justify-content-center">Buscar</button>
                                         </form>
                                     </div>
@@ -326,6 +336,12 @@ function storefront_render_footer()
         $storefrontBranches = storefront_fetch_active_branches($link);
     }
     $footerBranches = is_array($storefrontBranches ?? null) ? $storefrontBranches : [];
+
+    // Obtener los productos más vendidos del último mes (con caché interno de 30 min)
+    $topSellingProducts = [];
+    if (function_exists('storefront_fetch_top_selling_products') && isset($link) && $link instanceof mysqli) {
+        $topSellingProducts = storefront_fetch_top_selling_products($link, 8);
+    }
 
     // Fallback de seguridad en caso de desconexión temporal de BD
     if (empty($footerBranches)) {
@@ -441,6 +457,125 @@ function storefront_render_footer()
             </div>
         </footer>
 
+        <!-- Botón Flotante para Pedidos por Voz ("El Carnicero") -->
+        <button type="button" class="floating-voice-btn btn-voice-search shadow-lg" aria-label="Pedir por voz" title="Hablar con el carnicero">
+            <span class="floating-voice-icon-box">
+                <i class="bi bi-mic-fill"></i>
+            </span>
+            <span class="floating-voice-label">Pedir por voz</span>
+        </button>
+
+        <!-- Modal Asistente de Pedido por Voz ("El Carnicero") -->
+        <div class="modal fade" id="voiceSearchModal" tabindex="-1" aria-labelledby="voiceSearchModalLabel" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content voice-modal-content border-0 shadow-lg">
+                    <div class="modal-header border-0 pb-0">
+                        <div class="d-flex align-items-center gap-2">
+                            <span class="badge bg-warning text-dark fw-bold px-2 py-1"><i class="bi bi-mic-fill text-danger me-1"></i> PEDIDO POR VOZ</span>
+                            <span class="small text-muted">Carnicerías "El Cinco"</span>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+                    </div>
+                    <div class="modal-body text-center px-4 py-4">
+                        <h4 class="fw-bold mb-1" id="voiceSearchModalLabel">¿Qué le despachamos hoy?</h4>
+                        <p class="text-muted small mb-3" id="voiceStatusText">Presione el micrófono y diga lo que busca</p>
+
+                        <!-- Animación del Micrófono Principal -->
+                        <div class="voice-mic-container my-3 position-relative">
+                            <button type="button" id="voiceModalMicBtn" class="voice-mic-main-btn" aria-label="Hablar o detener">
+                                <span class="voice-pulse-wave"></span>
+                                <span class="voice-pulse-wave-2"></span>
+                                <i class="bi bi-mic-fill" id="voiceMicIcon"></i>
+                            </button>
+                        </div>
+
+                        <!-- Cuadro de Transcripción en Vivo -->
+                        <div class="voice-transcript-card p-3 rounded-3 mb-3 text-start">
+                            <div class="d-flex justify-content-between align-items-center mb-1">
+                                <small class="text-uppercase fw-bold text-muted" style="font-size: 0.7rem;">Lo que escuchamos:</small>
+                                <span id="voiceProcessingBadge" class="badge bg-danger-subtle text-danger small d-none">
+                                    <span class="spinner-grow spinner-grow-sm me-1" role="status" aria-hidden="true"></span> Escuchando...
+                                </span>
+                            </div>
+                            <div id="voiceTranscriptDisplay" class="voice-transcript-text text-dark fw-semibold">
+                                <span class="text-muted fst-italic">"Diga por ejemplo: Un kilo de arrachera para asar"</span>
+                            </div>
+                            <div id="voiceCleanedPreview" class="small text-success mt-2 d-none">
+                                <i class="bi bi-check-circle-fill me-1"></i> Buscaremos: <strong id="voiceCleanedText"></strong>
+                            </div>
+                        </div>
+
+                        <!-- Mensaje de Alerta / Estado -->
+                        <div id="voiceAlertBox" class="alert alert-warning py-2 px-3 small d-none mb-3" role="alert"></div>
+
+                        <!-- Sugerencias Populares Dinámicas (Obtenidas de las ventas reales del último mes) -->
+                        <div class="voice-suggestions-wrapper text-start">
+                            <small class="text-muted fw-bold d-block mb-2">
+                                <i class="bi bi-fire text-danger me-1"></i> Lo más pedido este mes:
+                            </small>
+                            <div class="d-flex flex-wrap gap-1">
+                                <?php if (!empty($topSellingProducts)): ?>
+                                    <?php foreach ($topSellingProducts as $tp): ?>
+                                        <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill voice-suggestion-chip" data-search="<?php echo storefront_escape($tp['search_term']); ?>" title="<?php echo $tp['ventas'] > 0 ? storefront_escape($tp['ventas'] . ' ventas este mes') : ''; ?>">
+                                            <?php echo storefront_escape($tp['descripcion']); ?>
+                                        </button>
+                                    <?php endforeach; ?>
+                                <?php else: ?>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill voice-suggestion-chip" data-search="Bistec de res">Bistec de res</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill voice-suggestion-chip" data-search="Bistec de cerdo">Bistec de cerdo</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill voice-suggestion-chip" data-search="Longaniza">Longaniza</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill voice-suggestion-chip" data-search="Costilla">Costilla</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill voice-suggestion-chip" data-search="Molida">Molida</button>
+                                    <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill voice-suggestion-chip" data-search="Pechuga">Pechuga</button>
+                                <?php endif; ?>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 pt-0 px-4 pb-4 d-flex justify-content-between align-items-center">
+                        <div class="form-check form-switch text-start mb-0">
+                            <input class="form-check-input" type="checkbox" role="switch" id="voiceAudioFeedbackToggle" checked>
+                            <label class="form-check-label small text-muted" for="voiceAudioFeedbackToggle">
+                                <i class="bi bi-volume-up-fill me-1"></i> Voz del carnicero
+                            </label>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <button type="button" class="btn btn-outline-secondary rounded-pill px-3" data-bs-dismiss="modal">Cerrar</button>
+                            <button type="button" id="voiceModalSubmitBtn" class="btn btn-warning rounded-pill px-4 fw-bold shadow-sm" disabled>
+                                <i class="bi bi-search me-1"></i> Buscar
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Prompt Interactivo del Carnicero: ¿Se le ofrece algo más? -->
+        <div id="butcherAskMorePrompt" class="butcher-ask-more-card d-none shadow-lg" role="dialog" aria-live="polite">
+            <div class="d-flex align-items-start gap-2.5">
+                <div class="butcher-prompt-icon flex-shrink-0">
+                    <span class="fs-4">🥩</span>
+                </div>
+                <div class="flex-grow-1 min-w-0">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <span class="badge bg-success bg-opacity-10 text-success fw-bold px-2 py-0.5" style="font-size: 0.75rem;">
+                            <i class="bi bi-check-circle-fill me-1"></i> ¡Agregado a su bolsa!
+                        </span>
+                        <button type="button" class="btn-close btn-sm p-1" onclick="closeButcherAskMorePrompt()" aria-label="Cerrar"></button>
+                    </div>
+                    <h6 class="fw-bold mb-1 text-dark font-serif" id="askMoreTitle">¿Se le ofrece algo más, marchante?</h6>
+                    <p class="text-muted small mb-2 lh-sm" id="askMoreSubtitle">Puede pedir otro corte por voz o continuar a su pedido.</p>
+                    <div class="d-flex flex-wrap gap-2 align-items-center mt-2">
+                        <button type="button" class="btn btn-sm btn-danger rounded-pill px-3 fw-bold d-inline-flex align-items-center gap-1 shadow-sm" onclick="triggerAskMoreVoice()">
+                            <i class="bi bi-mic-fill"></i> Pedir algo más por voz
+                        </button>
+                        <a href="carrito.php" class="btn btn-sm btn-warning rounded-pill px-3 fw-bold d-inline-flex align-items-center gap-1 shadow-sm" id="askMoreCartLink">
+                            <i class="bi bi-bag-check-fill"></i> Ver Carrito (<span id="askMoreCartCount"><?php echo storefront_escape($cartCount); ?></span>)
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <!-- Sticky Bottom Nav Bar para Móviles -->
         <nav class="mobile-bottom-nav d-lg-none">
             <a href="index.php" class="mobile-nav-item active">
@@ -469,6 +604,7 @@ function storefront_render_footer()
         </nav>
 
         <script src="js/bootstrap.bundle.min.js"></script>
+        <script src="js/storefront-voice.js" defer></script>
         <script>
         function scrollBranchCarousel(distance) {
             var track = document.getElementById('branchCarouselTrack');
@@ -514,6 +650,85 @@ function storefront_render_footer()
             updateBranchCarouselArrows();
             window.addEventListener('resize', updateBranchCarouselArrows);
         });
+
+        // ======================================================================
+        // Carnicero Atento: "¿Se le ofrece algo más marchante?"
+        // ======================================================================
+        window.askIfNeedsAnythingElse = function () {
+            if (!('speechSynthesis' in window)) return;
+            try {
+                window.speechSynthesis.cancel();
+                var butcherPhrases = [
+                    '¡Listo marchante! ¿Se le ofrece algo más?',
+                    '¡Agregado con gusto! ¿Le despachamos algo más?',
+                    '¡Ya quedó en su bolsa! ¿Desea que le preparemos algo más marchante?'
+                ];
+                var phrase = butcherPhrases[Math.floor(Math.random() * butcherPhrases.length)];
+                var utterance = new SpeechSynthesisUtterance(phrase);
+                utterance.lang = 'es-MX';
+                utterance.rate = 1.0;
+                utterance.pitch = 0.95;
+
+                var voices = window.speechSynthesis.getVoices();
+                var esVoice = voices.find(function (v) { return v.lang === 'es-MX'; }) ||
+                              voices.find(function (v) { return v.lang && v.lang.startsWith('es'); });
+                if (esVoice) utterance.voice = esVoice;
+
+                setTimeout(function () {
+                    window.speechSynthesis.speak(utterance);
+                }, 350);
+            } catch (e) {}
+        };
+
+        window.showButcherAskMorePrompt = function (productMessage, totalItems) {
+            var promptEl = document.getElementById('butcherAskMorePrompt');
+            if (!promptEl) return;
+
+            if (totalItems !== null && totalItems !== undefined) {
+                var countEl = document.getElementById('askMoreCartCount');
+                if (countEl) countEl.textContent = totalItems;
+            }
+
+            if (productMessage) {
+                var subEl = document.getElementById('askMoreSubtitle');
+                if (subEl) subEl.textContent = productMessage + ' ¿Desea que le preparemos algo más?';
+            }
+
+            promptEl.classList.remove('d-none');
+            promptEl.classList.add('d-block');
+
+            // Preguntar amablemente por voz
+            window.askIfNeedsAnythingElse();
+
+            if (window.askMoreTimeout) clearTimeout(window.askMoreTimeout);
+            window.askMoreTimeout = setTimeout(function () {
+                window.closeButcherAskMorePrompt();
+            }, 9000);
+        };
+
+        window.closeButcherAskMorePrompt = function () {
+            var promptEl = document.getElementById('butcherAskMorePrompt');
+            if (promptEl) {
+                promptEl.classList.remove('d-block');
+                promptEl.classList.add('d-none');
+            }
+            if (window.askMoreTimeout) clearTimeout(window.askMoreTimeout);
+        };
+
+        window.triggerAskMoreVoice = function () {
+            window.closeButcherAskMorePrompt();
+            if (typeof window.openCanoVoiceSearch === 'function') {
+                window.openCanoVoiceSearch();
+            }
+        };
+
+        <?php if (!empty($feedback['message']) && ($feedback['type'] ?? '') === 'success' && (stripos($feedback['message'], 'agreg') !== false || stripos($feedback['message'], 'carrito') !== false)): ?>
+        window.addEventListener('DOMContentLoaded', function () {
+            setTimeout(function () {
+                window.showButcherAskMorePrompt(<?php echo json_encode($feedback['message']); ?>, <?php echo json_encode($cartCount); ?>);
+            }, 600);
+        });
+        <?php endif; ?>
         </script>
     </body>
 </html>
