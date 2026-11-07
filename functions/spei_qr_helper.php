@@ -4,9 +4,9 @@
  * Proyecto: Carnicerías "EL Cinco"
  */
 
-define('SPEI_CLABE', '012180015930849331');
-define('SPEI_BANCO', 'BBVA');
-define('SPEI_BENEFICIARIO', 'GERARDO BAUTISTA SERNA');
+define('SPEI_CLABE', '002180700531169120');
+define('SPEI_BANCO', 'Banamex');
+define('SPEI_BENEFICIARIO', 'ISMAEL BAUTISTA SERNA');
 
 function emv_tlv_format($tag, $value) {
     $length = sprintf("%02d", strlen($value));

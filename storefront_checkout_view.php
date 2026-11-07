@@ -140,10 +140,10 @@ $cartSubtotal = (float)($cartTotals['subtotal'] ?? 0.0);
                             <div class="alert alert-light border border-primary border-opacity-25 rounded-4 p-3 text-start mb-4 bg-light">
                                 <h6 class="fw-bold text-primary mb-2"><i class="bi bi-bank me-1"></i> Datos Oficiales para Transferencia SPEI:</h6>
                                 <ul class="list-unstyled small mb-2 text-dark">
-                                    <li><strong>Banco:</strong> BBVA Bancomer</li>
-                                    <li><strong>Beneficiario:</strong> Carnicerías "EL Cinco" S.A. de C.V.</li>
-                                    <li><strong>CLABE:</strong> 0121 8000 1234 5678 90</li>
-                                    <li><strong>Concepto / Referencia:</strong> Folio #<?php echo storefront_escape($orderSuccess['id']); ?></li>
+                                    <li><strong>Banco:</strong> Banamex</li>
+                                    <li><strong>Beneficiario:</strong> Ismael Bautista Serna</li>
+                                    <li><strong>CLABE:</strong> 002180700531169120</li>
+                                    <li><strong>Concepto:</strong> Pedido #<?php echo storefront_escape($orderSuccess['id']); ?></li>
                                 </ul>
                                 <small class="text-muted">Envía tu comprobante vía WhatsApp para agilizar el despacho de tus cortes.</small>
                             </div>
@@ -437,10 +437,10 @@ $cartSubtotal = (float)($cartTotals['subtotal'] ?? 0.0);
                                     <div class="p-3 bg-light border border-primary border-opacity-25 rounded-3">
                                         <h6 class="fw-bold text-primary m-0 mb-2"><i class="bi bi-bank me-1"></i> Datos Oficiales para Transferencia SPEI:</h6>
                                         <ul class="list-unstyled small mb-0 text-dark">
-                                            <li><strong>Banco:</strong> BBVA Bancomer</li>
-                                            <li><strong>Beneficiario:</strong> Carnicerías "EL Cinco" S.A. de C.V.</li>
-                                            <li><strong>CLABE Interbancaria:</strong> 0121 8000 1234 5678 90</li>
-                                            <li><strong>Concepto:</strong> Tu Nombre y Teléfono</li>
+                                            <li><strong>Banco:</strong> Banamex</li>
+                                            <li><strong>Beneficiario:</strong> Ismael Bautista Serna</li>
+                                            <li><strong>CLABE Interbancaria:</strong> 002180700531169120</li>
+                                            <li><strong>Concepto:</strong> Número de pedido</li>
                                         </ul>
                                         <small class="text-muted d-block mt-2">Envía tu comprobante vía WhatsApp al finalizar tu pedido para agilizar el despacho de tus cortes.</small>
                                     </div>
