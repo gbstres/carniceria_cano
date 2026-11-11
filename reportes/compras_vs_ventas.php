@@ -33,7 +33,8 @@ $sqlCategoriasQuery = "
         COALESCE(vent.ventas_cant, 0) AS ventas_cant,
         COALESCE(vent.ventas_costo, 0) AS ventas_costo,
         COALESCE(vent.ventas_importe, 0) AS ventas_importe,
-        COALESCE(stk.stock_cierre, (COALESCE(cat.almacen, 0) + COALESCE(p_curr.stock_actual, 0)), 0) AS stock_cierre
+        COALESCE(stk.stock_cierre, (COALESCE(cat.almacen, 0) + COALESCE(p_curr.stock_actual, 0)), 0) AS stock_cierre,
+        COALESCE(stk.valor_stock_cierre, (CASE WHEN cat.almacen > 0 THEN ROUND(cat.almacen * COALESCE(cat.precio, 0), 2) ELSE 0 END + COALESCE(p_curr.valor_stock_actual, 0)), 0) AS valor_stock_cierre
     FROM cc_categorias cat
     LEFT JOIN (
         SELECT
@@ -76,7 +77,12 @@ $sqlCategoriasQuery = "
     LEFT JOIN (
         SELECT 
             COALESCE(NULLIF(cs.id_categoria, 0), CAST(cs.codigo AS UNSIGNED)) AS id_categoria,
-            SUM(cs.stock) AS stock_cierre
+            SUM(cs.stock) AS stock_cierre,
+            SUM(CASE 
+                WHEN cs.total > 0 THEN cs.total 
+                WHEN cs.stock > 0 THEN ROUND(cs.stock * cs.precio_compra, 2) 
+                ELSE 0 
+            END) AS valor_stock_cierre
         FROM cc_cierre_stock cs
         INNER JOIN (
             SELECT id_sucursal, MAX(id_cierre) AS max_cierre
@@ -94,11 +100,28 @@ $sqlCategoriasQuery = "
     ) stk ON stk.id_categoria = cat.id_categoria
     -- Suma de stock actual en línea por producto individual
     LEFT JOIN (
-        SELECT id_categoria, SUM(almacen) AS stock_actual
-        FROM cc_productos
-        WHERE id_sucursal = $id_sucursal
-          AND (centralizar_almacen <> 2 OR centralizar_almacen IS NULL)
-        GROUP BY id_categoria
+        SELECT 
+            p.id_categoria, 
+            SUM(p.almacen) AS stock_actual,
+            SUM(CASE WHEN p.almacen > 0 THEN ROUND(p.almacen * COALESCE(eq.precio_compra_origen, p.precio_compra, 0), 2) ELSE 0 END) AS valor_stock_actual
+        FROM cc_productos p
+        LEFT JOIN (
+            SELECT
+                e.id_sucursal,
+                e.codigo_destino,
+                AVG(po.precio_compra) AS precio_compra_origen
+            FROM cc_equivalencias_productos e
+            INNER JOIN cc_productos po
+                ON po.id_sucursal = e.id_sucursal
+               AND po.codigo = e.codigo_origen
+            WHERE e.activo = 1
+            GROUP BY e.id_sucursal, e.codigo_destino
+        ) eq
+            ON eq.id_sucursal = p.id_sucursal
+           AND eq.codigo_destino = p.codigo
+        WHERE p.id_sucursal = $id_sucursal
+          AND (p.centralizar_almacen <> 2 OR p.centralizar_almacen IS NULL)
+        GROUP BY p.id_categoria
     ) p_curr ON p_curr.id_categoria = cat.id_categoria
     WHERE cat.id_sucursal = $id_sucursal
       AND (COALESCE(comp.compras_cant, 0) <> 0 
@@ -120,6 +143,7 @@ $totCatVentasCost = 0;
 $totCatBalanceImp = 0;
 $totCatGananciaImp = 0;
 $totCatStockCierre = 0;
+$totCatValorStockCierre = 0;
 
 if ($sqlCategorias) {
     while ($row = mysqli_fetch_assoc($sqlCategorias)) {
@@ -129,6 +153,7 @@ if ($sqlCategorias) {
         $vCost = (float) $row['ventas_costo'];
         $vImp = (float) $row['ventas_importe'];
         $stkCierre = (float) $row['stock_cierre'];
+        $valStkCierre = (float) $row['valor_stock_cierre'];
 
         $difCant = $vCant - $cCant;
         $balance = $vImp - $cImp;
@@ -143,6 +168,7 @@ if ($sqlCategorias) {
         $totCatBalanceImp += $balance;
         $totCatGananciaImp += $ganancia;
         $totCatStockCierre += $stkCierre;
+        $totCatValorStockCierre += $valStkCierre;
 
         $listaCategorias[] = [
             'id_categoria' => (string) $row['id_categoria'],
@@ -157,6 +183,7 @@ if ($sqlCategorias) {
             'ganancia' => $ganancia,
             'pct_margen' => $pctMargenCat,
             'stock_cierre' => $stkCierre,
+            'valor_stock_cierre' => $valStkCierre,
         ];
     }
 }
@@ -264,7 +291,7 @@ $totGlobalPctMargen = ($totCatVentasImp > 0) ? ($totCatGananciaImp / $totCatVent
                                 <div class="card-body">
                                     <h6 class="card-title text-uppercase text-white-50 small fw-bold mb-1">Stock Cierre (Fecha Fin)</h6>
                                     <h3 class="card-text mb-1"><?php echo number_format($totCatStockCierre, 1); ?> kg</h3>
-                                    <small class="text-white-50">Total inventario al <?php echo htmlspecialchars($fecha2, ENT_QUOTES, 'UTF-8'); ?></small>
+                                    <small class="text-white-50">Valor: $<?php echo number_format($totCatValorStockCierre, 2); ?> | Al <?php echo htmlspecialchars($fecha2, ENT_QUOTES, 'UTF-8'); ?></small>
                                 </div>
                             </div>
                         </div>
@@ -285,6 +312,7 @@ $totGlobalPctMargen = ($totCatVentasImp > 0) ? ($totCatGananciaImp / $totCatVent
                                     <th>Ventas Cant.</th>
                                     <th>Ventas ($)</th>
                                     <th>Stock Cierre (Fecha Fin)</th>
+                                    <th>Valor Stock ($)</th>
                                     <th>Dif. Cant.</th>
                                     <th>Balance ($)</th>
                                     <th>Ganancia Est. ($)</th>
@@ -313,6 +341,7 @@ $totGlobalPctMargen = ($totCatVentasImp > 0) ? ($totCatGananciaImp / $totCatVent
                                         <td class="text-end">' . number_format($cat["ventas_cant"], 1) . '</td>
                                         <td class="text-end">$' . number_format($cat["ventas_importe"], 2) . '</td>
                                         <td class="text-end fw-bold text-primary">' . number_format($cat["stock_cierre"], 1) . ' kg</td>
+                                        <td class="text-end fw-bold text-primary">$' . number_format($cat["valor_stock_cierre"], 2) . '</td>
                                         <td class="text-end">' . number_format($cat["dif_cant"], 1) . '</td>
                                         <td class="text-end fw-bold ' . $classBalance . '">$' . number_format($cat["balance"], 2) . '</td>
                                         <td class="text-end fw-bold ' . $classGanancia . '">$' . number_format($cat["ganancia"], 2) . '</td>
@@ -329,6 +358,7 @@ $totGlobalPctMargen = ($totCatVentasImp > 0) ? ($totCatGananciaImp / $totCatVent
                                     <th class="text-end"><?php echo number_format($totCatVentasCant, 1); ?></th>
                                     <th class="text-end">$<?php echo number_format($totCatVentasImp, 2); ?></th>
                                     <th class="text-end"><?php echo number_format($totCatStockCierre, 1); ?> kg</th>
+                                    <th class="text-end">$<?php echo number_format($totCatValorStockCierre, 2); ?></th>
                                     <th class="text-end"><?php echo number_format($totCatVentasCant - $totCatComprasCant, 1); ?></th>
                                     <th class="text-end">$<?php echo number_format($totCatBalanceImp, 2); ?></th>
                                     <th class="text-end">$<?php echo number_format($totCatGananciaImp, 2); ?></th>
@@ -386,13 +416,14 @@ $totGlobalPctMargen = ($totCatVentasImp > 0) ? ($totCatGananciaImp / $totCatVent
                                 <th class="text-end">Vent. Cant.</th>
                                 <th class="text-end">Vent. ($)</th>
                                 <th class="text-end">Stock Cierre (kg)</th>
+                                <th class="text-end">Valor Stock ($)</th>
                                 <th class="text-end">Balance ($)</th>
                                 <th class="text-end">Ganancia ($)</th>
                             </tr>
                         </thead>
                         <tbody>
                             <?php if (empty($listaCategorias)): ?>
-                                <tr><td colspan="9" class="text-center">Sin movimientos de categorías en el intervalo</td></tr>
+                                <tr><td colspan="10" class="text-center">Sin movimientos de categorías en el intervalo</td></tr>
                             <?php else: ?>
                                 <?php foreach ($listaCategorias as $cat): ?>
                                     <tr>
@@ -403,6 +434,7 @@ $totGlobalPctMargen = ($totCatVentasImp > 0) ? ($totCatGananciaImp / $totCatVent
                                         <td class="text-end"><?php echo number_format($cat['ventas_cant'], 1); ?></td>
                                         <td class="text-end">$<?php echo number_format($cat['ventas_importe'], 2); ?></td>
                                         <td class="text-end"><?php echo number_format($cat['stock_cierre'], 1); ?> kg</td>
+                                        <td class="text-end">$<?php echo number_format($cat['valor_stock_cierre'], 2); ?></td>
                                         <td class="text-end">$<?php echo number_format($cat['balance'], 2); ?></td>
                                         <td class="text-end">$<?php echo number_format($cat['ganancia'], 2); ?></td>
                                     </tr>
@@ -417,6 +449,7 @@ $totGlobalPctMargen = ($totCatVentasImp > 0) ? ($totCatGananciaImp / $totCatVent
                                 <th class="text-end"><?php echo number_format($totCatVentasCant, 1); ?></th>
                                 <th class="text-end">$<?php echo number_format($totCatVentasImp, 2); ?></th>
                                 <th class="text-end"><?php echo number_format($totCatStockCierre, 1); ?> kg</th>
+                                <th class="text-end">$<?php echo number_format($totCatValorStockCierre, 2); ?></th>
                                 <th class="text-end">$<?php echo number_format($totCatBalanceImp, 2); ?></th>
                                 <th class="text-end">$<?php echo number_format($totCatGananciaImp, 2); ?></th>
                             </tr>
