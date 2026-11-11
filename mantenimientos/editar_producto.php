@@ -11,6 +11,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 
 require_once __DIR__ . "/../functions/config.php";
 require_once __DIR__ . "/../functions/sync_queue.php";
+require_once __DIR__ . "/../functions/bitacora_stock.php";
 date_default_timezone_set("America/Mexico_City");
 
 $id_sucursal = (int) $_SESSION["id_sucursal"];
@@ -166,45 +167,73 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['actualizar_producto']
     $mayoreo = isset($_POST['mayoreo']) ? 1 : 0;
     $centralizar_almacen = trim($_POST["centralizar_almacen"] ?? '');
     $activo = isset($_POST['activo']) ? 1 : 0;
+    $para_venta = isset($_POST['para_venta']) ? 1 : 0;
+    $motivo_stock = trim($_POST["motivo_stock"] ?? '');
 
-    $id_usuario_act = $id_usuario;
-    $fecha_act = date('Y-m-d');
-    $hora_act = date('H:i:s');
+    // Consultar stock actual en base de datos para detectar cambios
+    $resPrev = mysqli_query($link, "SELECT almacen, descripcion FROM cc_productos WHERE codigo = '$codigoEscaped' AND id_sucursal = '$id_sucursal' LIMIT 1");
+    $stockAnterior = ($resPrev && $rowPrev = mysqli_fetch_assoc($resPrev)) ? (float) $rowPrev['almacen'] : 0.0;
+    $cambioStock = abs($almacen - $stockAnterior) > 0.0001;
 
-    $descSql = mysqli_real_escape_string($link, $descripcion);
-    $caSql = mysqli_real_escape_string($link, $centralizar_almacen);
-
-    $sqlActualizar = "
-        UPDATE cc_productos
-        SET
-            descripcion = '$descSql',
-            precio_compra = '$precio_compra',
-            precio_venta = '$precio_venta',
-            almacen = '$almacen',
-            limite_stock = '$limite_stock',
-            id_categoria = '$id_categoria',
-            mayoreo = '$mayoreo',
-            centralizar_almacen = '$caSql',
-            activo = '$activo',
-            fecha_act = '$fecha_act',
-            hora_act = '$hora_act',
-            id_usuario_act = '$id_usuario_act'
-        WHERE codigo = '$codigoEscaped'
-            AND id_sucursal = '$id_sucursal'
-    ";
-
-    if (mysqli_query($link, $sqlActualizar)) {
-        cc_sync_enqueue($link, $id_sucursal, 'producto', 'upsert', [
-            'codigo' => (string) $codigo,
-        ], [
-            'tabla' => 'cc_productos',
-            'id_categoria' => (int) $id_categoria,
-        ]);
-        $feedbackType = 'success';
-        $feedbackMessage = 'Los datos del producto se actualizaron correctamente.';
-    } else {
+    if ($cambioStock && $motivo_stock === '') {
         $feedbackType = 'danger';
-        $feedbackMessage = 'Error al actualizar el producto: ' . mysqli_error($link);
+        $feedbackMessage = 'Para actualizar el stock en almacén es obligatorio ingresar un comentario del porqué se actualiza.';
+    } else {
+        $id_usuario_act = $id_usuario;
+        $fecha_act = date('Y-m-d');
+        $hora_act = date('H:i:s');
+
+        $descSql = mysqli_real_escape_string($link, $descripcion);
+        $caSql = mysqli_real_escape_string($link, $centralizar_almacen);
+
+        $sqlActualizar = "
+            UPDATE cc_productos
+            SET
+                descripcion = '$descSql',
+                precio_compra = '$precio_compra',
+                precio_venta = '$precio_venta',
+                almacen = '$almacen',
+                limite_stock = '$limite_stock',
+                id_categoria = '$id_categoria',
+                mayoreo = '$mayoreo',
+                centralizar_almacen = '$caSql',
+                activo = '$activo',
+                para_venta = '$para_venta',
+                fecha_act = '$fecha_act',
+                hora_act = '$hora_act',
+                id_usuario_act = '$id_usuario_act'
+            WHERE codigo = '$codigoEscaped'
+                AND id_sucursal = '$id_sucursal'
+        ";
+
+        if (mysqli_query($link, $sqlActualizar)) {
+            if ($cambioStock) {
+                registrarBitacoraStock(
+                    $link,
+                    $id_sucursal,
+                    'PRODUCTO',
+                    $codigo,
+                    $descripcion,
+                    $stockAnterior,
+                    $almacen,
+                    $motivo_stock,
+                    $id_usuario,
+                    $_SESSION['nombre'] ?? '',
+                    'Mantenimiento Productos (Editar Producto)'
+                );
+            }
+            cc_sync_enqueue($link, $id_sucursal, 'producto', 'upsert', [
+                'codigo' => (string) $codigo,
+            ], [
+                'tabla' => 'cc_productos',
+                'id_categoria' => (int) $id_categoria,
+            ]);
+            $feedbackType = 'success';
+            $feedbackMessage = 'Los datos del producto se actualizaron correctamente.' . ($cambioStock ? ' Se registró el cambio en la bitácora de stock.' : '');
+        } else {
+            $feedbackType = 'danger';
+            $feedbackMessage = 'Error al actualizar el producto: ' . mysqli_error($link);
+        }
     }
 }
 
@@ -709,6 +738,7 @@ if ($tableFotosExists) {
                             <div class="col-md-3 col-sm-6">
                                 <label for="almacen" class="form-label fw-bold small">STOCK EN ALMACÉN (KG/PZA) <span class="text-danger">*</span></label>
                                 <input type="number" step="0.001" class="form-control" id="almacen" name="almacen" value="<?php echo htmlspecialchars($producto['almacen'], ENT_QUOTES, 'UTF-8'); ?>" required>
+                                <input type="hidden" id="almacen_original" value="<?php echo htmlspecialchars($producto['almacen'], ENT_QUOTES, 'UTF-8'); ?>">
                             </div>
                             <div class="col-md-3 col-sm-6">
                                 <label for="limite_stock" class="form-label fw-bold small">LÍMITE MÍNIMO DE STOCK <span class="text-danger">*</span></label>
@@ -749,6 +779,23 @@ if ($tableFotosExists) {
                                     <input class="form-check-input" type="checkbox" id="activo" name="activo" value="1" <?php echo ((int) $producto['activo'] === 1) ? 'checked' : ''; ?>>
                                     <label class="form-check-label" for="activo">Producto Activo</label>
                                 </div>
+                                <div class="form-check form-check-inline pt-1">
+                                    <input class="form-check-input" type="checkbox" id="para_venta" name="para_venta" value="1" <?php echo ((int) ($producto['para_venta'] ?? 1) === 1) ? 'checked' : ''; ?>>
+                                    <label class="form-check-label fw-bold text-success" for="para_venta"><i class="bi bi-cart-check me-1"></i>Para Venta en Mostrador</label>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="row g-3 mb-4" id="grupo_motivo_stock_prod" style="display: none;">
+                            <div class="col-12">
+                                <div class="p-3 bg-light border border-primary rounded shadow-sm">
+                                    <label for="motivo_stock" class="form-label fw-bold text-primary mb-1">
+                                        <i class="bi bi-chat-left-text-fill me-1"></i> MOTIVO / COMENTARIO DEL CAMBIO DE STOCK <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="small text-muted mb-2">Se ha modificado el stock en almacén. Ingrese el comentario del porqué se actualiza (obligatorio para guardar):</div>
+                                    <input type="text" class="form-control border-primary" id="motivo_stock" name="motivo_stock" placeholder="Ej: Ajuste por merma, conteo físico, devolución, corrección de inventario, etc.">
+                                    <div class="invalid-feedback">Favor de ingresar el comentario del porqué se actualiza el stock.</div>
+                                </div>
                             </div>
                         </div>
 
@@ -761,6 +808,74 @@ if ($tableFotosExists) {
                             </button>
                         </div>
                     </form>
+                </div>
+            </div>
+
+            <!-- Bitácora de Stock de este Producto -->
+            <?php
+            $resBitacoraProd = mysqli_query($link, "
+                SELECT * FROM cc_bitacora_stock 
+                WHERE id_sucursal = '$id_sucursal' AND tipo = 'PRODUCTO' AND id_item = '$codigoEscaped' 
+                ORDER BY fecha DESC, hora DESC, id_bitacora DESC 
+                LIMIT 5
+            ");
+            ?>
+            <div class="card shadow-sm border-0 rounded-3 mb-4">
+                <div class="card-header bg-white py-3 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <div>
+                        <h5 class="card-title mb-0 fw-bold text-dark">
+                            <i class="bi bi-clock-history text-primary me-2"></i>Historial de Modificaciones de Stock de este Producto
+                        </h5>
+                        <small class="text-muted">Bitácora de quién actualizó el stock, fechas, cantidades y justificaciones.</small>
+                    </div>
+                    <a href="../reportes/bitacora_stock.php?tipo=PRODUCTO&codigo=<?php echo urlencode($codigo); ?>" class="btn btn-sm btn-outline-primary">
+                        <i class="bi bi-journal-text me-1"></i> Ver en Bitácora Completa
+                    </a>
+                </div>
+                <div class="card-body p-3">
+                    <?php if ($resBitacoraProd && mysqli_num_rows($resBitacoraProd) > 0): ?>
+                        <div class="table-responsive">
+                            <table class="table table-sm table-hover align-middle mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Fecha / Hora</th>
+                                        <th class="text-end">Stock Ant.</th>
+                                        <th class="text-end">Stock Nuevo</th>
+                                        <th class="text-end">Ajuste</th>
+                                        <th>Comentario / Motivo</th>
+                                        <th>Usuario Responsable</th>
+                                        <th>Origen</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php while ($b = mysqli_fetch_assoc($resBitacoraProd)): 
+                                        $dif = (float) $b['diferencia'];
+                                        $signo = $dif > 0 ? '+' : '';
+                                        $colorDif = $dif > 0 ? 'text-success fw-bold' : ($dif < 0 ? 'text-danger fw-bold' : '');
+                                    ?>
+                                    <tr>
+                                        <td class="small" style="white-space:nowrap;">
+                                            <strong><?php echo htmlspecialchars($b['fecha'], ENT_QUOTES, 'UTF-8'); ?></strong> 
+                                            <span class="text-muted"><?php echo htmlspecialchars($b['hora'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                        </td>
+                                        <td class="text-end small"><?php echo number_format($b['stock_anterior'], 3); ?></td>
+                                        <td class="text-end small fw-bold"><?php echo number_format($b['stock_nuevo'], 3); ?></td>
+                                        <td class="text-end small <?php echo $colorDif; ?>"><?php echo $signo . number_format($dif, 3); ?></td>
+                                        <td class="small"><?php echo nl2br(htmlspecialchars($b['motivo'], ENT_QUOTES, 'UTF-8')); ?></td>
+                                        <td class="small">
+                                            <i class="bi bi-person-fill text-primary"></i> <?php echo htmlspecialchars($b['usuario'], ENT_QUOTES, 'UTF-8'); ?>
+                                        </td>
+                                        <td><span class="badge bg-secondary"><?php echo htmlspecialchars($b['origen'], ENT_QUOTES, 'UTF-8'); ?></span></td>
+                                    </tr>
+                                    <?php endwhile; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    <?php else: ?>
+                        <div class="text-center text-muted py-3">
+                            <i class="bi bi-info-circle me-1"></i> No hay registros previos de modificaciones de stock para este producto.
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
 
@@ -1328,6 +1443,30 @@ if ($tableFotosExists) {
                 progresoSubida.style.display = 'none';
             });
         });
+
+        // Detección de cambio de stock y requerimiento de motivo
+        var inputAlmacen = document.getElementById('almacen');
+        var inputAlmacenOrig = document.getElementById('almacen_original');
+        var grupoMotivoStock = document.getElementById('grupo_motivo_stock_prod');
+        var inputMotivoStock = document.getElementById('motivo_stock');
+
+        function checkStockChange() {
+            if (!inputAlmacen || !inputAlmacenOrig || !grupoMotivoStock || !inputMotivoStock) return;
+            var vOrig = parseFloat(inputAlmacenOrig.value || '0');
+            var vNuevo = parseFloat(inputAlmacen.value || '0');
+            if (Math.abs(vNuevo - vOrig) > 0.0001) {
+                grupoMotivoStock.style.display = 'block';
+                inputMotivoStock.setAttribute('required', 'required');
+            } else {
+                grupoMotivoStock.style.display = 'none';
+                inputMotivoStock.removeAttribute('required');
+                inputMotivoStock.value = '';
+            }
+        }
+        if (inputAlmacen) {
+            inputAlmacen.addEventListener('input', checkStockChange);
+            inputAlmacen.addEventListener('change', checkStockChange);
+        }
 
         // Bootstrap validation
         var forms = document.querySelectorAll('.needs-validation');

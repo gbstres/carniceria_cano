@@ -76,6 +76,7 @@ if (in_array($ccHost, ['localhost', '127.0.0.1', '::1'], true)) {
                         <li><a class="dropdown-item" href="../reportes/compra_por_dia.php">Compra x día</a></li>
                         <li><a class="dropdown-item" href="../reportes/compra_por_fecha.php">Compra x fecha</a></li>
                         <li><a class="dropdown-item" href="../reportes/stock.php">Stock</a></li>
+                        <li><a class="dropdown-item" href="../reportes/bitacora_stock.php">Bitácora de stock</a></li>
                         <?php
                         if (tienePermiso('ver')) {
                             echo '
@@ -103,6 +104,7 @@ if (in_array($ccHost, ['localhost', '127.0.0.1', '::1'], true)) {
                         ?>
                         <li><a class="dropdown-item" href="../control/gastos.php">Gastos</a></li>
                         <li><a class="dropdown-item" href="../control/entradas.php">Entradas</a></li>
+                        <li><a class="dropdown-item" href="../control/produccion.php"><i class="bi bi-gear-wide-connected me-1"></i> Producción / Lotes</a></li>
                         <li><a class="dropdown-item" href="../control/respaldo.php">Respaldo</a></li>
                         <li><a class="dropdown-item" href="../control/cierre_dia.php">Cierre de día</a></li>
                         <li><a class="dropdown-item" href="../control/inicio_dia.php">Inicio de día</a></li>
@@ -127,6 +129,7 @@ if (in_array($ccHost, ['localhost', '127.0.0.1', '::1'], true)) {
                     <ul class="dropdown-menu">';
                     if ($esAdministrador) {
                         echo '
+                        <li><a class="dropdown-item" href="../admin/recetas_produccion.php"><i class="bi bi-journal-text me-1"></i> Recetas de producción</a></li>
                         <li><a class="dropdown-item" href="../admin/derivados.php">Derivados</a></li>
                         <li><a class="dropdown-item" href="../admin/equivalencias_productos.php">Equivalencias productos</a></li>
                         <li><a class="dropdown-item" href="../admin/actualiza_info.php">Actualiza inf. del servidor</a></li>';

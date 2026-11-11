@@ -10,6 +10,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 
 require_once "../functions/config.php";
 require_once "../functions/sync_queue.php";
+require_once "../functions/bitacora_stock.php";
 date_default_timezone_set("America/Mexico_City");
 // Define variables and initialize with empty values
 $codigo = 0;
@@ -231,28 +232,55 @@ if (isset($_POST['editar'])) {
     $mayoreo = isset($_POST['mayoreo_e']) ? 1 : 0;
     $centralizar_almacen = trim($_POST["centralizar_almacen_e"]);
     $activo = isset($_POST['activo_e']) ? 1 : 0;
+    $motivo_stock = trim($_POST["motivo_stock_e"] ?? '');
     $id_usuario_act = $_SESSION["id"];
     $fecha_act = date('Y-m-d');
     $hora_act = date('H:i:s');
-    $update1 = mysqli_query($link, "UPDATE cc_productos SET "
-                    . "descripcion='$descripcion', precio_compra='$precio_compra', precio_venta='$precio_venta', almacen='$almacen', limite_stock='$limite_stock', id_categoria='$id_categoria', mayoreo='$mayoreo', centralizar_almacen = '$centralizar_almacen', activo='$activo', "
-                    . "fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act='$id_usuario_act' "
-                    . "WHERE codigo='$codigo' and id_sucursal='$id_sucursal'")
-            or die(mysqli_error());
 
-    if ($update1) {
-        cc_sync_enqueue($link, $id_sucursal, 'producto', 'upsert', [
-            'codigo' => (string) $codigo,
-        ], [
-            'tabla' => 'cc_productos',
-            'id_categoria' => (int) $id_categoria,
-        ]);
-        $title = 'Actualizado';
-        $body = 'Producto ' . $descripcion . ' actualizado correctamente.';
-        $photoProductCode = $codigo;
-    } else {
+    $resPrev = mysqli_query($link, "SELECT almacen FROM cc_productos WHERE codigo='$codigo' AND id_sucursal='$id_sucursal' LIMIT 1");
+    $stockAnterior = ($resPrev && $rowPrev = mysqli_fetch_assoc($resPrev)) ? (float)$rowPrev['almacen'] : 0.0;
+    $stockNuevo = (float)$almacen;
+    $cambioStock = abs($stockNuevo - $stockAnterior) > 0.0001;
+
+    if ($cambioStock && $motivo_stock === '') {
         $title = 'No actualizado';
-        $body = 'Producto ' . $descripcion . ' no actualizado.';
+        $body = 'Para actualizar el stock del producto es obligatorio ingresar un comentario del porqué se actualiza.';
+    } else {
+        $update1 = mysqli_query($link, "UPDATE cc_productos SET "
+                        . "descripcion='$descripcion', precio_compra='$precio_compra', precio_venta='$precio_venta', almacen='$almacen', limite_stock='$limite_stock', id_categoria='$id_categoria', mayoreo='$mayoreo', centralizar_almacen = '$centralizar_almacen', activo='$activo', "
+                        . "fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act='$id_usuario_act' "
+                        . "WHERE codigo='$codigo' and id_sucursal='$id_sucursal'")
+                or die(mysqli_error($link));
+
+        if ($update1) {
+            if ($cambioStock) {
+                registrarBitacoraStock(
+                    $link,
+                    (int)$id_sucursal,
+                    'PRODUCTO',
+                    $codigo,
+                    $descripcion,
+                    $stockAnterior,
+                    $stockNuevo,
+                    $motivo_stock,
+                    (int)$id_usuario_act,
+                    $_SESSION['nombre'] ?? '',
+                    'Mantenimiento Productos'
+                );
+            }
+            cc_sync_enqueue($link, $id_sucursal, 'producto', 'upsert', [
+                'codigo' => (string) $codigo,
+            ], [
+                'tabla' => 'cc_productos',
+                'id_categoria' => (int) $id_categoria,
+            ]);
+            $title = 'Actualizado';
+            $body = 'Producto ' . $descripcion . ' actualizado correctamente.';
+            $photoProductCode = $codigo;
+        } else {
+            $title = 'No actualizado';
+            $body = 'Producto ' . $descripcion . ' no actualizado.';
+        }
     }
 }
 
@@ -392,10 +420,12 @@ $sqlproductos = mysqli_query($link, "
                 <?php require_once "../components/nav.php" ?>
                 <div>
                     <div class="bg-light p-4 rounded ">
-                        <div class="col-sm-8 mx-auto">
-                            <h1 class="text-center">Productos</h1>
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                            <h1 class="mb-0">Productos</h1>
+                            <a href="../reportes/bitacora_stock.php?tipo=PRODUCTO" class="btn btn-outline-primary">
+                                <i class="bi bi-clock-history me-1"></i> Bitácora de Stock
+                            </a>
                         </div>
-                        <br>
                         <br>
                         <form class="row g-3 needs-validation" action="#" method="post" novalidate>
                             <div class="row g-3">
@@ -685,6 +715,23 @@ $sqlproductos = mysqli_query($link, "
                         }
                 ).makeEditable({
                     sUpdateURL: "../functions/actualizaproductos.php",
+                    fnOnEditing: function (input) {
+                        var $cell = $(input).closest('td');
+                        var cellIndex = $cell.index();
+                        if (cellIndex === 4) {
+                            var oldVal = input[0].defaultValue !== undefined ? input[0].defaultValue : $cell.text().trim();
+                            var newVal = input.val();
+                            if (parseFloat(newVal) !== parseFloat(oldVal)) {
+                                var motivo = prompt("Actualización de Stock de Producto:\nPor favor ingrese el comentario del porqué se actualiza el stock (obligatorio):");
+                                if (!motivo || !motivo.trim()) {
+                                    alert("Actualización cancelada: El comentario del porqué se actualiza el stock es obligatorio.");
+                                    return false;
+                                }
+                                window._ultimoMotivoStockProd = motivo.trim();
+                            }
+                        }
+                        return true;
+                    },
                     aoColumns: [
                         null,
                         {
@@ -711,10 +758,20 @@ $sqlproductos = mysqli_query($link, "
                         },
                         {
                             type: 'number',
-                            indicator: 'Saving platforms...',
+                            indicator: 'Guardando...',
                             tooltip: 'Click para editar Stock',
                             cssclass: 'required',
-                            sColumnName: 'almacen'
+                            sColumnName: 'almacen',
+                            submitdata: function (value, settings) {
+                                var id = $(this.parentNode).attr('id') || $(this).closest('tr').find('td:first').text().trim();
+                                var motivo = window._ultimoMotivoStockProd || '';
+                                window._ultimoMotivoStockProd = '';
+                                return {
+                                    "id": id,
+                                    "columnName": "almacen",
+                                    "motivo": motivo
+                                };
+                            }
                         },
                         {
                             type: 'number',

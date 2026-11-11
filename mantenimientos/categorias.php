@@ -12,6 +12,7 @@ if (!isset($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
 <?php
 require_once "../functions/config.php";
 require_once "../functions/sync_queue.php";
+require_once "../functions/bitacora_stock.php";
 date_default_timezone_set("America/Mexico_City");
 // Define variables and initialize with empty values
 
@@ -63,32 +64,60 @@ if (isset($_POST['agregar'])) {
     }
 }
 if (isset($_POST['editar'])) {
-    $id_categoria = trim($_POST["id_categoria_e"]);
+    $id_categoria = (int) trim($_POST["id_categoria_e"]);
     $desc_categoria = mb_strtoupper(trim($_POST["desc_categoria_e"]));
     $almacen = trim($_POST["almacen_e"]);
+    $motivo_stock = trim($_POST["motivo_stock_e"] ?? '');
     $precioSql = trim($_POST["precio_e"] ?? '') === ''
             ? 'NULL'
             : "'" . mysqli_real_escape_string($link, trim($_POST["precio_e"])) . "'";
     $activo = isset($_POST['activo_e']) ? 1 : 0;
     $id_usuario_act = $_SESSION["id"];
-    $fecha_act = date('y-m-d');
+    $fecha_act = date('Y-m-d');
     $hora_act = date('H:i:s');
-    $update1 = mysqli_query($link, "UPDATE cc_categorias SET "
-                    . "desc_categoria='$desc_categoria', almacen='$almacen', precio=$precioSql, activo='$activo', "
-                    . "fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act='$id_usuario_act' "
-                    . "WHERE id_categoria='$id_categoria' and id_sucursal='$id_sucursal'")
-            or die(mysqli_error());
-    if ($update1) {
-        cc_sync_enqueue($link, $id_sucursal, 'categoria', 'upsert', [
-            'id_categoria' => (int) $id_categoria,
-        ], [
-            'tabla' => 'cc_categorias',
-        ]);
-        $title = 'Actualizado';
-        $body = 'Categoría ' . $desc_categoria . ' actualizada correctamente.';
-    } else {
+
+    // Consultar stock actual de la categoría
+    $resCatPrev = mysqli_query($link, "SELECT almacen, desc_categoria FROM cc_categorias WHERE id_categoria='$id_categoria' AND id_sucursal='$id_sucursal' LIMIT 1");
+    $stockAnterior = ($resCatPrev && $rowCatPrev = mysqli_fetch_assoc($resCatPrev)) ? (float)$rowCatPrev['almacen'] : 0.0;
+    $stockNuevo = (float)$almacen;
+    $cambioStock = abs($stockNuevo - $stockAnterior) > 0.0001;
+
+    if ($cambioStock && $motivo_stock === '') {
         $title = 'No actualizado';
-        $body = 'Categoría ' . $desc_categoria . ' no actualizada.';
+        $body = 'Para actualizar el stock de la categoría ' . $desc_categoria . ' es obligatorio ingresar un comentario del porqué se actualiza.';
+    } else {
+        $update1 = mysqli_query($link, "UPDATE cc_categorias SET "
+                        . "desc_categoria='$desc_categoria', almacen='$almacen', precio=$precioSql, activo='$activo', "
+                        . "fecha_act='$fecha_act', hora_act='$hora_act', id_usuario_act='$id_usuario_act' "
+                        . "WHERE id_categoria='$id_categoria' and id_sucursal='$id_sucursal'")
+                or die(mysqli_error($link));
+        if ($update1) {
+            if ($cambioStock) {
+                registrarBitacoraStock(
+                    $link,
+                    (int) $id_sucursal,
+                    'CATEGORIA',
+                    (string) $id_categoria,
+                    $desc_categoria,
+                    $stockAnterior,
+                    $stockNuevo,
+                    $motivo_stock,
+                    (int) $id_usuario_act,
+                    $_SESSION['nombre'] ?? '',
+                    'Mantenimiento Categorías (Modal)'
+                );
+            }
+            cc_sync_enqueue($link, $id_sucursal, 'categoria', 'upsert', [
+                'id_categoria' => (int) $id_categoria,
+            ], [
+                'tabla' => 'cc_categorias',
+            ]);
+            $title = 'Actualizado';
+            $body = 'Categoría ' . $desc_categoria . ' actualizada correctamente.';
+        } else {
+            $title = 'No actualizado';
+            $body = 'Categoría ' . $desc_categoria . ' no actualizada.';
+        }
     }
 }
 if (isset($_GET['accion']) == 'delete' and $title == '') {
@@ -165,10 +194,12 @@ if (isset($_GET['accion']) == 'delete' and $title == '') {
                 <?php require_once "../components/nav.php" ?>
                 <div>
                     <div class="bg-light p-4 rounded ">
-                        <div class="col-sm-8 mx-auto">
-                            <h1 class="text-center">Categorías</h1>
+                        <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-3">
+                            <h1 class="mb-0">Categorías</h1>
+                            <a href="../reportes/bitacora_stock.php?tipo=CATEGORIA" class="btn btn-outline-primary">
+                                <i class="bi bi-clock-history me-1"></i> Bitácora de Stock
+                            </a>
                         </div>
-                        <br>
                         <br>
                         <form class="row g-3 needs-validation" action="#" method="post" novalidate>
                             <div class="row">
@@ -283,11 +314,24 @@ if (isset($_GET['accion']) == 'delete' and $title == '') {
                                 </div>
                             </div>
                             <div class="mb-3">
-                                <label for="almacen" class="form-label">En almacén</label>
+                                <label for="almacen_e" class="form-label">En almacén</label>
                                 <div class="input-group has-validation">
                                     <input type="number" step="0.001" class="form-control" id="almacen_e" name="almacen_e" placeholder="kg en almacén" autocomplete="off" required>
+                                    <input type="hidden" id="almacen_original_e">
                                     <div class="invalid-feedback">
                                         Ingresar stock.
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3" id="grupo_motivo_stock_cat" style="display: none;">
+                                <div class="p-3 bg-light border border-primary rounded">
+                                    <label for="motivo_stock_e" class="form-label fw-bold text-primary mb-1">
+                                        <i class="bi bi-chat-left-text-fill me-1"></i> Motivo / Comentario del cambio de stock <span class="text-danger">*</span>
+                                    </label>
+                                    <div class="small text-muted mb-2">Se detectó una modificación en el stock. Ingrese el comentario del porqué se actualiza (obligatorio):</div>
+                                    <input type="text" class="form-control border-primary" id="motivo_stock_e" name="motivo_stock_e" placeholder="Ej: Ajuste por merma, conteo físico, etc.">
+                                    <div class="invalid-feedback">
+                                        Favor de ingresar el motivo del cambio de stock.
                                     </div>
                                 </div>
                             </div>
@@ -353,14 +397,41 @@ if (isset($_GET['accion']) == 'delete' and $title == '') {
                         }
                 ).makeEditable({
                     sUpdateURL: "../functions/actualizacategorias.php",
+                    fnOnEditing: function (input) {
+                        var $cell = $(input).closest('td');
+                        var cellIndex = $cell.index();
+                        if (cellIndex === 2) {
+                            var oldVal = input[0].defaultValue !== undefined ? input[0].defaultValue : $cell.text().trim();
+                            var newVal = input.val();
+                            if (parseFloat(newVal) !== parseFloat(oldVal)) {
+                                var motivo = prompt("Actualización de Stock de Categoría:\nPor favor ingrese el comentario del porqué se actualiza el stock (obligatorio):");
+                                if (!motivo || !motivo.trim()) {
+                                    alert("Actualización cancelada: El comentario del porqué se actualiza el stock es obligatorio.");
+                                    return false;
+                                }
+                                window._ultimoMotivoStockCat = motivo.trim();
+                            }
+                        }
+                        return true;
+                    },
                     aoColumns: [
                         null, null,
                         {
                             type: 'number',
-                            indicator: 'Saving platforms...',
+                            indicator: 'Guardando...',
                             tooltip: 'Click para editar Stock',
                             cssclass: 'required',
-                            sColumnName: 'almacen'
+                            sColumnName: 'almacen',
+                            submitdata: function (value, settings) {
+                                var id = $(this.parentNode).attr('id') || $(this).closest('tr').find('td:first').text().trim();
+                                var motivo = window._ultimoMotivoStockCat || '';
+                                window._ultimoMotivoStockCat = '';
+                                return {
+                                    "id": id,
+                                    "columnName": "almacen",
+                                    "motivo": motivo
+                                };
+                            }
                         },
                         {
                             type: 'number',
@@ -374,9 +445,7 @@ if (isset($_GET['accion']) == 'delete' and $title == '') {
 
                 (function () {
                     'use strict'
-                    // Fetch all the forms we want to apply custom Bootstrap validation styles to
                     var forms = document.querySelectorAll('.needs-validation')
-                    // Loop over them and prevent submission
                     Array.prototype.slice.call(forms)
                             .forEach(function (form) {
                                 form.addEventListener('submit', function (event) {
@@ -389,6 +458,20 @@ if (isset($_GET['accion']) == 'delete' and $title == '') {
                             })
                 })()
             });
+
+            // Listener para detectar modificación de stock en el modal de categoría
+            $("#almacen_e").on('input change', function() {
+                var vOrig = parseFloat($("#almacen_original_e").val() || '0');
+                var vNuevo = parseFloat($(this).val() || '0');
+                if (Math.abs(vNuevo - vOrig) > 0.0001) {
+                    $("#grupo_motivo_stock_cat").show();
+                    $("#motivo_stock_e").prop('required', true);
+                } else {
+                    $("#grupo_motivo_stock_cat").hide();
+                    $("#motivo_stock_e").prop('required', false).val('');
+                }
+            });
+
             var editModal = document.getElementById('editModal')
             editModal.addEventListener('show.bs.modal', function (event) {
                 // Botón que activó el modal
@@ -403,7 +486,10 @@ if (isset($_GET['accion']) == 'delete' and $title == '') {
                 $("#id_categoria_e").val(id_categoria);
                 $("#desc_categoria_e").val(desc_categoria);
                 $("#almacen_e").val(almacen);
+                $("#almacen_original_e").val(almacen);
                 $("#precio_e").val(precio);
+                $("#motivo_stock_e").val('').prop('required', false);
+                $("#grupo_motivo_stock_cat").hide();
                 if (activo == 0)
                     $("#activo_e").prop("checked", false);
                 else

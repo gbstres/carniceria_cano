@@ -300,6 +300,9 @@ if ($sqlCategorias) {
                                     <button type="button" class="btn btn-secondary flex-grow-1" onclick="imprimirStock()">
                                         <i class="bi bi-printer"></i> Imprimir
                                     </button>
+                                    <a href="bitacora_stock.php" class="btn btn-outline-primary flex-grow-1" title="Ver bitácora de modificaciones de stock">
+                                        <i class="bi bi-journal-text"></i> Bitácora
+                                    </a>
                                 </div>
                             </form>
                         </div>
@@ -406,6 +409,47 @@ if ($sqlCategorias) {
                                 </tr>
                             </tfoot>
                         </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Modal de Justificación de Stock -->
+            <div class="modal fade" id="modalMotivoStock" tabindex="-1" aria-labelledby="modalMotivoStockLabel" aria-hidden="true" data-bs-backdrop="static">
+                <div class="modal-dialog modal-dialog-centered">
+                    <div class="modal-content">
+                        <div class="modal-header bg-primary text-white">
+                            <h5 class="modal-title" id="modalMotivoStockLabel"><i class="bi bi-chat-left-text"></i> Motivo de Actualización de Stock</h5>
+                            <button type="button" class="btn-close btn-close-white" id="btnCerrarModalStockX" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <div class="mb-2">
+                                <span class="text-muted small fw-bold">Elemento:</span>
+                                <div id="modalStockItem" class="fw-bold fs-6 text-dark"></div>
+                            </div>
+                            <div class="row g-2 mb-3 p-2 bg-light rounded border text-center">
+                                <div class="col-4">
+                                    <span class="text-muted d-block small">Anterior</span>
+                                    <strong id="modalStockAnterior" class="text-secondary fs-6">0.000</strong>
+                                </div>
+                                <div class="col-4">
+                                    <span class="text-muted d-block small">Nuevo</span>
+                                    <strong id="modalStockNuevo" class="text-primary fs-6">0.000</strong>
+                                </div>
+                                <div class="col-4">
+                                    <span class="text-muted d-block small">Ajuste</span>
+                                    <strong id="modalStockDiferencia" class="fs-6">0.000</strong>
+                                </div>
+                            </div>
+                            <div class="mb-2">
+                                <label for="modalMotivoInput" class="form-label fw-bold">Comentario del porqué se actualiza <span class="text-danger">*</span></label>
+                                <textarea class="form-control" id="modalMotivoInput" rows="3" placeholder="Explique brevemente la razón de este ajuste de stock (obligatorio)..." required></textarea>
+                                <div id="modalMotivoError" class="text-danger small mt-1" style="display: none;">El comentario del motivo es obligatorio.</div>
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" id="btnCancelarModalStock">Cancelar</button>
+                            <button type="button" class="btn btn-primary" id="btnGuardarModalStock"><i class="bi bi-check-circle"></i> Guardar Cambio</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -626,6 +670,75 @@ if ($sqlCategorias) {
                     });
                 });
 
+                let modalStockInstance = null;
+                let pendingCell = null;
+                let pendingOriginalText = '';
+                let pendingNuevoValor = '';
+                let pendingUrl = '';
+                let pendingId = '';
+
+                function getModalStock() {
+                    const el = document.getElementById('modalMotivoStock');
+                    if (el && !modalStockInstance) {
+                        modalStockInstance = new bootstrap.Modal(el);
+                    }
+                    return modalStockInstance;
+                }
+
+                function cancelarAjusteModal() {
+                    if (pendingCell) {
+                        pendingCell.text(pendingOriginalText);
+                        pendingCell = null;
+                    }
+                    if (modalStockInstance) {
+                        modalStockInstance.hide();
+                    }
+                }
+
+                $('#btnCancelarModalStock, #btnCerrarModalStockX').on('click', function() {
+                    cancelarAjusteModal();
+                });
+
+                $('#btnGuardarModalStock').on('click', function() {
+                    const motivo = $('#modalMotivoInput').val().trim();
+                    if (!motivo) {
+                        $('#modalMotivoError').show();
+                        $('#modalMotivoInput').focus();
+                        return;
+                    }
+                    $('#modalMotivoError').hide();
+
+                    if (!pendingCell) {
+                        if (modalStockInstance) modalStockInstance.hide();
+                        return;
+                    }
+
+                    const $c = pendingCell;
+                    const nVal = pendingNuevoValor;
+                    const u = pendingUrl;
+                    const idItem = pendingId;
+
+                    $.ajax({
+                        url: u,
+                        type: 'POST',
+                        data: {
+                            id: idItem,
+                            value: nVal,
+                            columnName: 'almacen',
+                            motivo: motivo
+                        },
+                        success: function () {
+                            $c.text(parseFloat(nVal).toFixed(3));
+                            pendingCell = null;
+                            if (modalStockInstance) modalStockInstance.hide();
+                        },
+                        error: function (xhr) {
+                            alert(xhr.responseText || 'No se pudo actualizar el stock.');
+                            cancelarAjusteModal();
+                        }
+                    });
+                });
+
                 $(document).on('dblclick', '.editable-stock', function () {
                     const $cell = $(this);
                     if ($cell.find('input').length > 0) {
@@ -648,7 +761,7 @@ if ($sqlCategorias) {
                         $cell.text(originalText);
                     }
 
-                    function guardar() {
+                    function pedirConfirmacion() {
                         if (cerrado) {
                             return;
                         }
@@ -657,38 +770,61 @@ if ($sqlCategorias) {
                             cancelar();
                             return;
                         }
+
+                        const nValFloat = parseFloat(nuevoValor);
+                        const oValFloat = parseFloat(originalValue);
+
+                        if (Math.abs(nValFloat - oValFloat) < 0.0001) {
+                            cancelar();
+                            return;
+                        }
+
                         cerrado = true;
 
-                        $.ajax({
-                            url: $cell.data('url'),
-                            type: 'POST',
-                            data: {
-                                id: $cell.data('id'),
-                                value: nuevoValor,
-                                columnName: 'almacen'
-                            },
-                            success: function () {
-                                $cell.text(parseFloat(nuevoValor).toFixed(3));
-                            },
-                            error: function () {
-                                alert('No se pudo actualizar el stock.');
-                                cancelar();
-                            }
-                        });
+                        const $row = $cell.closest('tr');
+                        const descItem = $row.find('td:nth-child(2)').text().trim();
+                        const codItem = $row.find('td:nth-child(1)').text().trim();
+                        const dif = (nValFloat - oValFloat);
+                        const signo = dif > 0 ? '+' : '';
+
+                        pendingCell = $cell;
+                        pendingOriginalText = originalText;
+                        pendingNuevoValor = nuevoValor;
+                        pendingUrl = $cell.data('url');
+                        pendingId = $cell.data('id');
+
+                        $('#modalStockItem').text(codItem + ' - ' + descItem);
+                        $('#modalStockAnterior').text(oValFloat.toFixed(3));
+                        $('#modalStockNuevo').text(nValFloat.toFixed(3));
+                        $('#modalStockDiferencia').text(signo + dif.toFixed(3)).css('color', dif > 0 ? '#198754' : '#dc3545');
+                        $('#modalMotivoInput').val('');
+                        $('#modalMotivoError').hide();
+
+                        const m = getModalStock();
+                        if (m) {
+                            m.show();
+                            setTimeout(function() {
+                                $('#modalMotivoInput').focus();
+                            }, 300);
+                        }
                     }
 
                     $input.on('keydown', function (event) {
                         if (event.key === 'Enter') {
                             event.preventDefault();
-                            guardar();
+                            $input.off('blur');
+                            pedirConfirmacion();
                         }
                         if (event.key === 'Escape') {
                             event.preventDefault();
+                            $input.off('blur');
                             cancelar();
                         }
                     });
 
-                    $input.on('blur', guardar);
+                    $input.on('blur', function() {
+                        pedirConfirmacion();
+                    });
                 });
             });
         </script>
